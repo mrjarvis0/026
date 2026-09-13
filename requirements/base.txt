@@ -1,0 +1,5 @@
+# 026 platform base dependencies (layered: base -> dev/prod).
+# Kept deliberately minimal per ADR-0003 (minimal stack).
+
+# The sentinel and config loaders parse YAML manifests / policy / registry.
+PyYAML>=6.0

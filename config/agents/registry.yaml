@@ -1,0 +1,42 @@
+# 026 Agent Registry
+# ------------------------------------------------------------------------------
+# The single list of which agents exist in the fleet and whether they are enabled.
+# The orchestrator reads this to know who it may route to; each entry points at
+# the agent's own manifest (agents/<dir>/agent.yaml), which is the full contract.
+#
+# `enabled` here means "declared and loadable as a fleet member" — NOT that the
+# agent is wired to the shared kernel yet (bus/brain/sentinel wiring = SP-4) nor
+# runtime-verified (SP-5). Reflects the real state, per AGENTS.md §0 laws.
+#
+# Spec: AGENTS.md §2 (manifest) · §3 (the fleet) · docs/manual/02-structure.md.
+
+version: 1
+updated: 2026-09-06
+
+agents:
+  A01:
+    dir: agents/A01_Blockchain_Intelligence
+    manifest: agents/A01_Blockchain_Intelligence/agent.yaml
+    name: "Blockchain Intelligence"
+    domain: "On-chain: whales, flows, anomaly"
+    status: substantial
+    trust: 2
+    enabled: true
+    kernel_wired: false          # SP-4 pending
+    runtime_verified: true       # SP-5 done 2026-09-07 (tests pass on py3.14) — see BUILD_LOG
+    origin: "CIE-OS migration 2026-09-06"
+
+  A02:
+    dir: agents/A02_News_Intelligence
+    manifest: agents/A02_News_Intelligence/agent.yaml
+    name: "News Intelligence"
+    domain: "Fake-news / rumor / market impact"
+    status: substantial
+    trust: 2
+    enabled: true
+    kernel_wired: false          # SP-4 pending
+    runtime_verified: true       # SP-5 done 2026-09-07 (tests pass on py3.14) — see BUILD_LOG
+    origin: "CIE-OS migration 2026-09-06"
+
+# Reserved / planned fleet members (AGENTS.md §3) — not yet built:
+#   A03 DeFi Flow · A04 Sentiment · A05 Market Data · A06 Macro / Econ

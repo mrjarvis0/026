@@ -1,0 +1,32 @@
+version: 1
+execution:
+  banned_primitives: [eth_sendRawTransaction, eth_sendTransaction, sendTransaction,
+    sign_transaction, signTransaction, eth_sign, personal_sign, from_mnemonic,
+    private_key, PRIVATE_KEY, place_order, submit_order, create_order, execute_trade]
+  scan_globs: ["**/*.py"]
+  exclude_dirs: [tests, fixtures, examples, sandbox, docs, __pycache__]
+secrets:
+  patterns:
+    # Context-gated: a private key / mnemonic assigned to a secret-named var.
+    # NOT a bare 0x{64}, because in a blockchain agent that is an event-topic /
+    # keccak hash (public constant), not a credential.
+    secret_key_material: '(?i)(private[_-]?key|secret[_-]?key|priv[_-]?key|mnemonic|seed[_-]?phrase)\s*[:=]\s*["'']?(0x)?[0-9a-fA-F]{40,}'
+    assigned_secret: '(?i)(api[_-]?key|secret|token|password)\s*[:=]\s*["''][A-Za-z0-9_\-]{16,}["'']'
+  scan_globs: ["**/*.py", "**/*.yaml", "**/*.yml", "**/*.md", "**/*.toml"]
+  exclude_globs: ["**/.env", "**/.env.*", "**/API_KEYS.md"]
+  exclude_dirs: [tests, fixtures, __pycache__]
+trust:
+  min_level_requiring_evidence: 2
+deviation:
+  output_dirs: [decision, reporting, interfaces, intelligence/narrative]
+  exclude_dirs: [tests, fixtures, __pycache__]
+  # Advice-SHAPED phrases (not the bare words "buy"/"sell", which appear in prose
+  # like "nothing to buy or sell"). Best-effort; matches are HOLD-for-review only.
+  advice_terms: ['buy signal', 'sell signal', 'should (buy|sell|long|short)',
+    '(buy|sell) now', 'go (long|short)', bullish, bearish,
+    'you should (buy|sell|invest|trade)', 'we recommend (buying|selling|a trade)',
+    'guaranteed (return|profit|gain)', 'price will (rise|fall|go up|go down|moon|dump)',
+    'price target']
+registry:
+  agents_md: AGENTS.md
+  registry_file: config/agents/registry.yaml
