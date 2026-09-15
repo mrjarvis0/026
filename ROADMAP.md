@@ -61,7 +61,7 @@ Phase 1 ends (and Phase 2 may begin) when **all** of the following hold:
 4. **`.env.example` seeded** with the key *names* those first sources need (names
    only), or the decision to defer is recorded.
 5. **Fleet/registry agree** — no source points at an agent the contract doesn't
-   define *(A05/A06 resolved 2026-09-06)*.
+   define *(A005/A006 resolved 2026-09-06)*.
 
 Nothing in Phase 1 requires code — it is the governed, provenance-clean catalog that
 Phase 2's connectors are built against.

@@ -38,5 +38,17 @@ agents:
     runtime_verified: true       # SP-5 done 2026-09-07 (tests pass on py3.14) — see BUILD_LOG
     origin: "CIE-OS migration 2026-09-06"
 
+  A007:
+    dir: agents/A007_Public_Record_Intelligence
+    manifest: agents/A007_Public_Record_Intelligence/agent.yaml
+    name: "Public-Record Intelligence"
+    domain: "Government/insider records: Congress trades, insider filings, 13F, lobbying, campaign finance, patents, clinical trials, FDA, hearings"
+    status: scaffold
+    trust: 1
+    enabled: false                # scaffold only — not a routable fleet member yet
+    kernel_wired: false
+    runtime_verified: false
+    origin: "Proposed 2026-09-15 — LuxAlgo MCP source research (sources/mcp.md S119); see docs/manual/06-agents.md §6"
+
 # Reserved / planned fleet members (AGENTS.md §3) — not yet built:
-#   A03 DeFi Flow · A04 Sentiment · A05 Market Data · A06 Macro / Econ
+#   A003 DeFi Flow · A004 Sentiment · A005 Market Data · A006 Macro / Econ

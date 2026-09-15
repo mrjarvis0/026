@@ -21,11 +21,11 @@ Read in order the first time. After that, jump to the section you need.
 | 03 | Architecture | How the pieces fit and how data flows through them | ⬜ planned |
 | 04 | [Security](04-security.md) | Trust levels, the execution boundary, secrets, the sentinel | ✅ written |
 | 05 | [Data sources](05-data-sources.md) | Where 026's data comes from, and how the `sources/` registry governs it | ✅ written |
-| 06 | Agents | The fleet, the agent contract, and how to add one | ⬜ planned |
+| 06 | [Agents](06-agents.md) | The fleet layers (Intelligence / Execution / Platform), which agent sits where, and how to add one | ✅ written |
 | 07 | [Glossary](07-glossary.md) | Every 026 term defined in one place | ✅ written |
 | 08 | Manual log | What changed in the manual, and the rules for updating it | ⬜ planned |
 
-*Sections 03, 06, and 08 are planned and will be added one at a time — no rush.*
+*Sections 03 and 08 are planned and will be added one at a time — no rush.*
 
 ---
 

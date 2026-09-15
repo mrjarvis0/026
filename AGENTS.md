@@ -43,7 +43,7 @@ Every agent declares itself in `agents/<AXX>/agent.yaml`. The manifest is the
 contract the orchestrator, sentinel, and brain read.
 
 ```yaml
-id: A03
+id: A003
 name: "DeFi Flow Intelligence"
 version: 0.0.0
 status: scaffold            # scaffold | partial | substantial | complete
@@ -100,15 +100,22 @@ An agent with no `evidence.detectors` and no tests **cannot leave trust level 1.
 | ----- | ------------------------- | --------- | --------------------------------- |
 | `A001` | Blockchain Intelligence   | substantial | On-chain: whales, flows, anomaly  |
 | `A002` | News Intelligence         | substantial | Fake-news / rumor / market impact |
-| `A03` | *(reserved)* DeFi Flow    | planned   | Cross-protocol liquidity          |
-| `A04` | *(reserved)* Sentiment    | planned   | Social/market sentiment fusion    |
-| `A05` | Market Data Intelligence  | planned   | Market OHLCV / quotes / orderbook across crypto, equities, FX |
-| `A06` | Macro / Econ Intelligence | planned   | Macro & economic series (rates, indicators, filings) |
+| `A003` | *(reserved)* DeFi Flow    | planned   | Cross-protocol liquidity          |
+| `A004` | *(reserved)* Sentiment    | planned   | Social/market sentiment fusion    |
+| `A005` | Market Data Intelligence  | planned   | Market OHLCV / quotes / orderbook across crypto, equities, FX |
+| `A006` | Macro / Econ Intelligence | planned   | Macro & economic series (rates, indicators, filings) |
+| `A007` | *(scaffold)* Public-Record Intelligence | scaffold | Government/insider records — Congress trades, insider filings, 13F, lobbying, patents, clinical trials, FDA, hearings |
 
-`A05` and `A06` were promoted from proposals to `planned` fleet members on
+`A005` and `A006` were promoted from proposals to `planned` fleet members on
 2026-09-06: roughly half the source registry (`sources/`) is assigned to them, so
 they are real (if unbuilt) consumers, not placeholders. Recorded in `BUILD_LOG.md`
 (2026-09-06) and `docs/adr/ADR-0004`.
+
+`A007` was scaffolded (manifest + README, not yet a registered fleet member) on
+2026-09-15 from LuxAlgo MCP source research — see `docs/manual/06-agents.md` §6
+and `sources/mcp.md` (`S119`). `A003`–`A006` were renumbered from `A03`–`A06`
+the same day, at the operator's request, to align with the `A001`/`A002`/`A007`
+3-digit format — see `BUILD_LOG.md` (2026-09-15, renumbering session).
 
 `A001` and `A002` moved from `planned` to `substantial` on 2026-09-06: their full
 vertical pipelines were **migrated in from the CIE-OS project** (source kept intact
@@ -296,7 +303,7 @@ matter how good the code looks.
 - [ ] Cross-agent correlation layer + the entity ledger
 - [ ] Sentinel: trust enforcement + live execution-gate surface scan (no order bypasses the gate)
 - [ ] Dashboard: chat, traces, coverage, cost, health across the fleet
-- [ ] A03 / A04 / A05 / A06 as later agents once the pattern is proven
+- [ ] A003 / A004 / A005 / A006 / A007 as later agents once the pattern is proven
 
 ---
 

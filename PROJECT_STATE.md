@@ -73,7 +73,7 @@ resolves in the master index, and internal links resolve.
 | Path | State | Notes |
 |---|---|---|
 | `README.md` | âœ… written | Vision, architecture, directory map, honest genesis status |
-| `AGENTS.md` | âœ… written | Fleet contract (now A01â€“A06), manifest schema, governance, build discipline |
+| `AGENTS.md` | âœ… written | Fleet contract (now A01â€“A006), manifest schema, governance, build discipline |
 | `PROJECT_STATE.md` | âœ… this file | Living snapshot |
 | `BUILD_LOG.md` | âœ… written | Append-only history; 2026-09-06 docs-hardening session recorded |
 | `ROADMAP.md` | âœ… written | Phased plan; Phase 1 now has an explicit "definition of done" |
@@ -133,6 +133,12 @@ None hold yet â€” there is no code to hold them. Recorded so the target is 
    execution-gate)? Both are docs, no code.
 3. **`.env.example`** â€” seed key *names* now (for the first buildable sources), or
    defer until connector work? Recorded as a Phase-1 exit item either way.
+4. **Journal + Broker SDK placement (from LuxAlgo research, 2026-09-15).** These are
+   the operator's own trading data (personal journal + read-only broker portfolio via
+   the operator's own keys) â€” they don't fit `A001`â€”`A006`'s “external world” domains.
+   Candidates: extend `T01` with a reporting/reconciliation capability, or surface
+   through `operator-io` (Platform). Not decided â€” see `docs/manual/06-agents.md` §6
+   and `sources/infra.md` `S121`.
 
 ---
 

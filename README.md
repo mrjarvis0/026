@@ -50,7 +50,7 @@ are shared; each agent brings its own vertical pipeline.
                          └───┬───────────┬──────────┬───┘
                              │           │          │
           ┌──────────────────▼─┐   ┌─────▼──────┐   │
-          │  Agent A001         │   │ Agent A002  │   │   … A03, A04 …
+          │  Agent A001         │   │ Agent A002  │   │   … A003, A004 …
           │  (on-chain intel)  │   │ (news)     │   │
           │                    │   │            │   │
           │  sensors→ingest→   │   │  ingest→   │   │

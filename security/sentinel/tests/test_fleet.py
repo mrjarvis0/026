@@ -8,7 +8,7 @@ FLEET_MD = """
 | ----- | ------------------------- | --------- | --------------- |
 | `A001` | Blockchain Intelligence   | substantial | On-chain        |
 | `A002` | News Intelligence         | substantial | Rumor           |
-| `A03` | *(reserved)* DeFi Flow    | planned   | Liquidity       |
+| `A003` | *(reserved)* DeFi Flow    | planned   | Liquidity       |
 """
 
 
@@ -16,7 +16,7 @@ def test_parse_fleet_table_skips_reserved():
     table = parse_fleet_table(FLEET_MD)
     assert table["A001"]["name"] == "Blockchain Intelligence"
     assert table["A001"]["status"] == "substantial"
-    assert "A03" not in table  # reserved row skipped
+    assert "A003" not in table  # reserved row skipped
 
 
 def test_load_fleet_reads_real_agents():

@@ -104,7 +104,7 @@ decision`). Not a chat wrapper. Lives at `agents/<AXX_Name>/`.
 **Vertical pipeline** — the full stack an agent owns end-to-end; the platform
 surrounds it but never reaches inside.
 
-**Fleet** — all the domain agents (`A001`–`A06` planned). The fleet is only as strong
+**Fleet** — all the domain agents (`A001`–`A006` planned). The fleet is only as strong
 as its weakest agent — and its weakest claim.
 
 **Kernel** — the shared lowest layers: `config/`, `src/`, `brain/`, `orchestrator/`.

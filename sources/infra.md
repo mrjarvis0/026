@@ -18,6 +18,7 @@
 | S073 | [Chainstack](https://docs.chainstack.com) | RPC / node provider | Multi-chain nodes + JSON-RPC | API key | `integrations/apis/` (via `tools/`) | FREE* | Free tier. | ⬜ |
 | S074 | [PublicNode](https://www.publicnode.com) | RPC / node provider | Free public multi-chain RPC endpoints | none | `integrations/apis/` (via `tools/`) | FREE | Keyless public RPC — good Tier-1 fallback. | ⬜ |
 | S115 | [dRPC](https://drpc.org) | RPC / node provider | Multi-chain routed RPC, low-latency load-balancing | none / key | `integrations/apis/` (via `tools/`) | FREE* | Routed aggregator over many node providers. | ⬜ |
+| S121 | [LuxAlgo Broker SDK](https://luxalgo.com) | SDK / aggregator | Read-only portfolio data across 22 brokers (Alpaca, Binance, Bybit, Kraken, Tradier, Interactive Brokers, Hyperliquid...) — balances, positions, trade history, FIFO win-rate | operator's own broker API keys (local-only, never leaves the machine) | `tools/` (SDK) | FREE | Open question — no consuming agent assigned yet. This is the operator's own portfolio data; doesn't fit A001–A006's "external world" domains. See `PROJECT_STATE.md` → *Open questions for the operator*. | ⬜ |
 
 **Landed 2026-09-07:** S067–S074, S115 — RPC/node providers from the operator's
 `blockchain-data-sources-notes.md`. Classed as infra (access endpoints, not feeds

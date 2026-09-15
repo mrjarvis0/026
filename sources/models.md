@@ -12,7 +12,7 @@ maturity rule below. Its **output** is a claim governed exactly like any other.
 
 | ID | Model | Domain | What it does | License / Auth | Lands in | Tier | Used by | Status |
 |----|-------|--------|--------------|----------------|----------|------|---------|--------|
-| S046 | [FinBERT](https://huggingface.co/ProsusAI/finbert) (ProsusAI) | sentiment | Financial-text sentiment classification (positive/negative/neutral) | free weights (HF) | `brain/` or agent `skills/` | MODEL | A04 | 🔜 |
+| S046 | [FinBERT](https://huggingface.co/ProsusAI/finbert) (ProsusAI) | sentiment | Financial-text sentiment classification (positive/negative/neutral) | free weights (HF) | `brain/` or agent `skills/` | MODEL | A004 | 🔜 |
 
 **Note:** a model's *output* is a claim like any other — under 026's rules it may
 alert only at `VALIDATED` maturity (a measured error rate on a labelled window),

@@ -2692,3 +2692,179 @@ endpoints.yaml, limits.yaml, adapter.py)"`.
    criteria assessment.
 2. Three decisions left on purpose: wire labels to whale skill, attribute
    token transfers, connect exchange flow to a detector.
+
+---
+
+## Session 2026-09-15 — LuxAlgo MCP research → A007 scaffold + queued-upgrade docs
+
+### Goal for this session
+
+The operator researched LuxAlgo (`mcp.luxalgo.com/mcp` — 42 hosted MCP tools,
+free/keyless for public data: trading-concept library, historical edge stats,
+18 government/public-record datasets, prop-firm Monte Carlo sim, personal
+journal, plus a local-only Broker SDK and Whale Options MCP) and asked: how
+many new agents does this need, in which fleet layers, and is any of it better
+as an upgrade to an agent that already exists (built or reserved)?
+
+### Audit findings
+
+Read `AGENTS.md`, `ROADMAP.md`, `PROJECT_STATE.md`, `docs/manual/06-agents.md`,
+`sources/README.md` before proposing anything (per `AGENTS.md` §9.2 — audit
+before building). Findings that shaped the design:
+
+- The fleet already reserves `A03`–`A06` for exactly this kind of data (`A05`
+  Market Data, `A06` Macro/Econ were promoted 2026-09-06 for this reason) — most
+  of LuxAlgo's data is an **upgrade to an already-reserved, unbuilt slot**, not
+  a reason for new agent numbers.
+- `sources/mcp.md` had **zero MCP sources** catalogued (a literal placeholder
+  row) — LuxAlgo is the fleet's first.
+- Project is explicitly in **Phase 1 (source inventory)** — `ROADMAP.md`: *"Do
+  not start connector/kernel code until the operator says Phase 1 is done."*
+  So this session stayed docs-only: no agent code, no kernel wiring.
+- One category (`trackers_*`'s 10 government/insider datasets — Congress
+  trades, insider Forms 3/4/5, 13F, lobbying, campaign finance, PAC, patents,
+  clinical trials, FDA, hearings) didn't cleanly fit any reserved slot without
+  blurring `A04` (Sentiment) or `A06` (Macro/Econ) — flagged to the operator as
+  a fork (split across A04/A06 vs. a new dedicated slot); operator chose the
+  new slot.
+
+### Design decisions
+
+1. **`A007` "Public-Record Intelligence"** scaffolded — manifest + README only,
+   `status: scaffold`, `trust: 1` (no detectors/tests yet, per `AGENTS.md` §2),
+   `enabled: false` in `config/agents/registry.yaml`. Owns the 10
+   government/insider datasets above. Numbered `A007` (3-digit, matching the
+   `A001`/`A002` rename) rather than `A07`, per the operator's explicit
+   instruction — note this leaves `A03`–`A06` on the older 2-digit form; not
+   reconciled this session (out of scope, not asked).
+2. **`trackers_*`'s COT/Fed-communications/legislation subset** → `A06`
+   Macro/Econ (matches its existing domain). **Wikipedia pageviews** → `A04`
+   Sentiment (attention proxy, not a filing).
+3. **`edge_*` (Edge Stats) + Whale Options (separate local MCP)** → `A05`
+   Market Data (matches its existing domain — OHLCV/quotes/orderbook/microstructure).
+4. **`library_*` (850+ concepts)** → NOT an agent. Shared reference → `brain/global/`
+   via `librarian`, since it's not agent-specific data.
+5. **`propfirms_*` (Monte Carlo sim)** → NOT an agent. A stateless calculator
+   with no sensors/ingestion/evidence chain doesn't fit the agent definition in
+   `AGENTS.md` §1. Queued as a new tool/skill for `T01`, which already does
+   paper-trade-before-real gating — the same job philosophically.
+6. **`journal_*` (OAuth) + Broker SDK (local, operator's own keys)** — left as an
+   **open question**, not assigned. This is the operator's own trading data, not
+   "external world" intelligence like `A001`–`A06` — doesn't fit the fleet's
+   domain split. Recorded in `PROJECT_STATE.md` per `AGENTS.md` §9's
+   escalate-don't-decide rule, rather than picked unilaterally.
+
+### Files touched
+
+- `BUILD-NEW` `agents/A007_Public_Record_Intelligence/agent.yaml` — scaffold manifest
+- `BUILD-NEW` `agents/A007_Public_Record_Intelligence/README.md` — scope, in/out list, build starting point
+- `MINOR-FIX` `config/agents/registry.yaml` — added `A007` entry, `enabled: false`
+- `MINOR-FIX` `AGENTS.md` — §3 fleet table: added `A007` row + origin note; §12 roadmap line
+- `MINOR-FIX` `docs/manual/06-agents.md` — §1/§2 notes updated; new §6 "Queued upgrades from LuxAlgo research"
+- `data correction` `sources/mcp.md` — replaced the empty placeholder row with `S119` (LuxAlgo MCP, hosted) and `S120` (Whale Options, local MCP)
+- `MINOR-FIX` `sources/infra.md` — added `S121` (LuxAlgo Broker SDK)
+- `MINOR-FIX` `sources/README.md` — master index: added `S119`–`S121`, updated counts (109→112 rows, 0→2 MCP, 12→13 infra, highest ID `S118`→`S121`), added `A007`/`T01`/`librarian` to the consuming-agents legend
+- `MINOR-FIX` `PROJECT_STATE.md` — added open question #4 (Journal + Broker SDK placement)
+
+### Verified by execution
+
+None — this session is documentation and a scaffold manifest only, no runnable
+code. `agent.yaml` schema was hand-checked against the working example in
+`AGENTS.md` §2 (field-for-field) but not run through any validator (026 has
+none yet).
+
+### Self-critique
+
+- **`A007`'s domain boundary is a judgement call, not a measured one.** "Insider
+  filings are a distinct domain from macro/econ" is defensible but not the only
+  reasonable split — Approach A (fold everything into `A04`/`A06`) was presented
+  as the alternative and the operator picked the new slot; a future session
+  could still merge it back if `A007` stays thin.
+- **None of `S119`–`S121`'s rate limits, exact ToS, or ID-vs-key requirements are
+  verified** — all `TBV`/`check`, same as most of the existing registry. Nothing
+  here has been called yet.
+- **The `A03`–`A06` vs `A007` numbering mismatch (2-digit vs 3-digit) is now
+  live in the docs** and wasn't reconciled — flagged above, operator's call.
+
+### Open questions for the operator
+
+Recorded in `PROJECT_STATE.md` (open question #4): where do `journal_*` and the
+Broker SDK belong — extend `T01`, surface via `operator-io`, or wait for a
+dedicated agent later?
+
+### Next session should start at
+
+If the operator green-lights it: verify `S119`–`S121` against LuxAlgo's actual
+docs (rate limits, exact auth flow for `journal_*`, whether Whale Options needs
+its own repo/install step) and advance them ⬜ → 🔜, same as the rest of Phase 1's
+"definition of done" checklist in `ROADMAP.md`. Building `A007` (or upgrading
+`A04`/`A05`/`A06`/`T01`) stays gated behind the operator's Phase 1 → Phase 4
+green light.
+
+---
+
+## Session 2026-09-15 (cont.) — A03–A06 renumbered to A003–A006 (operator request)
+
+### Goal for this session
+
+Follow-up to the LuxAlgo scaffold session above: the operator asked to align
+all A-series agent IDs to the 3-digit format (`A001`/`A002`/`A007` already use
+it; `A03`–`A06` were still 2-digit — flagged as an open inconsistency in the
+previous entry's self-critique).
+
+### What changed
+
+Renamed `A03`→`A003`, `A04`→`A004`, `A05`→`A005`, `A06`→`A006` — ID only, no
+change to status/domain/trust/anything else. Applied via word-boundary
+find/replace (`\bA0[3-6]\b` → `A00[3-6]`) across every *living* doc that
+references them:
+
+`AGENTS.md` · `docs/manual/06-agents.md` · `docs/manual/07-glossary.md` ·
+`README.md` · `ROADMAP.md` · `PROJECT_STATE.md` · `sources/README.md` ·
+`sources/apis.md` · `sources/datasets.md` · `sources/models.md` ·
+`sources/mcp.md` · `sources/infra.md` · `config/agents/registry.yaml` ·
+`agents/A007_Public_Record_Intelligence/README.md` ·
+`security/sentinel/tests/test_fleet.py`
+
+### Deliberately NOT touched
+
+- **`BUILD_LOG.md` itself (all prior entries).** Append-only, never overwritten
+  (`AGENTS.md` §0) — past entries describe what was true *at the time*; this
+  entry is the reconciliation, not a rewrite of history.
+- **`docs/superpowers/plans/2026-09-07-sentinel-conformance.md`** — a dated
+  planning artifact, same reasoning.
+- **`agents/A001_Blockchain_Intelligence/identity/non_functional_requirements.md`**
+  — its `## NFR-A03` is A001's own internal requirement-numbering scheme, not
+  a fleet agent ID. The word-boundary regex would have matched it as a false
+  positive (`NFR-A03` → boundary between `-` and `A`); caught by reading every
+  file's match context *before* running the batch replace, excluded from the
+  file list.
+- **`AGENTS.md` §2's example manifest** (`id: A003`) — not "left old," this one
+  *should* say `A003` now: it's the worked example for building the DeFi Flow
+  agent, and DeFi Flow is `A003` post-rename. Verified, not just swept along.
+
+### Verified by execution
+
+`pytest security/sentinel/tests/test_fleet.py -v` → **2 passed**. This is the
+one code file touched (a test fixture + assertion); `parse_fleet_table` skips
+rows on the literal string `"reserved"` in the name column, not on ID
+digit-count (`security/sentinel/fleet.py` line 30), so the rename couldn't
+have changed which rows get skipped — confirmed by reading the source *and*
+by running the suite, not one or the other.
+
+### Self-critique
+
+- **Ran a batch sed across 15 files on one word-boundary pattern.** Checked
+  every file's match context by hand *before* running it (the
+  `non_functional_requirements.md` false positive was caught this way), but a
+  batch operation is still a batch operation — worth a `git diff` read-through
+  before this gets committed.
+- **Only one of the 15 touched files had a test suite.** The rest are docs/
+  tables — correctness there was checked by re-reading the diffs, not by any
+  automated check (026 has no markdown-link/ID-consistency checker yet, per
+  `PROJECT_STATE.md` → *Verification basis*).
+
+### Next session should start at
+
+Nothing blocking. Before committing: a final `git diff` skim across all 15
+files (cheap, and this session's own self-critique says to).
