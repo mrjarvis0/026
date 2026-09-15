@@ -27,7 +27,7 @@ Every agent declares a trust level; the sentinel enforces it.
 |-------|-------|---------|
 | 0 | Sandboxed — reasoning only | New/untrusted plugin |
 | 1 | Read-only — no side effects | A fresh agent, pre-evals |
-| 2 | Scoped writes — a declared surface | A01, A02 |
+| 2 | Scoped writes — a declared surface | A001, A002 |
 | 3 | Platform — human-adjacent | orchestrator, sentinel |
 
 An agent with no evidence detectors and no tests **cannot leave level 1.**

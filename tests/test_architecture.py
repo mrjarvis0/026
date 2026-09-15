@@ -4,7 +4,7 @@ The kernel never imports an agent, and an agent never imports the kernel or the
 composition root. The sentinel (a low platform service) never imports the manager
 above it. This is checked mechanically over *absolute* imports.
 
-Note on the fleet: A01/A02 were migrated from CIE-OS and use bare top-level imports
+Note on the fleet: A001/A002 were migrated from CIE-OS and use bare top-level imports
 (`config`, `core`, `security`, ...) that name-collide with the platform's packages but
 are their OWN modules. So the agent checks only forbid names that do NOT exist inside any
 agent — `orchestrator` and `bootstrap` — which makes any such import an unambiguous,
@@ -61,7 +61,7 @@ def test_orchestrator_does_not_import_agents_or_composition_root():
 def test_agents_do_not_import_kernel_or_composition_root():
     forbidden = {"orchestrator", "bootstrap", "brain"}  # names no agent defines internally
     offenders: list[str] = []
-    for agent in ("A01_Blockchain_Intelligence", "A02_News_Intelligence"):
+    for agent in ("A001_Blockchain_Intelligence", "A002_News_Intelligence"):
         offenders += _offenders(ROOT / "agents" / agent, forbidden)
     assert not offenders, offenders
 

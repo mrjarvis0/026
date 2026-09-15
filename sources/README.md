@@ -56,7 +56,7 @@ an *access method* instead of a per-minute limit).
 **Tier:** `FREE` · `FREE*` (free but limited) · `PAID-LATER` (enable when funded) · `DEAD` · `INFRA` / `MODEL` (not a data feed)
 **Status:** ⬜ known (limits unverified) · 🔜 web-verified 2026-09-05 · ✅ live (a connector lands a raw, cited record) · `TBV` inside a cell = that value still to be verified
 
-**Consuming agents:** `A01` Blockchain · `A02` News · `A03` DeFi *(reserved)* ·
+**Consuming agents:** `A001` Blockchain · `A002` News · `A03` DeFi *(reserved)* ·
 `A04` Sentiment *(reserved)* · `A05` Market Data · `A06` Macro/Econ · `orchestrator` (MCP).
 *A05 and A06 are `planned` fleet agents in [`AGENTS.md`](../AGENTS.md) §3, promoted 2026-09-06 (see [`ADR-0004`](../docs/adr/ADR-0004-sources-by-access-type-and-stable-ids.md)).*
 
@@ -71,7 +71,7 @@ an *access method* instead of a per-minute limit).
 **Counts (2026-09-07):** 109 catalogued rows — **82** live APIs · **8** datasets ·
 **6** portals/links · **1** model · **12** infra · **0** MCP (none yet). Plus **1**
 dead (`S023`, tracked, no row) and **8** reserved/dropped IDs (gaps). Highest ID: `S118`.
-*(+67 blockchain sources for A01 added 2026-09-07 from the operator's
+*(+67 blockchain sources for A001 added 2026-09-07 from the operator's
 `blockchain-data-sources-notes.md`; catalogued `⬜`/`TBV` — not yet web-verified. Skipped:
 embedded-wallet & tax tooling, see `infra.md`.)*
 *(The operator's original list was ~40 items; the count differs because 4 free
@@ -88,14 +88,14 @@ mapped to more than one access method.)*
 | S006 | CoinPaprika API | apis | crypto | FREE | A05 | 🔜 |
 | S007 | CoinMarketCap API | apis | crypto | FREE* | A05 | ⬜ |
 | S008 | Kaggle — Bitcoin historical (search) | links | crypto | FREE | — (discovery) | ⬜ |
-| S009 | Blockchain.com Explorer API | apis | onchain | FREE | A01 | ⬜ |
-| S010 | Etherscan API | apis | onchain | FREE | A01 | ⬜ |
+| S009 | Blockchain.com Explorer API | apis | onchain | FREE | A001 | ⬜ |
+| S010 | Etherscan API | apis | onchain | FREE | A001 | ⬜ |
 | S011 | Alpaca | apis | stock+crypto | FREE | A05 | 🔜 |
 | S012 | Kaiko | apis | crypto | PAID-LATER | A05 | 🔜 |
-| S013 | Glassnode API | apis | onchain | PAID-LATER | A01 | 🔜 |
-| S014 | CryptoQuant API | apis | onchain | PAID-LATER | A01 | 🔜 |
-| S015 | AWS Public Blockchain | datasets | onchain | FREE* | A01 | ⬜ |
-| S016 | BigQuery public blockchain | datasets | onchain | FREE* | A01 | ⬜ |
+| S013 | Glassnode API | apis | onchain | PAID-LATER | A001 | 🔜 |
+| S014 | CryptoQuant API | apis | onchain | PAID-LATER | A001 | 🔜 |
+| S015 | AWS Public Blockchain | datasets | onchain | FREE* | A001 | ⬜ |
+| S016 | BigQuery public blockchain | datasets | onchain | FREE* | A001 | ⬜ |
 | S017 | Dune API | apis | onchain | PAID-LATER | A03 | 🔜 |
 | S018 | *reserved / dropped in research* | — | — | — | — | — |
 | S019 | *reserved / dropped in research* | — | — | — | — | — |
@@ -126,76 +126,76 @@ mapped to more than one access method.)*
 | S044 | HuggingFace — bitcoin tweets sentiment | datasets | sentiment | FREE | A04 | ⬜ |
 | S045 | Kaggle — Reddit crypto sentiment | datasets | sentiment | FREE | A04 | ⬜ |
 | S046 | FinBERT (ProsusAI) | models | sentiment | MODEL | A04 | 🔜 |
-| S047 | GDELT Project | apis | news | FREE | A02 | ⬜ |
-| S048 | CCXT | infra | crypto | FREE | A01 / A05 | ⬜ |
+| S047 | GDELT Project | apis | news | FREE | A002 | ⬜ |
+| S048 | CCXT | infra | crypto | FREE | A001 / A05 | ⬜ |
 | S049 | Frankfurter | apis | forex | FREE | A06 | ⬜ |
 | S050 | Reddit API | apis | sentiment | FREE* | A04 | ⬜ |
 | S051 | Fear & Greed Index (alternative.me) | apis | sentiment | FREE | A04 | ⬜ |
-| S052 | BscScan | apis | onchain | FREE* | A01 | ⬜ |
-| S053 | PolygonScan | apis | onchain | FREE* | A01 | ⬜ |
-| S054 | Arbiscan | apis | onchain | FREE* | A01 | ⬜ |
-| S055 | Optimistic Etherscan | apis | onchain | FREE* | A01 | ⬜ |
-| S056 | Snowtrace | apis | onchain | FREE* | A01 | ⬜ |
-| S057 | FTMScan | apis | onchain | FREE* | A01 | ⬜ |
-| S058 | Basescan | apis | onchain | FREE* | A01 | ⬜ |
-| S059 | Blockscout | apis | onchain | FREE | A01 | ⬜ |
-| S060 | Solscan | apis | onchain | FREE* | A01 | ⬜ |
-| S061 | SolanaFM | apis | onchain | FREE* | A01 | ⬜ |
-| S062 | TronScan | apis | onchain | FREE* | A01 | ⬜ |
-| S063 | Mempool.space | apis | onchain | FREE | A01 | ⬜ |
-| S064 | Blockchair | apis | onchain | FREE* | A01 | ⬜ |
-| S065 | Celoscan | apis | onchain | FREE* | A01 | ⬜ |
-| S066 | zkSync Era Explorer | apis | onchain | FREE | A01 | ⬜ |
-| S067 | Alchemy | infra | — | INFRA (FREE*) | A01 | ⬜ |
-| S068 | Infura | infra | — | INFRA (FREE*) | A01 | ⬜ |
-| S069 | QuickNode | infra | — | INFRA (FREE*) | A01 | ⬜ |
-| S070 | Ankr | infra | — | INFRA (FREE*) | A01 | ⬜ |
-| S071 | Moralis | infra | — | INFRA (FREE*) | A01 | ⬜ |
-| S072 | GetBlock | infra | — | INFRA (FREE*) | A01 | ⬜ |
-| S073 | Chainstack | infra | — | INFRA (FREE*) | A01 | ⬜ |
-| S074 | PublicNode | infra | — | INFRA (FREE) | A01 | ⬜ |
-| S075 | DeFi Llama | apis | onchain | FREE | A01 | ⬜ |
-| S076 | The Graph | apis | onchain | FREE* | A01 | ⬜ |
-| S077 | Nansen | apis | onchain | PAID-LATER | A01 | 🔜 |
-| S078 | IntoTheBlock | apis | onchain | FREE* | A01 | ⬜ |
-| S079 | Covalent (GoldRush) | apis | onchain | FREE* | A01 | ⬜ |
-| S080 | Footprint Analytics | apis | onchain | FREE* | A01 | ⬜ |
-| S081 | Token Terminal | apis | onchain | PAID-LATER | A01 | 🔜 |
-| S082 | CryptoCompare | apis | crypto | FREE | A01 / A05 | ⬜ |
-| S083 | Messari | apis | crypto | FREE* | A01 / A05 | ⬜ |
-| S084 | OpenSea | apis | onchain | FREE* | A01 | ⬜ |
-| S085 | Reservoir | apis | onchain | FREE* | A01 | ⬜ |
-| S086 | Alchemy NFT API | apis | onchain | FREE* | A01 | ⬜ |
-| S087 | NFTScan | apis | onchain | FREE* | A01 | ⬜ |
-| S088 | Whale Alert | apis | onchain | PAID-LATER | A01 | 🔜 |
-| S089 | Blocknative | apis | onchain | FREE* | A01 | ⬜ |
-| S090 | BitQuery | apis | onchain | FREE* | A01 | ⬜ |
-| S091 | Chainbase | apis | onchain | FREE* | A01 | ⬜ |
-| S092 | Flipside Crypto | apis | onchain | FREE* | A01 | ⬜ |
-| S093 | Arkham Intelligence | apis | onchain | FREE* | A01 | ⬜ |
-| S094 | DeBank | apis | onchain | FREE* | A01 | ⬜ |
-| S095 | Zerion | apis | onchain | FREE* | A01 | ⬜ |
-| S096 | Uniswap Subgraph | apis | onchain | FREE* | A01 | ⬜ |
-| S097 | Aave | apis | onchain | FREE* | A01 | ⬜ |
-| S098 | Compound | apis | onchain | FREE* | A01 | ⬜ |
-| S099 | 1inch | apis | onchain | FREE* | A01 | ⬜ |
-| S100 | Helius | apis | onchain | FREE* | A01 | ⬜ |
-| S101 | Birdeye | apis | onchain | FREE* | A01 | ⬜ |
-| S102 | DexScreener | apis | onchain | FREE | A01 | ⬜ |
-| S103 | GeckoTerminal | apis | onchain | FREE | A01 | ⬜ |
-| S104 | Jupiter | apis | onchain | FREE | A01 | ⬜ |
-| S105 | Meteora | apis | onchain | FREE | A01 | ⬜ |
-| S106 | GMGN | apis | onchain | FREE* | A01 | ⬜ |
-| S107 | Bags | apis | onchain | FREE* | A01 | ⬜ |
-| S108 | Chainalysis | apis | onchain | PAID-LATER | A01 | 🔜 |
-| S109 | TRM Labs | apis | onchain | PAID-LATER | A01 | 🔜 |
-| S110 | Coinglass | apis | crypto | FREE* | A01 | ⬜ |
-| S111 | Hyperdash | apis | crypto | FREE* | A01 | ⬜ |
-| S112 | Zapper | apis | onchain | FREE* | A01 | ⬜ |
-| S113 | Step Finance | apis | onchain | FREE* | A01 | ⬜ |
-| S114 | Tatum | apis | onchain | FREE* | A01 | ⬜ |
-| S115 | dRPC | infra | — | INFRA (FREE*) | A01 | ⬜ |
-| S116 | Cielo | apis | onchain | FREE* | A01 | ⬜ |
+| S052 | BscScan | apis | onchain | FREE* | A001 | ⬜ |
+| S053 | PolygonScan | apis | onchain | FREE* | A001 | ⬜ |
+| S054 | Arbiscan | apis | onchain | FREE* | A001 | ⬜ |
+| S055 | Optimistic Etherscan | apis | onchain | FREE* | A001 | ⬜ |
+| S056 | Snowtrace | apis | onchain | FREE* | A001 | ⬜ |
+| S057 | FTMScan | apis | onchain | FREE* | A001 | ⬜ |
+| S058 | Basescan | apis | onchain | FREE* | A001 | ⬜ |
+| S059 | Blockscout | apis | onchain | FREE | A001 | ⬜ |
+| S060 | Solscan | apis | onchain | FREE* | A001 | ⬜ |
+| S061 | SolanaFM | apis | onchain | FREE* | A001 | ⬜ |
+| S062 | TronScan | apis | onchain | FREE* | A001 | ⬜ |
+| S063 | Mempool.space | apis | onchain | FREE | A001 | ⬜ |
+| S064 | Blockchair | apis | onchain | FREE* | A001 | ⬜ |
+| S065 | Celoscan | apis | onchain | FREE* | A001 | ⬜ |
+| S066 | zkSync Era Explorer | apis | onchain | FREE | A001 | ⬜ |
+| S067 | Alchemy | infra | — | INFRA (FREE*) | A001 | ⬜ |
+| S068 | Infura | infra | — | INFRA (FREE*) | A001 | ⬜ |
+| S069 | QuickNode | infra | — | INFRA (FREE*) | A001 | ⬜ |
+| S070 | Ankr | infra | — | INFRA (FREE*) | A001 | ⬜ |
+| S071 | Moralis | infra | — | INFRA (FREE*) | A001 | ⬜ |
+| S072 | GetBlock | infra | — | INFRA (FREE*) | A001 | ⬜ |
+| S073 | Chainstack | infra | — | INFRA (FREE*) | A001 | ⬜ |
+| S074 | PublicNode | infra | — | INFRA (FREE) | A001 | ⬜ |
+| S075 | DeFi Llama | apis | onchain | FREE | A001 | ⬜ |
+| S076 | The Graph | apis | onchain | FREE* | A001 | ⬜ |
+| S077 | Nansen | apis | onchain | PAID-LATER | A001 | 🔜 |
+| S078 | IntoTheBlock | apis | onchain | FREE* | A001 | ⬜ |
+| S079 | Covalent (GoldRush) | apis | onchain | FREE* | A001 | ⬜ |
+| S080 | Footprint Analytics | apis | onchain | FREE* | A001 | ⬜ |
+| S081 | Token Terminal | apis | onchain | PAID-LATER | A001 | 🔜 |
+| S082 | CryptoCompare | apis | crypto | FREE | A001 / A05 | ⬜ |
+| S083 | Messari | apis | crypto | FREE* | A001 / A05 | ⬜ |
+| S084 | OpenSea | apis | onchain | FREE* | A001 | ⬜ |
+| S085 | Reservoir | apis | onchain | FREE* | A001 | ⬜ |
+| S086 | Alchemy NFT API | apis | onchain | FREE* | A001 | ⬜ |
+| S087 | NFTScan | apis | onchain | FREE* | A001 | ⬜ |
+| S088 | Whale Alert | apis | onchain | PAID-LATER | A001 | 🔜 |
+| S089 | Blocknative | apis | onchain | FREE* | A001 | ⬜ |
+| S090 | BitQuery | apis | onchain | FREE* | A001 | ⬜ |
+| S091 | Chainbase | apis | onchain | FREE* | A001 | ⬜ |
+| S092 | Flipside Crypto | apis | onchain | FREE* | A001 | ⬜ |
+| S093 | Arkham Intelligence | apis | onchain | FREE* | A001 | ⬜ |
+| S094 | DeBank | apis | onchain | FREE* | A001 | ⬜ |
+| S095 | Zerion | apis | onchain | FREE* | A001 | ⬜ |
+| S096 | Uniswap Subgraph | apis | onchain | FREE* | A001 | ⬜ |
+| S097 | Aave | apis | onchain | FREE* | A001 | ⬜ |
+| S098 | Compound | apis | onchain | FREE* | A001 | ⬜ |
+| S099 | 1inch | apis | onchain | FREE* | A001 | ⬜ |
+| S100 | Helius | apis | onchain | FREE* | A001 | ⬜ |
+| S101 | Birdeye | apis | onchain | FREE* | A001 | ⬜ |
+| S102 | DexScreener | apis | onchain | FREE | A001 | ⬜ |
+| S103 | GeckoTerminal | apis | onchain | FREE | A001 | ⬜ |
+| S104 | Jupiter | apis | onchain | FREE | A001 | ⬜ |
+| S105 | Meteora | apis | onchain | FREE | A001 | ⬜ |
+| S106 | GMGN | apis | onchain | FREE* | A001 | ⬜ |
+| S107 | Bags | apis | onchain | FREE* | A001 | ⬜ |
+| S108 | Chainalysis | apis | onchain | PAID-LATER | A001 | 🔜 |
+| S109 | TRM Labs | apis | onchain | PAID-LATER | A001 | 🔜 |
+| S110 | Coinglass | apis | crypto | FREE* | A001 | ⬜ |
+| S111 | Hyperdash | apis | crypto | FREE* | A001 | ⬜ |
+| S112 | Zapper | apis | onchain | FREE* | A001 | ⬜ |
+| S113 | Step Finance | apis | onchain | FREE* | A001 | ⬜ |
+| S114 | Tatum | apis | onchain | FREE* | A001 | ⬜ |
+| S115 | dRPC | infra | — | INFRA (FREE*) | A001 | ⬜ |
+| S116 | Cielo | apis | onchain | FREE* | A001 | ⬜ |
 | S117 | igorbarinov/awesome-bitcoin | links | onchain | FREE | — (discovery) | ⬜ |
 | S118 | best-of-crypto | links | mixed | FREE | — (discovery) | ⬜ |
 

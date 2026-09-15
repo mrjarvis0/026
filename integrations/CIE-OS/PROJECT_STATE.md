@@ -1,10 +1,10 @@
-# PROJECT_STATE.md — CIE-OS A01 Blockchain Intelligence Agent
+# PROJECT_STATE.md — CIE-OS A001 Blockchain Intelligence Agent
 
 > Current snapshot. Overwritten each session. History lives in `BUILD_LOG.md`.
 
 - **Last updated:** 2026-08-21
 - **Repo root:** `F:\CIE-OS`
-- **Agent root:** `F:\CIE-OS\agents\A01_Blockchain_Intelligence`
+- **Agent root:** `F:\CIE-OS\agents\A001_Blockchain_Intelligence`
 - **Interpreter:** `F:\CIE-OS\.venv\Scripts\python.exe`
 
 ## Verification basis
@@ -126,7 +126,7 @@ Four workstreams, all complete. Suite 1,466 -> **1,679 passing, 0 failing**.
 
 `config/security` (1,117 lines) and `tools/security` (1,416) read line by
 line. **16 defects, 8 reproduced against the shipped code before the fix.**
-Full record: `agents/A01_Blockchain_Intelligence/docs/architecture/security-audit-2026-08-20.md`.
+Full record: `agents/A001_Blockchain_Intelligence/docs/architecture/security-audit-2026-08-20.md`.
 
 The four that mattered most:
 
@@ -244,7 +244,7 @@ chains/
   __init__.py      — chain order, directory path
   base.py          — ChainAdapter, EvmAdapter, UtxoAdapter, SolanaAdapter
   01_ethereum/     — through 15_bitcoin/
-    README.md      — chain description, what A01 can do, known limits
+    README.md      — chain description, what A001 can do, known limits
     endpoints.yaml — all provider endpoints, API key fields empty
     limits.yaml    — finality, reorg depth, block time, constraints
     adapter.py     — chain-specific adapter (EVM, UTXO, or Solana)
@@ -364,6 +364,6 @@ overconfidence. Confidence ceiling lifted from 0.60 to 1.00.
 
 ## Configuration / secrets
 
-`.env.local` at the agent root. Two variables: `A01_PYTHON` and one provider
+`.env.local` at the agent root. Two variables: `A001_PYTHON` and one provider
 key (`cli providers` reports alchemy active). The file is gitignored; **no
 credential appears in tracked source**.

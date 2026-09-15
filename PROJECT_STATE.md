@@ -7,13 +7,13 @@
 - **Last updated:** 2026-09-06
 - **Repo root:** `F:\026`
 - **Phase:** Genesis Â· **Phase 1 (source inventory)** â€” documentation system
-  established and hardened; **platform kernel still unbuilt, but A01+A02 agents migrated in from CIE-OS 2026-09-06;** Stack chosen (`docs/STACK.md`);
+  established and hardened; **platform kernel still unbuilt, but A001+A002 agents migrated in from CIE-OS 2026-09-06;** Stack chosen (`docs/STACK.md`);
   execution charter gated (`ADR-0002`).
 - **Interpreter:** not yet provisioned for 026 (`.venv` does not exist); the two
   migrated agents target `python >= 3.11` (system has 3.14 — verify in SP-5).
-- **Fleet:** A01 (Blockchain) + A02 (News) migrated in from CIE-OS on 2026-09-06 —
+- **Fleet:** A001 (Blockchain) + A002 (News) migrated in from CIE-OS on 2026-09-06 —
   declared as fleet members (manifests + registry) and **runtime-verified 2026-09-07**
-  (A01: 1831 pytest passed / 1 skipped; A02: 212 offline checks passed) — but **not yet
+  (A001: 1831 pytest passed / 1 skipped; A002: 212 offline checks passed) — but **not yet
   kernel-wired** (SP-4). See `BUILD_LOG.md` (CIE-OS migration / SP-5).
 
 ---
@@ -21,7 +21,7 @@
 ## Honest status
 
 026's **platform kernel** is still at session zero for code, but the repository is no
-longer an empty scaffold: as of 2026-09-06 **two agents (A01, A02) were migrated in
+longer an empty scaffold: as of 2026-09-06 **two agents (A001, A002) were migrated in
 from CIE-OS** — full vertical pipelines with test suites, source kept intact at
 `F:\CIE-OS`. The platform's *own* source (`src/`, `orchestrator/`, `brain/`,
 `security/`) is still empty (0 bytes). Also built is the
@@ -30,22 +30,22 @@ internally consistent and follows its own rules: the source registry now has a m
 index, a canonical schema its rows actually deliver, a glossary, and formal ADRs.
 
 The platform kernel is taking shape. Built and green (**58 tests**, Python 3.14.7): the
-**sentinel** conformance enforcer (`python -m security.sentinel scan` → **A01 PASS,
-A02 PASS**), its **runtime gate** (`security/sentinel/gate.py`, deny-by-default at the
+**sentinel** conformance enforcer (`python -m security.sentinel scan` → **A001 PASS,
+A002 PASS**), its **runtime gate** (`security/sentinel/gate.py`, deny-by-default at the
 execution boundary), a **message bus** (`orchestrator/event_bus/` — gated, budgeted,
 traced), **composition-root adapters** (`bootstrap/`) that let the bus reach the **real agents
-read-only** — including **DB-backed reads** over the migrated databases (A01
-`metrics`/`coverage`/`flows` over a01.db; A02 `stats` over a02.db, e.g. 447 items /
+read-only** — including **DB-backed reads** over the migrated databases (A001
+`metrics`/`coverage`/`flows` over a001.db; A002 `stats` over a002.db, e.g. 447 items /
 107 entities), the
 **shared brain** (`brain/` — namespaced, versioned writes, logged reads, manifest-scoped
 access), and an **architecture-law test** (`tests/test_architecture.py`) that mechanically
 enforces downward-only imports. Still absent: **cross-agent correlation** (the payoff —
 plumbing is now all in place for it), the brain's embeddings/RAG/knowledge-graph, the
 join that has agents read/write the brain during a task, scheduler/workflows, `make
-doctor`, and deeper agent↔bus wiring (investigative queries needing A01's DB / A02's live
+doctor`, and deeper agent↔bus wiring (investigative queries needing A001's DB / A002's live
 sources). The two migrated agents, however, now **run and pass inside 026** on
-Python 3.14.7 (SP-5, 2026-09-07): A01 **1831 passed / 1 skipped** (pytest), A02
-**212 offline checks passed** across 7 suites. (A02's ML paths — sklearn/transformers/
+Python 3.14.7 (SP-5, 2026-09-07): A001 **1831 passed / 1 skipped** (pytest), A002
+**212 offline checks passed** across 7 suites. (A002's ML paths — sklearn/transformers/
 pandas — were not exercised; those libs are not installed, so tests took the rule
 fallback.) Any
 present-tense statement in `README.md` / `AGENTS.md` about *behavior* describes the
@@ -154,13 +154,13 @@ green-lights code. A tenant on an unverified foundation inherits an unverified o
 <!-- 026's original content is ABOVE. CIE-OS original also preserved at integrations\CIE-OS\ -->
 <!-- ============================================================ -->
 
-# PROJECT_STATE.md â€” CIE-OS A01 Blockchain Intelligence Agent
+# PROJECT_STATE.md â€” CIE-OS A001 Blockchain Intelligence Agent
 
 > Current snapshot. Overwritten each session. History lives in `BUILD_LOG.md`.
 
 - **Last updated:** 2026-08-21
 - **Repo root:** `F:\CIE-OS`
-- **Agent root:** `F:\CIE-OS\agents\A01_Blockchain_Intelligence`
+- **Agent root:** `F:\CIE-OS\agents\A001_Blockchain_Intelligence`
 - **Interpreter:** `F:\CIE-OS\.venv\Scripts\python.exe`
 
 ## Verification basis
@@ -282,7 +282,7 @@ Four workstreams, all complete. Suite 1,466 -> **1,679 passing, 0 failing**.
 
 `config/security` (1,117 lines) and `tools/security` (1,416) read line by
 line. **16 defects, 8 reproduced against the shipped code before the fix.**
-Full record: `agents/A01_Blockchain_Intelligence/docs/architecture/security-audit-2026-08-20.md`.
+Full record: `agents/A001_Blockchain_Intelligence/docs/architecture/security-audit-2026-08-20.md`.
 
 The four that mattered most:
 
@@ -400,7 +400,7 @@ chains/
   __init__.py      â€” chain order, directory path
   base.py          â€” ChainAdapter, EvmAdapter, UtxoAdapter, SolanaAdapter
   01_ethereum/     â€” through 15_bitcoin/
-    README.md      â€” chain description, what A01 can do, known limits
+    README.md      â€” chain description, what A001 can do, known limits
     endpoints.yaml â€” all provider endpoints, API key fields empty
     limits.yaml    â€” finality, reorg depth, block time, constraints
     adapter.py     â€” chain-specific adapter (EVM, UTXO, or Solana)
@@ -520,6 +520,6 @@ overconfidence. Confidence ceiling lifted from 0.60 to 1.00.
 
 ## Configuration / secrets
 
-`.env.local` at the agent root. Two variables: `A01_PYTHON` and one provider
+`.env.local` at the agent root. Two variables: `A001_PYTHON` and one provider
 key (`cli providers` reports alchemy active). The file is gitignored; **no
 credential appears in tracked source**.

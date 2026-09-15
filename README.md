@@ -50,7 +50,7 @@ are shared; each agent brings its own vertical pipeline.
                          └───┬───────────┬──────────┬───┘
                              │           │          │
           ┌──────────────────▼─┐   ┌─────▼──────┐   │
-          │  Agent A01         │   │ Agent A02  │   │   … A03, A04 …
+          │  Agent A001         │   │ Agent A002  │   │   … A03, A04 …
           │  (on-chain intel)  │   │ (news)     │   │
           │                    │   │            │   │
           │  sensors→ingest→   │   │  ingest→   │   │
@@ -77,7 +77,7 @@ Identity, configuration, core runtime, shared memory, the message bus. Everythin
 above depends downward only; nothing in the kernel imports an agent.
 
 **FLEET** — `agents/`
-Each agent (`A01_*`, `A02_*`, …) is a self-contained vertical pipeline: sensors →
+Each agent (`A001_*`, `A002_*`, …) is a self-contained vertical pipeline: sensors →
 ingestion → validation → normalization → store → skills → intelligence → decision.
 The platform hosts them; it never reaches inside them.
 
@@ -93,7 +93,7 @@ The platform hosts them; it never reaches inside them.
 | `src/`           | Kernel           | Core runtime, lifecycle FSM, the agent base contract           |
 | `brain/`         | Kernel           | Shared memory: short/long-term, vector, entity ledger          |
 | `orchestrator/`  | Kernel           | Planner, scheduler, message bus, result fusion                 |
-| `agents/`        | Fleet            | Numbered agents (`A01_…`, `A02_…`), each a full pipeline        |
+| `agents/`        | Fleet            | Numbered agents (`A001_…`, `A002_…`), each a full pipeline        |
 | `integrations/`  | Service          | External providers, APIs, MCP servers, connectors              |
 | `sources/`       | Governance       | Source registry — the catalog of APIs, datasets, links, MCP, models (what exists) |
 | `tools/`         | Service          | Typed tool registry — the actions agents may take              |

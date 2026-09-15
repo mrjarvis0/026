@@ -11,7 +11,7 @@ def test_worst_ordering():
 
 
 def test_agent_and_fleet_verdict_and_exit_code():
-    a = AgentReport(id="A01", dir="agents/A01", effective_trust=2, checks=[
+    a = AgentReport(id="A001", dir="agents/A001", effective_trust=2, checks=[
         CheckResult("manifest", Verdict.PASS, "ok"),
         CheckResult("trust", Verdict.HOLD, "capped"),
     ])
@@ -24,9 +24,9 @@ def test_agent_and_fleet_verdict_and_exit_code():
 
 
 def test_to_json_roundtrips_structure():
-    fleet = FleetReport(agents=[AgentReport("A02", "agents/A02", 2,
+    fleet = FleetReport(agents=[AgentReport("A002", "agents/A002", 2,
         [CheckResult("secrets", Verdict.PASS, "clean", ["scanned 5 files"], 5)])])
     data = json.loads(fleet.to_json())
-    assert data["agents"][0]["id"] == "A02"
+    assert data["agents"][0]["id"] == "A002"
     assert data["agents"][0]["checks"][0]["verdict"] == "PASS"
     assert data["agents"][0]["verdict"] == "PASS"

@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[3]  # F:\026
 def test_real_fleet_has_no_fail():
     report = run_sentinel(ROOT)
     ids = {a.id for a in report.agents}
-    assert {"A01", "A02"} <= ids
+    assert {"A001", "A002"} <= ids
     for a in report.agents:
         fails = [c.summary for c in a.checks if c.verdict == Verdict.FAIL]
         assert a.verdict != Verdict.FAIL, f"{a.id} FAILED: {fails}"

@@ -77,9 +77,9 @@ placeholders — they show the shape, not real sources.
 
 | ID   | Source            | Type          | Access            | Auth        | Rate limit / quota | Cost    | Consumed by | Lands in                 | Provenance field         | Status |
 |------|-------------------|---------------|-------------------|-------------|--------------------|---------|-------------|--------------------------|--------------------------|--------|
-| S001 | *EXAMPLE provider* | `api`         | REST (JSON)       | API key     | 60 req/min         | free    | A02         | `integrations/apis/`     | `source_id`, `fetched_at`| ⬜ planned |
-| S002 | *EXAMPLE exchange* | `exchange`    | REST + WebSocket  | key+secret  | 1200 req/min       | free    | A01         | `integrations/exchanges/`| `source_id`, `fetched_at`| ⬜ planned |
-| S003 | *EXAMPLE wiki*     | `wiki`        | MediaWiki API     | none        | be polite          | free    | A02         | `integrations/apis/`     | `page`, `revision_id`    | ⬜ planned |
+| S001 | *EXAMPLE provider* | `api`         | REST (JSON)       | API key     | 60 req/min         | free    | A002         | `integrations/apis/`     | `source_id`, `fetched_at`| ⬜ planned |
+| S002 | *EXAMPLE exchange* | `exchange`    | REST + WebSocket  | key+secret  | 1200 req/min       | free    | A001         | `integrations/exchanges/`| `source_id`, `fetched_at`| ⬜ planned |
+| S003 | *EXAMPLE wiki*     | `wiki`        | MediaWiki API     | none        | be polite          | free    | A002         | `integrations/apis/`     | `page`, `revision_id`    | ⬜ planned |
 | S004 | *EXAMPLE MCP*      | `mcp`         | MCP server        | per-server  | n/a                | varies  | orchestrator| `integrations/mcp_servers/`| `server`, `tool`, `call_id`| ⬜ planned |
 
 **Type values:** `api` · `exchange` · `website` (scrape) · `wiki` · `mcp` ·
@@ -134,7 +134,7 @@ From here the plan dovetails into the fleet roadmap already in
 [`AGENTS.md` §12](AGENTS.md) — not duplicated here:
 
 - Kernel: `config → core runtime → shared brain → message bus` (first real `make doctor`)
-- A01 / A02 built behind the kernel socket, tests green
+- A001 / A002 built behind the kernel socket, tests green
 - Orchestrator: plan → route → fuse, with budgets (fed by Phase 1 cost data)
 - Cross-agent correlation + entity ledger
 - Sentinel: trust enforcement + live execution-gate surface scan

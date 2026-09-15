@@ -1,0 +1,123 @@
+# 026 machine-config — A001 (Blockchain Intelligence) source access.
+# ---------------------------------------------------------------------------
+# The machine layer for A001's sources: which catalogued sources it uses, their
+# access method, and the key-NAME (env var) a connector reads. Real keys live in
+# `.env` ONLY — never here. Every entry references a stable ID in the source
+# registry (`sources/README.md` master index), so this file and the catalog stay
+# in lockstep.
+#
+# This does NOT replace or modify A001's own live RPC resolution
+# (`agents/A001_Blockchain_Intelligence/config/rpc/`, which its 1831 tests cover).
+# It is the governed catalog that side converges on when connectors are wired.
+# `key_env: TBV` = exact env-var name still to be confirmed.
+
+version: 1
+agent: A001
+updated: 2026-09-07
+source_registry: ../../sources/README.md   # authoritative catalog + stable IDs
+
+# Free-first priority (from the operator's blockchain-data-sources-notes.md).
+priority:
+  tier_1_zero_cost_keyless: [S075, S059, S063, S102, S103, S104, S105, S074]  # DeFiLlama, Blockscout, Mempool, DexScreener, GeckoTerminal, Jupiter, Meteora, PublicNode
+  tier_2_unified_free_tier: [S079, S071, S070, S114, S115]                     # Covalent, Moralis, Ankr, Tatum, dRPC
+  tier_3_chain_specific:    [S010, S100, S076, S090]                           # Etherscan family, Helius (Solana), The Graph, BitQuery
+
+explorers:            # onchain block/tx/account data
+  - { id: S010, name: Etherscan,           chain: ethereum,   auth: key,  key_env: ETHERSCAN_API_KEY, note: "Etherscan V2 unified key covers S052-S058,S065", tier: FREE }
+  - { id: S052, name: BscScan,             chain: bsc,        auth: key,  key_env: ETHERSCAN_API_KEY, tier: FREE* }
+  - { id: S053, name: PolygonScan,         chain: polygon,    auth: key,  key_env: ETHERSCAN_API_KEY, tier: FREE* }
+  - { id: S054, name: Arbiscan,            chain: arbitrum,   auth: key,  key_env: ETHERSCAN_API_KEY, tier: FREE* }
+  - { id: S055, name: OptimisticEtherscan, chain: optimism,   auth: key,  key_env: ETHERSCAN_API_KEY, tier: FREE* }
+  - { id: S056, name: Snowtrace,           chain: avalanche,  auth: key,  key_env: ETHERSCAN_API_KEY, tier: FREE* }
+  - { id: S057, name: FTMScan,             chain: fantom,     auth: key,  key_env: ETHERSCAN_API_KEY, tier: FREE* }
+  - { id: S058, name: Basescan,            chain: base,       auth: key,  key_env: ETHERSCAN_API_KEY, tier: FREE* }
+  - { id: S065, name: Celoscan,            chain: celo,       auth: key,  key_env: ETHERSCAN_API_KEY, tier: FREE* }
+  - { id: S059, name: Blockscout,          chain: multi,      auth: none, tier: FREE }
+  - { id: S060, name: Solscan,             chain: solana,     auth: key,  key_env: SOLSCAN_API_KEY, tier: FREE* }
+  - { id: S061, name: SolanaFM,            chain: solana,     auth: key,  key_env: TBV, tier: FREE* }
+  - { id: S062, name: TronScan,            chain: tron,       auth: key,  key_env: TBV, tier: FREE* }
+  - { id: S063, name: Mempool.space,       chain: bitcoin,    auth: none, tier: FREE }
+  - { id: S009, name: Blockchain.com,      chain: bitcoin,    auth: none, tier: FREE }
+  - { id: S064, name: Blockchair,          chain: multi,      auth: key,  key_env: TBV, tier: FREE* }
+  - { id: S066, name: zkSyncEraExplorer,   chain: zksync,     auth: none, tier: FREE }
+
+rpc_providers:        # infra — JSON-RPC endpoints (see sources/infra.md)
+  - { id: S067, name: Alchemy,    auth: key,  key_env: ALCHEMY_API_KEY,  tier: FREE* }
+  - { id: S068, name: Infura,     auth: key,  key_env: INFURA_API_KEY,   tier: FREE* }
+  - { id: S069, name: QuickNode,  auth: key,  key_env: QUICKNODE_URL,    tier: FREE* }
+  - { id: S070, name: Ankr,       auth: none, key_env: ANKR_API_KEY,     tier: FREE* }
+  - { id: S071, name: Moralis,    auth: key,  key_env: MORALIS_API_KEY,  tier: FREE* }
+  - { id: S072, name: GetBlock,   auth: key,  key_env: GETBLOCK_API_KEY, tier: FREE* }
+  - { id: S073, name: Chainstack, auth: key,  key_env: TBV,              tier: FREE* }
+  - { id: S074, name: PublicNode, auth: none, tier: FREE }
+  - { id: S115, name: dRPC,       auth: none, key_env: DRPC_API_KEY,     tier: FREE* }
+
+analytics_defi:
+  - { id: S075, name: DeFiLlama,     auth: none, tier: FREE }
+  - { id: S076, name: TheGraph,      auth: key,  key_env: THEGRAPH_API_KEY, tier: FREE* }
+  - { id: S078, name: IntoTheBlock,  auth: key,  key_env: TBV, tier: FREE* }
+  - { id: S079, name: Covalent,      auth: key,  key_env: COVALENT_API_KEY, tier: FREE* }
+  - { id: S080, name: Footprint,     auth: key,  key_env: TBV, tier: FREE* }
+  - { id: S013, name: Glassnode,     auth: account, key_env: GLASSNODE_API_KEY, tier: PAID-LATER }
+  - { id: S014, name: CryptoQuant,   auth: account, key_env: TBV, tier: PAID-LATER }
+  - { id: S077, name: Nansen,        auth: key,  key_env: NANSEN_API_KEY, tier: PAID-LATER }
+  - { id: S081, name: TokenTerminal, auth: key,  key_env: TBV, tier: PAID-LATER }
+
+price_market:
+  - { id: S082, name: CryptoCompare, auth: key, key_env: CRYPTOCOMPARE_API_KEY, tier: FREE }
+  - { id: S083, name: Messari,       auth: key, key_env: MESSARI_API_KEY, tier: FREE* }
+
+nft:
+  - { id: S084, name: OpenSea,      auth: key, key_env: OPENSEA_API_KEY, tier: FREE* }
+  - { id: S085, name: Reservoir,    auth: key, key_env: RESERVOIR_API_KEY, tier: FREE* }
+  - { id: S086, name: AlchemyNFT,   auth: key, key_env: ALCHEMY_API_KEY, tier: FREE* }
+  - { id: S087, name: NFTScan,      auth: key, key_env: TBV, tier: FREE* }
+
+mempool_whale:
+  - { id: S088, name: WhaleAlert,   auth: key, key_env: WHALE_ALERT_API_KEY, tier: PAID-LATER }
+  - { id: S089, name: Blocknative,  auth: key, key_env: BLOCKNATIVE_API_KEY, tier: FREE* }
+  - { id: S090, name: BitQuery,     auth: key, key_env: BITQUERY_API_KEY, note: "also fronts Pump.fun + Coinpath AML", tier: FREE* }
+  - { id: S091, name: Chainbase,    auth: key, key_env: CHAINBASE_API_KEY, tier: FREE* }
+  - { id: S092, name: Flipside,     auth: account, key_env: TBV, tier: FREE* }
+
+smart_money:
+  - { id: S093, name: Arkham,   auth: key, key_env: TBV, tier: FREE* }
+  - { id: S094, name: DeBank,   auth: key, key_env: DEBANK_ACCESS_KEY, tier: FREE* }
+  - { id: S095, name: Zerion,   auth: key, key_env: ZERION_API_KEY, tier: FREE* }
+  - { id: S116, name: Cielo,    auth: key, key_env: TBV, tier: FREE* }
+  - { id: S106, name: GMGN,     auth: key, key_env: TBV, note: "unofficial", tier: FREE* }
+
+protocol_dex_lending:
+  - { id: S096, name: UniswapSubgraph, auth: key,  key_env: THEGRAPH_API_KEY, tier: FREE* }
+  - { id: S097, name: Aave,            auth: none, tier: FREE* }
+  - { id: S098, name: Compound,        auth: none, tier: FREE* }
+  - { id: S099, name: 1inch,           auth: key,  key_env: ONEINCH_API_KEY, tier: FREE* }
+
+solana_native:
+  - { id: S100, name: Helius,       auth: key,  key_env: HELIUS_API_KEY, tier: FREE* }
+  - { id: S101, name: Birdeye,      auth: key,  key_env: BIRDEYE_API_KEY, tier: FREE* }
+  - { id: S102, name: DexScreener,  auth: none, tier: FREE }
+  - { id: S103, name: GeckoTerminal, auth: none, tier: FREE }
+  - { id: S104, name: Jupiter,      auth: none, tier: FREE }
+  - { id: S105, name: Meteora,      auth: none, tier: FREE }
+  - { id: S107, name: Bags,         auth: key,  key_env: TBV, tier: FREE* }
+
+derivatives:
+  - { id: S110, name: Coinglass, auth: key,  key_env: COINGLASS_API_KEY, tier: FREE* }
+  - { id: S111, name: Hyperdash, auth: key,  key_env: TBV, tier: FREE* }
+
+portfolio:
+  - { id: S112, name: Zapper,      auth: key,  key_env: ZAPPER_API_KEY, tier: FREE* }
+  - { id: S113, name: StepFinance, auth: key,  key_env: TBV, tier: FREE* }
+  - { id: S114, name: Tatum,       auth: key,  key_env: TATUM_API_KEY, tier: FREE* }
+
+compliance_aml:
+  - { id: S108, name: Chainalysis, auth: key, key_env: TBV, tier: PAID-LATER }
+  - { id: S109, name: TRMLabs,     auth: key, key_env: TBV, tier: PAID-LATER }
+
+aggregators_sdk:
+  - { id: S048, name: CCXT, auth: none, note: "read-only market data, per-exchange keys optional", tier: FREE }
+
+# Deliberately NOT included (not intelligence data feeds for A001):
+#   embedded-wallet / AA infra (Privy, Dynamic, Pimlico, Coinbase WaaS),
+#   crypto-tax tooling (CoinLedger, TaxBit). See sources/infra.md.

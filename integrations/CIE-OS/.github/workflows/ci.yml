@@ -7,12 +7,12 @@ on:
     branches: [main]
 
 jobs:
-  test-a01:
-    name: A01 Tests
+  test-a001:
+    name: A001 Tests
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: agents/A01_Blockchain_Intelligence
+        working-directory: agents/A001_Blockchain_Intelligence
 
     steps:
       - uses: actions/checkout@v4
@@ -36,12 +36,12 @@ jobs:
         env:
           PYTHONPATH: .
 
-  test-a02:
-    name: A02 Tests
+  test-a002:
+    name: A002 Tests
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: agents/A02_News_Intelligence
+        working-directory: agents/A002_News_Intelligence
 
     steps:
       - uses: actions/checkout@v4

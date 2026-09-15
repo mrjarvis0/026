@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>T01 · Trading Terminal</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="dot" id="conn-dot" title="connection"></span>
+      <strong>T01</strong>
+      <span class="muted">Smart Binance Intelligence</span>
+      <span id="live-badge" class="chip live" hidden>● LIVE · REAL MONEY</span>
+    </div>
+    <div class="topbar-controls">
+      <select id="symbol" class="control" title="symbol"></select>
+      <select id="timeframe" class="control" title="timeframe">
+        <option>1m</option><option>5m</option><option>15m</option>
+        <option>30m</option><option>1h</option><option>4h</option><option>1d</option>
+      </select>
+      <button id="btn-start" class="btn btn-go">Start</button>
+      <button id="btn-stop" class="btn">Stop</button>
+      <button id="btn-estop" class="btn btn-danger">Emergency</button>
+      <button id="btn-resume" class="btn" hidden>Resume</button>
+    </div>
+  </header>
+
+  <div id="halt-banner" class="banner" hidden></div>
+
+  <main class="grid">
+    <!-- price + chart -->
+    <section class="card span-2">
+      <div class="card-head">
+        <h2 id="chart-title">—</h2>
+        <div class="price-block">
+          <span id="last-price" class="price">—</span>
+          <span id="price-change" class="chip">—</span>
+        </div>
+      </div>
+      <canvas id="price-chart" class="chart"></canvas>
+    </section>
+
+    <!-- signal -->
+    <section class="card">
+      <div class="card-head"><h2>Signal</h2><span id="running-chip" class="chip">idle</span></div>
+      <div id="signal-action" class="signal-action hold">HOLD</div>
+      <div class="meter"><div id="conf-bar" class="meter-fill"></div></div>
+      <div id="signal-reason" class="muted small">waiting for engine…</div>
+      <ul id="factors" class="factors"></ul>
+    </section>
+
+    <!-- metrics -->
+    <section class="card">
+      <div class="card-head"><h2>Performance (paper)</h2>
+        <button id="btn-reset" class="btn btn-xs">Reset</button>
+      </div>
+      <div id="metrics" class="metrics"></div>
+      <div id="real-gate" class="gate muted small"></div>
+    </section>
+
+    <!-- equity -->
+    <section class="card">
+      <div class="card-head"><h2>Equity</h2><span id="balance" class="chip">—</span></div>
+      <canvas id="equity-chart" class="chart chart-sm"></canvas>
+    </section>
+
+    <!-- positions -->
+    <section class="card">
+      <div class="card-head"><h2>Open positions</h2><span id="pos-count" class="chip">0</span></div>
+      <div class="table-wrap">
+        <table id="positions"><thead><tr>
+          <th>Symbol</th><th>Qty</th><th>Entry</th><th>SL</th><th>TP</th>
+        </tr></thead><tbody></tbody></table>
+      </div>
+    </section>
+
+    <!-- indicators -->
+    <section class="card">
+      <div class="card-head"><h2>Indicators</h2></div>
+      <div id="indicators" class="metrics"></div>
+    </section>
+
+    <!-- activity -->
+    <section class="card span-2">
+      <div class="card-head"><h2>Activity</h2></div>
+      <div id="activity" class="feed"></div>
+    </section>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

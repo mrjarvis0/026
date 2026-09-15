@@ -1,6 +1,6 @@
 from security.sentinel.gate import check_action, Decision
 
-# A manifest shaped like A01/A02 (trust 2, read-only, execution disabled).
+# A manifest shaped like A001/A002 (trust 2, read-only, execution disabled).
 MANIFEST = {
     "trust": {"level": 2, "requires_approval": ["external.post", "store.delete"]},
     "tools": ["rpc.call", "brain.query", "brain.write", "store.read"],

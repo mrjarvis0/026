@@ -1,4 +1,4 @@
-# BUILD_LOG.md — CIE-OS A01 Blockchain Intelligence Agent
+# BUILD_LOG.md — CIE-OS A001 Blockchain Intelligence Agent
 
 > Append-only history. Never overwritten. Current snapshot lives in
 > `PROJECT_STATE.md`.
@@ -34,8 +34,8 @@ Findings established by execution:
 Priority Stack position: **Tier 0 is `DONE` for ethereum** (verified, not
 assumed). **Tier 1 is `PARTIAL`** — the code exists and its unit tests pass,
 but it has never run against a data window wide enough to emit anything.
-`a01_coverage_supports_absence{chain="ethereum"} 0` and
-`a01_detectors_alerting 0` are the system correctly declining to speak, not a
+`a001_coverage_supports_absence{chain="ethereum"} 0` and
+`a001_detectors_alerting 0` are the system correctly declining to speak, not a
 defect.
 
 Two Section 6 invariant problems found and **not** silently absorbed:
@@ -45,7 +45,7 @@ Two Section 6 invariant problems found and **not** silently absorbed:
    durability comment in `database/connection.py:64`, prose in
    `intelligence/analysis/`, a BIP-39 wordlist in `tools/blockchain/wallet.py`,
    and an intent-router keyword list. The actual behaviour is correct (the CLI
-   help states A01 holds no keys, signs nothing, and never submits a
+   help states A001 holds no keys, signs nothing, and never submits a
    transaction; there is no signing or exchange-write path), but the hardcoded
    flag the invariant names is unimplemented. The guarantee is implicit rather
    than enforced. Recorded as VIOLATED-AS-SPECIFIED.
@@ -53,14 +53,14 @@ Two Section 6 invariant problems found and **not** silently absorbed:
    downward-only rule was found. Not claimed as holding.
 
 One Section 14 concern: `except Exception: pass` at
-`memory/base/conversation.py:1523` and `:1538`. Off the A01 data path, but
+`memory/base/conversation.py:1523` and `:1538`. Off the A001 data path, but
 unclassified suppression. Not fixed this session.
 
 ### Files touched
 
 | File | Tag | Note |
 |---|---|---|
-| `agents/A01_Blockchain_Intelligence/.env.local` | **BUILD-NEW** | Migration target. Did not exist |
+| `agents/A001_Blockchain_Intelligence/.env.local` | **BUILD-NEW** | Migration target. Did not exist |
 | `PROJECT_STATE.md` | **BUILD-NEW** | Section 4 continuity |
 | `BUILD_LOG.md` | **BUILD-NEW** | Section 4 continuity |
 
@@ -71,7 +71,7 @@ and nothing on a code path was altered, so the suite's meaning is unchanged.
 
 Source `F:\Agents\.env.local` (445 bytes) contained:
 
-- `A01_PYTHON=F:\CIE-OS (crypto intelligence engine-opreting system\.venv\Scripts\python.exe`
+- `A001_PYTHON=F:\CIE-OS (crypto intelligence engine-opreting system\.venv\Scripts\python.exe`
 - three commented, empty provider keys (`ALCHEMY_API_KEY`, `ETHERSCAN_API_KEY`,
   `INFURA_API_KEY`)
 
@@ -86,12 +86,12 @@ Three decisions, with reasons:
    which was being found and yielding zero variables — the exact silent failure
    `config/dotenv.py`'s own module docstring was written to prevent. Placing the
    file at the agent root shadows it. It also keeps the file agent-scoped, so
-   A02 does not inherit A01's configuration (Section 0: no shared state).
+   A002 does not inherit A001's configuration (Section 0: no shared state).
 
-2. **`A01_PYTHON` corrected — MINOR-FIX.** The migrated path pointed at
+2. **`A001_PYTHON` corrected — MINOR-FIX.** The migrated path pointed at
    `F:\CIE-OS (crypto intelligence engine-opreting system\...`, which **does not
    exist on this machine** (`ls` confirms). Migrating it verbatim would have
-   carried a dead path forward. `a01.bat` checks `if exist` before using it, so
+   carried a dead path forward. `a001.bat` checks `if exist` before using it, so
    a dead value falls through to the upward `.venv` search and then to system
    Python — which lacks `pydantic-settings` and `aiosqlite`, and makes a working
    agent look broken. Corrected to `F:\CIE-OS\.venv\Scripts\python.exe`,
@@ -99,8 +99,8 @@ Three decisions, with reasons:
 
 3. **File written ASCII-only, no BOM — deliberate.** It is parsed by two
    fragile readers. `config/dotenv.py:137` skips any name that is not
-   alphanumeric-plus-underscore, so a UTF-8 BOM would turn `A01_PYTHON` into
-   `\ufeffA01_PYTHON` and **silently drop the first variable**. `scripts/a01.bat`
+   alphanumeric-plus-underscore, so a UTF-8 BOM would turn `A001_PYTHON` into
+   `\ufeffA001_PYTHON` and **silently drop the first variable**. `scripts/a001.bat`
    reads the same file with `for /f delims==` under the console codepage.
    Verified: first bytes are `# C I E - O S` (no BOM) and
    `grep '[^ -~]'` finds nothing.
@@ -117,21 +117,21 @@ false activation.
 | `python -m pytest -q --timeout=300` | **error** — `unrecognized arguments: --timeout=300`; `pytest-timeout` is not installed. Re-run without it |
 | `python -m pytest -q` | **831 passed**, 0 failed, 2 warnings, 45.28s |
 | `python -m cli doctor` | 13/13 `ok`, exit 0 |
-| `python -m cli metrics --db data/a01.db` | ethereum 45 blocks / 14,457 tx |
+| `python -m cli metrics --db data/a001.db` | ethereum 45 blocks / 14,457 tx |
 | `python -m cli providers` | 21 endpoints, 8 usable, 13 dormant |
 
 Post-migration verification:
 
 | Check | Result |
 |---|---|
-| `dotenv.parse()` on the new file | `{'A01_PYTHON': 'F:\\CIE-OS\\.venv\\Scripts\\python.exe'}` — exactly one variable |
+| `dotenv.parse()` on the new file | `{'A001_PYTHON': 'F:\\CIE-OS\\.venv\\Scripts\\python.exe'}` — exactly one variable |
 | BOM / non-ASCII scan | Clean |
-| `cli doctor` credentials line | `ok — 0 keyed provider(s) active; 1 variable(s) from F:\CIE-OS\agents\A01_Blockchain_Intelligence\.env.local` |
-| `cli providers` env line | `1 variable(s) from F:\CIE-OS\agents\A01_Blockchain_Intelligence\.env.local` |
-| `a01.bat` resolution block, replicated in a scratch `.bat` | `RESOLVED: F:\CIE-OS\.venv\Scripts\python.exe` |
+| `cli doctor` credentials line | `ok — 0 keyed provider(s) active; 1 variable(s) from F:\CIE-OS\agents\A001_Blockchain_Intelligence\.env.local` |
+| `cli providers` env line | `1 variable(s) from F:\CIE-OS\agents\A001_Blockchain_Intelligence\.env.local` |
+| `a001.bat` resolution block, replicated in a scratch `.bat` | `RESOLVED: F:\CIE-OS\.venv\Scripts\python.exe` |
 
 Before the migration both commands reported `0 variable(s) from F:\CIE-OS\.env`.
-The batch block was replicated rather than running `scripts/a01.bat` directly,
+The batch block was replicated rather than running `scripts/a001.bat` directly,
 because that script performs a live 25-block ingest and ends in `pause`.
 
 ### Decisions made and why
@@ -171,11 +171,11 @@ because that script performs a live 25-block ingest and ends in `pause`.
 ### Self-critique — what is fragile, assumed, untested
 
 - **Fragile:** the migrated file's usefulness depends on `F:\CIE-OS\.venv`
-  staying put. If the venv moves, `A01_PYTHON` is dead again and the failure is
+  staying put. If the venv moves, `A001_PYTHON` is dead again and the failure is
   a silent fallback to system Python, not an error.
 - **Fragile:** `config/dotenv.py` returns on the **first** file found, so
   creating a `.env` in the agent directory later would shadow this `.env.local`
-  and quietly drop `A01_PYTHON`.
+  and quietly drop `A001_PYTHON`.
 - **Assumed:** that `memory/`, `planning/` and `tools/` are healthy. Their tests
   pass, but they were not read — 74,702 LOC across 330 files was assessed by
   test result and structure only. Their invariant column is `UNVERIFIED` and
@@ -186,7 +186,7 @@ because that script performs a live 25-block ingest and ends in `pause`.
 - **Untested this session:** ingestion against a live chain, the REST interface,
   the visualize/dashboard path, backup/restore, and every Tier 1 intelligence
   module against real data rather than fixtures.
-- **Not verified:** whether `F:\A01_Blockchain_Intelligence\` at the drive root
+- **Not verified:** whether `F:\A001_Blockchain_Intelligence\` at the drive root
   is a stale duplicate of the agent. It was noticed and not investigated.
 
 ### Open questions for the operator
@@ -196,7 +196,7 @@ because that script performs a live 25-block ingest and ends in `pause`.
    value was corrected, so nothing is lost either way.
 2. Add `no_trade_execution=True` as a real enforced constant? Section 18 says a
    trade-execution boundary is an escalation, so this is the operator's call.
-3. Is `F:\A01_Blockchain_Intelligence\` (drive root) a stale duplicate that
+3. Is `F:\A001_Blockchain_Intelligence\` (drive root) a stale duplicate that
    should be removed, or a deliberate second checkout?
 4. Should provider keys be obtained? 13 of 21 endpoints are dormant. Not
    required for correctness, but it bounds throughput and historical depth.
@@ -205,7 +205,7 @@ because that script performs a live 25-block ingest and ends in `pause`.
 
 **Tier 1, the first real vertical slice.** Widen the ethereum coverage window
 (`python -m cli ingest --chain ethereum --blocks N --tokens`) until
-`a01_coverage_supports_absence{chain="ethereum"}` reads 1 and at least one
+`a001_coverage_supports_absence{chain="ethereum"}` reads 1 and at least one
 detector is licensed to alert, then trace a single intelligence output from
 terminal alert back to raw ingestion with its provenance intact — the Section 19
 end-to-end scenario, on one chain.
@@ -349,7 +349,7 @@ was written before the violation was known to exist, and it found one.
 - **Fragile:** the cycle check is package-level. A cycle *within* one package
   passes it.
 - **Assumed:** that `eth_getLogs` failure is provider-side and not a bug in
-  A01's log request. Evidence points at the provider — the identical code path
+  A001's log request. Evidence points at the provider — the identical code path
   captured 26,987 transfers on 2026-08-10 — but no keyed endpoint was tried, so
   this is `PROBABLE`, not `VERIFIED`.
 - **Untested:** whether the 45 older blocks are themselves fully log-complete,
@@ -357,7 +357,7 @@ was written before the violation was known to exist, and it found one.
   against an independent source.
 - **Untested this session:** the REST interface, `visualize`, backup/restore,
   and every Tier 1 module against real data. Unchanged from session 1.
-- **Not verified:** `F:\A01_Blockchain_Intelligence\` at the drive root. Noticed
+- **Not verified:** `F:\A001_Blockchain_Intelligence\` at the drive root. Noticed
   in session 1, still not investigated.
 
 ### Open questions for the operator
@@ -371,7 +371,7 @@ was written before the violation was known to exist, and it found one.
    endpoint that serves `eth_getLogs` is the difference between a usable Tier 1
    window and none. 7.5 hours for 3,600 blocks on open endpoints is also
    impractical on its own.
-4. Still open from session 1: is `F:\A01_Blockchain_Intelligence\` a stale
+4. Still open from session 1: is `F:\A001_Blockchain_Intelligence\` a stale
    duplicate?
 
 ### Next session should start at
@@ -428,7 +428,7 @@ the poller, which knew, to the row, which reported.
 | `ingestion/tests/test_ingestion.py` | **MINOR-FIX** | `FakeChain.logs()` + `serves_logs`; 7 new tests |
 | `normalization/tests/test_normalization.py` | **MINOR-FIX** | 2 new tests |
 | `skills/tests/test_skills.py` | **MINOR-FIX** | 1 new test |
-| `data/a01.db` | **data correction** | 28 rows `complete=1` → `0` |
+| `data/a001.db` | **data correction** | 28 rows `complete=1` → `0` |
 
 ### The second half of the blocker, found by the self-critique
 
@@ -490,7 +490,7 @@ Corrected with a scoped `UPDATE`: ethereum, canonical, `complete = 1`, zero
 token transfers, and inside the range where log refusal was directly verified.
 The 45 blocks holding real transfers were untouched. A verified snapshot was
 taken first via the existing `cli backup`:
-`data/a01-ethereum-20260811T102050Z.db`.
+`data/a001-ethereum-20260811T102050Z.db`.
 
 This is a correction, not a deletion, and it fails safe: if the judgement were
 wrong, the effect is a window that refuses to license an absence it could have
@@ -557,7 +557,7 @@ supported. The opposite error is the one that produces confident falsehoods.
 2. The 45 blocks captured on 2026-08-10 are still marked complete on the
    strength of holding 26,987 transfers. Should they be reconciled against an
    independent source before a window is built on them?
-3. Still open: is `F:\A01_Blockchain_Intelligence\` (drive root) a stale
+3. Still open: is `F:\A001_Blockchain_Intelligence\` (drive root) a stale
    duplicate?
 
 ### Late additions — the Tier 1 slice actually ran, and a claim was wrong
@@ -569,7 +569,7 @@ logs; *positive* claims do not — the whale and wallet skills read native value
 transfers from the `transactions` table. Run against a real stored address:
 
 ```
-cli investigate --db data/a01.db --address 0x5fa36dfe10ce3ee46479790076afe328bef7e2e2
+cli investigate --db data/a001.db --address 0x5fa36dfe10ce3ee46479790076afe328bef7e2e2
   Signal 40.0/100   Confidence 0.60 (moderate)
   [affirmed]     likely: whale-scale transfer activity observed
                  retracted by: the transfer resolving to an internal rebalance ...
@@ -790,7 +790,7 @@ was competing for disk and network at the time. Not a code regression.
 ### Next session should start at
 
 Finish the base window, then re-run the investigate trace on base where
-`supports_absence` will be true — the first time A01 will be able to issue a
+`supports_absence` will be true — the first time A001 will be able to issue a
 licensed *negative* claim, and the first real exercise of the anomaly detector's
 `NORMAL` verdict.
 
@@ -805,7 +805,7 @@ depth. Detector promotion to `VALIDATED` remains its own project.
 
 The operator reported that a previous project mirrored every blockchain
 transaction locally and computed over the copy, which became heavy and buggy.
-**That anti-pattern was in A01**, and the first job was to measure it rather
+**That anti-pattern was in A001**, and the first job was to measure it rather
 than accept or dismiss the report.
 
 ### Measured, before changing anything
@@ -1194,7 +1194,7 @@ the migration, and it was breaking on the wrong thing.
 | `pytest -q` | **924 passed, 0 failed** (was 908; 16 new) |
 | `cli doctor` | 14/14 ok, `storage ok — schema v5`, exit 0 |
 | live `ingest --selective`, base, 12 blocks | 1,700 tx seen, 1 kept (0.06%) |
-| migration on a copy of `a01.db` (v2, 77 eth blocks) | → v5, 45/32 split intact |
+| migration on a copy of `a001.db` (v2, 77 eth blocks) | → v5, 45/32 split intact |
 | migration on a copy of `live_selective.db` (v3, 230 base blocks) | → v5, no data lost |
 
 The live 12-block window, read back through `Coverage`:
@@ -1339,7 +1339,7 @@ first time the per-block call cost of selective capture has been visible at all.
 - **Only `cli ingest` is wired.** Every other entry point — the API routes, the
   skills, `cli investigate`, `cli wallet` — builds its dispatcher through
   `SensorRegistry()` with no sink and spends silently. The ledger therefore
-  undercounts A01's real usage by however much those paths read. `ingest` is
+  undercounts A001's real usage by however much those paths read. `ingest` is
   the path that spends at volume, so this is the right first one, but the
   budget's own honesty rule says an undercount must be named: it is named here.
 - **The 429 signal is still not connected.** `_dispatch` already detects a
@@ -1397,7 +1397,7 @@ each containing:
 | `adapter.py` | imports from `chains.base`, creates adapter instance |
 | `endpoints.yaml` | all providers from catalog; access level, archive, logs, rate_limit; API key fields **empty** with `env_var` naming convention |
 | `limits.yaml` | chain_type, has_sensor, finality, reorg_depth, block_time, constraints list — sourced from `knowledge/chains.py` |
-| `README.md` | chain properties table, what A01 can do on this chain, provider count, known limits |
+| `README.md` | chain properties table, what A001 can do on this chain, provider count, known limits |
 
 60 files in chain directories + 2 in `chains/` root = 62 new files.
 

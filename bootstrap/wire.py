@@ -10,11 +10,11 @@ from pathlib import Path
 from orchestrator.event_bus import MessageBus
 from security.sentinel.fleet import load_fleet
 from security.sentinel.policy import load_policy
-from bootstrap.adapters import a01_handler, a02_handler
+from bootstrap.adapters import a001_handler, a002_handler
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 
-_HANDLERS = {"A01": a01_handler, "A02": a02_handler}
+_HANDLERS = {"A001": a001_handler, "A002": a002_handler}
 
 
 def build_bus(repo_root: Path | None = None) -> MessageBus:

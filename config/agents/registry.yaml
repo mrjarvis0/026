@@ -14,9 +14,9 @@ version: 1
 updated: 2026-09-06
 
 agents:
-  A01:
-    dir: agents/A01_Blockchain_Intelligence
-    manifest: agents/A01_Blockchain_Intelligence/agent.yaml
+  A001:
+    dir: agents/A001_Blockchain_Intelligence
+    manifest: agents/A001_Blockchain_Intelligence/agent.yaml
     name: "Blockchain Intelligence"
     domain: "On-chain: whales, flows, anomaly"
     status: substantial
@@ -26,9 +26,9 @@ agents:
     runtime_verified: true       # SP-5 done 2026-09-07 (tests pass on py3.14) — see BUILD_LOG
     origin: "CIE-OS migration 2026-09-06"
 
-  A02:
-    dir: agents/A02_News_Intelligence
-    manifest: agents/A02_News_Intelligence/agent.yaml
+  A002:
+    dir: agents/A002_News_Intelligence
+    manifest: agents/A002_News_Intelligence/agent.yaml
     name: "News Intelligence"
     domain: "Fake-news / rumor / market impact"
     status: substantial

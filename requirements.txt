@@ -2,7 +2,7 @@
 # CIE-OS runtime dependencies
 #
 # Generated from the third-party imports actually present in
-# agents/A01_Blockchain_Intelligence. Requires Python >= 3.12
+# agents/A001_Blockchain_Intelligence. Requires Python >= 3.12
 # (the codebase uses StrEnum, PEP 604 unions and datetime.UTC).
 #
 #   pip install -r requirements.txt
@@ -35,4 +35,4 @@ redis>=5.0
 # PyYAML>=6.0
 # opentelemetry-api>=1.25
 
-# NOTE: agent-level deps also exist (agents\A01_Blockchain_Intelligence\pyproject.toml)
+# NOTE: agent-level deps also exist (agents\A001_Blockchain_Intelligence\pyproject.toml)

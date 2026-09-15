@@ -90,7 +90,7 @@ gate.
 **Entity** — a thing findings can be *about*: an address, ticker, org, protocol.
 
 **Entity ledger** — the cross-agent registry of entities in the `brain/`. An entity
-A01 labels is one A02 can cite — this shared vocabulary is the fuel correlation runs
+A001 labels is one A002 can cite — this shared vocabulary is the fuel correlation runs
 on.
 
 ---
@@ -104,7 +104,7 @@ decision`). Not a chat wrapper. Lives at `agents/<AXX_Name>/`.
 **Vertical pipeline** — the full stack an agent owns end-to-end; the platform
 surrounds it but never reaches inside.
 
-**Fleet** — all the domain agents (`A01`–`A06` planned). The fleet is only as strong
+**Fleet** — all the domain agents (`A001`–`A06` planned). The fleet is only as strong
 as its weakest agent — and its weakest claim.
 
 **Kernel** — the shared lowest layers: `config/`, `src/`, `brain/`, `orchestrator/`.
@@ -141,7 +141,7 @@ missing. Explicit and reported, never a silent failure.
 **Trust level** — how much a component is allowed to do, enforced by the sentinel:
 - **0 — Sandboxed:** reasoning only (new/untrusted plugin).
 - **1 — Read-only:** no side effects (a fresh agent, pre-evals).
-- **2 — Scoped writes:** a declared surface (A01, A02…).
+- **2 — Scoped writes:** a declared surface (A001, A002…).
 - **3 — Platform:** human-adjacent (orchestrator, sentinel).
 
 An agent with no evidence detectors and no tests **cannot leave level 1.**

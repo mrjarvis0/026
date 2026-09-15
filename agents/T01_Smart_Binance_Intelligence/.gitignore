@@ -1,0 +1,27 @@
+# Secrets — NEVER commit real API keys
+.env
+*.env
+!.env.example
+
+# Database & runtime data
+data/*.db
+data/*.sqlite
+data/*.sqlite3
+logs/
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

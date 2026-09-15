@@ -2,9 +2,9 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "a01-dashboard",
+      "name": "a001-dashboard",
       "runtimeExecutable": "python",
-      "runtimeArgs": ["agents/A01_Blockchain_Intelligence/scripts/dashboard.py"],
+      "runtimeArgs": ["agents/A001_Blockchain_Intelligence/scripts/dashboard.py"],
       "port": 8501
     }
   ]

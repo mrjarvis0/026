@@ -98,8 +98,8 @@ An agent with no `evidence.detectors` and no tests **cannot leave trust level 1.
 
 | ID    | Agent                     | Status    | Domain                            |
 | ----- | ------------------------- | --------- | --------------------------------- |
-| `A01` | Blockchain Intelligence   | substantial | On-chain: whales, flows, anomaly  |
-| `A02` | News Intelligence         | substantial | Fake-news / rumor / market impact |
+| `A001` | Blockchain Intelligence   | substantial | On-chain: whales, flows, anomaly  |
+| `A002` | News Intelligence         | substantial | Fake-news / rumor / market impact |
 | `A03` | *(reserved)* DeFi Flow    | planned   | Cross-protocol liquidity          |
 | `A04` | *(reserved)* Sentiment    | planned   | Social/market sentiment fusion    |
 | `A05` | Market Data Intelligence  | planned   | Market OHLCV / quotes / orderbook across crypto, equities, FX |
@@ -110,7 +110,7 @@ An agent with no `evidence.detectors` and no tests **cannot leave trust level 1.
 they are real (if unbuilt) consumers, not placeholders. Recorded in `BUILD_LOG.md`
 (2026-09-06) and `docs/adr/ADR-0004`.
 
-`A01` and `A02` moved from `planned` to `substantial` on 2026-09-06: their full
+`A001` and `A002` moved from `planned` to `substantial` on 2026-09-06: their full
 vertical pipelines were **migrated in from the CIE-OS project** (source kept intact
 at `F:\CIE-OS`), then declared as fleet members — each now carries an
 `agents/<dir>/agent.yaml` manifest and is registered in `config/agents/registry.yaml`.
@@ -135,8 +135,8 @@ The reason 026 is an OS and not a folder of scripts. Single agents answer single
 questions. The **brain + orchestrator** let answers combine:
 
 ```
-A02 (news):  "unverified exploit rumor on protocol X, coordination score 78/100"
-A01 (chain): "anomalous outflow from X's treasury, DET-EXPLOIT-02, z=7.1"
+A002 (news):  "unverified exploit rumor on protocol X, coordination score 78/100"
+A001 (chain): "anomalous outflow from X's treasury, DET-EXPLOIT-02, z=7.1"
              â”‚
              â–¼
 orchestrator fuses â†’ a correlated finding, each half carrying its OWN provenance
@@ -147,7 +147,7 @@ sentinel gates â†’ no order without the execution gate, no alert above meas
 **Correlation rules:**
 
 1. **Fusion never averages confidence.** The combined confidence is the *weakest* input's, not the mean â€” a strong rumor beside weak on-chain data is weak-on-chain-data with a rumor attached.
-2. **Conflicts are recorded, not resolved.** If A01 and A02 disagree, both survive in the finding. Overwriting one would hide a real disagreement behind a plausible value.
+2. **Conflicts are recorded, not resolved.** If A001 and A002 disagree, both survive in the finding. Overwriting one would hide a real disagreement behind a plausible value.
 3. **Provenance stays split.** A fused finding carries two independent chains, never a merged one.
 4. **A correlation is a hypothesis, not a verdict** until each half independently clears its own maturity gate.
 
@@ -161,7 +161,7 @@ Agents never call each other. Everything passes through the orchestrator's bus.
 {
   "id": "msg_01J...",
   "from": "orchestrator",
-  "to": "A01",
+  "to": "A001",
   "type": "task.assign",
   "payload": { "question": "...", "window": {...} },
   "trace_id": "trc_...",
@@ -182,7 +182,7 @@ silently.
 | :---: | -------------------------------- | ----------------------------- |
 |   0   | Sandboxed â€” reasoning only       | New/untrusted plugin          |
 |   1   | Read-only â€” no side effects      | A fresh agent, pre-evals      |
-|   2   | Scoped writes â€” declared surface | A01, A02                      |
+|   2   | Scoped writes â€” declared surface | A001, A002                      |
 |   3   | Platform â€” human-adjacent        | orchestrator, sentinel        |
 
 **Sentinel** sits over every action. Anything above an agent's declared trust â€”
@@ -210,8 +210,8 @@ brain/
 â””â”€â”€ private/<agent>/ # an agent's own scratchpad, unshared
 ```
 
-Rule: **write like others will read**, because in 026 they will. An entity A01
-labels is an entity A02 can cite â€” that is the correlation layer's fuel.
+Rule: **write like others will read**, because in 026 they will. An entity A001
+labels is an entity A002 can cite â€” that is the correlation layer's fuel.
 
 ---
 
@@ -291,7 +291,7 @@ matter how good the code looks.
 ## 12. Roadmap for the fleet
 
 - [ ] Kernel: config â†’ core runtime â†’ shared brain â†’ message bus (the first real `make doctor`)
-- [ ] A01 and A02 built behind the kernel socket, tests green
+- [ ] A001 and A002 built behind the kernel socket, tests green
 - [ ] Orchestrator: plan â†’ route â†’ fuse, with budgets
 - [ ] Cross-agent correlation layer + the entity ledger
 - [ ] Sentinel: trust enforcement + live execution-gate surface scan (no order bypasses the gate)
@@ -308,13 +308,13 @@ Design each one like it matters, because a wrong confident answer is worse than 
 <!-- 026's original content is ABOVE. CIE-OS original also preserved at integrations\CIE-OS\ -->
 <!-- ============================================================ -->
 
-# CIE-OS / A01 Blockchain Intelligence Agent â€” Agent Instructions
+# CIE-OS / A001 Blockchain Intelligence Agent â€” Agent Instructions
 
 ## Project Overview
-**A01** is a blockchain intelligence agent with a strict **13-layer architecture** (Identity â†’ Interfaces). Currently ~30% implemented â€” configuration, memory, tools/adapters, and planning are substantial; intelligence engines, skills, data pipeline, and API server are mostly scaffolded/empty.
+**A001** is a blockchain intelligence agent with a strict **13-layer architecture** (Identity â†’ Interfaces). Currently ~30% implemented â€” configuration, memory, tools/adapters, and planning are substantial; intelligence engines, skills, data pipeline, and API server are mostly scaffolded/empty.
 
 **Root:** `F:\CIE-OS (crypto intelligence engine-opreting system\`
-**Agent code:** `agents/A01_Blockchain_Intelligence/`
+**Agent code:** `agents/A001_Blockchain_Intelligence/`
 
 ---
 
@@ -326,25 +326,25 @@ Design each one like it matters, because a wrong confident answer is worse than 
 python tests/test_adapters.py
 
 # Planning engine (352 assertions, complete suite)
-python agents/A01_Blockchain_Intelligence/planning/tests/test_core.py
-python agents/A01_Blockchain_Intelligence/planning/tests/test_goals.py
-python agents/A01_Blockchain_Intelligence/planning/tests/test_tasks.py
-python agents/A01_Blockchain_Intelligence/planning/tests/test_routing.py
-python agents/A01_Blockchain_Intelligence/planning/tests/test_execution.py
-python agents/A01_Blockchain_Intelligence/planning/tests/test_reasoning.py
-python agents/A01_Blockchain_Intelligence/planning/tests/test_monitoring.py
-python agents/A01_Blockchain_Intelligence/planning/tests/test_utils.py
-python agents/A01_Blockchain_Intelligence/planning/tests/test_schemas.py
+python agents/A001_Blockchain_Intelligence/planning/tests/test_core.py
+python agents/A001_Blockchain_Intelligence/planning/tests/test_goals.py
+python agents/A001_Blockchain_Intelligence/planning/tests/test_tasks.py
+python agents/A001_Blockchain_Intelligence/planning/tests/test_routing.py
+python agents/A001_Blockchain_Intelligence/planning/tests/test_execution.py
+python agents/A001_Blockchain_Intelligence/planning/tests/test_reasoning.py
+python agents/A001_Blockchain_Intelligence/planning/tests/test_monitoring.py
+python agents/A001_Blockchain_Intelligence/planning/tests/test_utils.py
+python agents/A001_Blockchain_Intelligence/planning/tests/test_schemas.py
 
 # Blockchain transport tests
-python agents/A01_Blockchain_Intelligence/blockchain/tests/test_transport.py
-python agents/A01_Blockchain_Intelligence/blockchain/tests/test_providers.py
-python agents/A01_Blockchain_Intelligence/blockchain/tests/test_reorg.py
+python agents/A001_Blockchain_Intelligence/blockchain/tests/test_transport.py
+python agents/A001_Blockchain_Intelligence/blockchain/tests/test_providers.py
+python agents/A001_Blockchain_Intelligence/blockchain/tests/test_reorg.py
 
 # CLI (working)
-python -m agents.A01_Blockchain_Intelligence.cli doctor
-python -m agents/A01_Blockchain_Intelligence.cli investigate --address 0x123...
-python -m agents/A01_Blockchain_Intelligence.cli detectors
+python -m agents.A001_Blockchain_Intelligence.cli doctor
+python -m agents/A001_Blockchain_Intelligence.cli investigate --address 0x123...
+python -m agents/A001_Blockchain_Intelligence.cli detectors
 ```
 
 ### No build/lint/typecheck configured
@@ -374,10 +374,10 @@ Identity â†’ Configuration â†’ Core â†’ Memory â†’ Sensors �
 | `skills/` | âŒ Empty | 18 skill dirs created, zero implementation |
 | `sensors/`, `ingestion/`, `validation/`, `normalization/`, `database/` | âŒ Empty | No data pipeline yet |
 | `blockchain/` | ðŸŸ¦ Scaffold | Full domain structure, minimal implementation |
-| `api/`, `cli/`, `monitoring/`, `security/`, `evaluation/`, `reasoning/`, `reporting/`, `knowledge/`, `prompts/`, `workflows/` | âŒ Empty | Delete duplicate dirs at `A01_Blockchain_Intelligence/{api,cli,monitoring,security,blockchain}` |
+| `api/`, `cli/`, `monitoring/`, `security/`, `evaluation/`, `reasoning/`, `reporting/`, `knowledge/`, `prompts/`, `workflows/` | âŒ Empty | Delete duplicate dirs at `A001_Blockchain_Intelligence/{api,cli,monitoring,security,blockchain}` |
 
 ### Entry Points
-- **CLI:** `agents/A01_Blockchain_Intelligence/cli/main.py` â†’ `investigate`, `detectors`, `doctor`
+- **CLI:** `agents/A001_Blockchain_Intelligence/cli/main.py` â†’ `investigate`, `detectors`, `doctor`
 - **No API server** â€” `api/` is empty
 - **Runtime:** `core/runtime.py` (AgentRuntime), `core/agent.py` (BaseAgent), `core/lifecycle.py` (FSM)
 
@@ -405,17 +405,17 @@ Identity â†’ Configuration â†’ Core â†’ Memory â†’ Sensors �
 
 ## Development Workflow (Per Architecture Docs)
 
-Follow **vertical slice** build order (`agents/A01_Blockchain_Intelligence/README.md`):
+Follow **vertical slice** build order (`agents/A001_Blockchain_Intelligence/README.md`):
 1. âœ… Identity â†’ Config â†’ Knowledge â†’ Core (mostly done)
 2. ðŸ”„ **ONE sensor** â†’ ingestion (dedup + reorg handling) â†’ normalization â†’ database
 3. **ONE skill** â†’ full pipeline validation
 4. Expand to remaining chains/skills/intelligence engines
 
 ### Key Files to Reference
-- Architecture: `agents/A01_Blockchain_Intelligence/docs/architecture/layered-architecture.md`
-- Data flow: `agents/A01_Blockchain_Intelligence/docs/architecture/data-flow.md`
+- Architecture: `agents/A001_Blockchain_Intelligence/docs/architecture/layered-architecture.md`
+- Data flow: `agents/A001_Blockchain_Intelligence/docs/architecture/data-flow.md`
 - Component specs: each subpackage has `README.md` with design spec
-- Intelligence: `agents/A01_Blockchain_Intelligence/docs/intelligence/evidence-standard.md`, `detection-catalog.md`
+- Intelligence: `agents/A001_Blockchain_Intelligence/docs/intelligence/evidence-standard.md`, `detection-catalog.md`
 
 ---
 
@@ -424,62 +424,62 @@ Follow **vertical slice** build order (`agents/A01_Blockchain_Intelligence/READM
 - **No CI/CD, no lint, no typecheck** â€” verify manually
 - **Optional deps guarded** â€” Chroma, gRPC, msgpack, YAML, OpenTelemetry imported conditionally
 - **SQLite DB at** `data/long_term_global.db` (created at runtime)
-- **Empty `.env`** â€” copy `.env.example` if it exists, or set `A01_*` vars manually
-- **Duplicate top-level dirs** â€” delete `agents/A01_Blockchain_Intelligence/{api,cli,monitoring,security,blockchain}` (empty, shadow real packages)
-- **Import style** â€” absolute from `agents.A01_Blockchain_Intelligence.*`; relative within package
+- **Empty `.env`** â€” copy `.env.example` if it exists, or set `A001_*` vars manually
+- **Duplicate top-level dirs** â€” delete `agents/A001_Blockchain_Intelligence/{api,cli,monitoring,security,blockchain}` (empty, shadow real packages)
+- **Import style** â€” absolute from `agents.A001_Blockchain_Intelligence.*`; relative within package
 - **Async-first** â€” all I/O is async; sync helpers marked explicitly
 
 ---
 
 ## References
-- Identity docs: `agents/A01_Blockchain_Intelligence/docs/identity/*.md`
-- Architecture docs: `agents/A01_Blockchain_Intelligence/docs/architecture/*.md`
-- Intelligence docs: `agents/A01_Blockchain_Intelligence/docs/intelligence/*.md`
+- Identity docs: `agents/A001_Blockchain_Intelligence/docs/identity/*.md`
+- Architecture docs: `agents/A001_Blockchain_Intelligence/docs/architecture/*.md`
+- Intelligence docs: `agents/A001_Blockchain_Intelligence/docs/intelligence/*.md`
 
 ---
 
-# CIE-OS / A02 News Intelligence Agent
+# CIE-OS / A002 News Intelligence Agent
 
-**A02** is the fake-news/rumor intelligence agent (stocks, crypto, forex). Built in 15 phases under a **minimal structure** (config/, core/, intelligence/, models/, data/, cli/) â€” deliberately small vs A01's 40 folders.
+**A002** is the fake-news/rumor intelligence agent (stocks, crypto, forex). Built in 15 phases under a **minimal structure** (config/, core/, intelligence/, models/, data/, cli/) â€” deliberately small vs A001's 40 folders.
 
-**Root:** `agents/A02_News_Intelligence/`
+**Root:** `agents/A002_News_Intelligence/`
 
 ## Key Commands
 ```bash
 # Doctor (validate foundation) / live ingestion + narrative cycle / narratives view / market impact
-python -m agents.A02_News_Intelligence.cli doctor
-python -m agents.A02_News_Intelligence.cli scan
-python -m agents.A02_News_Intelligence.cli narratives
-python -m agents.A02_News_Intelligence.cli impact <narrative_id>
-python -m agents.A02_News_Intelligence.cli resolve --all   # learning loop: resolve predictions vs live price
-python -m agents.A02_News_Intelligence.cli metrics         # accuracy, Brier, calibration, drift
-python -m agents.A02_News_Intelligence.cli backtest        # replay resolved predictions
-python -m agents.A02_News_Intelligence.cli output <id>     # flagship 12-point report
+python -m agents.A002_News_Intelligence.cli doctor
+python -m agents.A002_News_Intelligence.cli scan
+python -m agents.A002_News_Intelligence.cli narratives
+python -m agents.A002_News_Intelligence.cli impact <narrative_id>
+python -m agents.A002_News_Intelligence.cli resolve --all   # learning loop: resolve predictions vs live price
+python -m agents.A002_News_Intelligence.cli metrics         # accuracy, Brier, calibration, drift
+python -m agents.A002_News_Intelligence.cli backtest        # replay resolved predictions
+python -m agents.A002_News_Intelligence.cli output <id>     # flagship 12-point report
 
 # Offline tests
-python agents/A02_News_Intelligence/tests/test_core.py       # Phase 1 (38 assertions)
-python agents/A02_News_Intelligence/tests/test_narrative.py  # Phase 2 (33 assertions)
-python agents/A02_News_Intelligence/tests/test_verification.py  # Phase 3 (28 assertions)
-python agents/A02_News_Intelligence/tests/test_impact.py     # Phase 4 (34 assertions)
-python agents/A02_News_Intelligence/tests/test_learning.py   # Phase 5 (35 assertions)
-python agents/A02_News_Intelligence/tests/test_phase6.py     # Phase 6 (31 assertions)
-python agents/A02_News_Intelligence/tests/test_phase7.py     # Phase 7 (13 assertions)
+python agents/A002_News_Intelligence/tests/test_core.py       # Phase 1 (38 assertions)
+python agents/A002_News_Intelligence/tests/test_narrative.py  # Phase 2 (33 assertions)
+python agents/A002_News_Intelligence/tests/test_verification.py  # Phase 3 (28 assertions)
+python agents/A002_News_Intelligence/tests/test_impact.py     # Phase 4 (34 assertions)
+python agents/A002_News_Intelligence/tests/test_learning.py   # Phase 5 (35 assertions)
+python agents/A002_News_Intelligence/tests/test_phase6.py     # Phase 6 (31 assertions)
+python agents/A002_News_Intelligence/tests/test_phase7.py     # Phase 7 (13 assertions)
 ```
 
 ## Phase Plan (current)
 - Phase 0 âœ… Foundation (config, paths, sources registry, CLI stub, doctor OK)
-- Phase 1 âœ… Ingestion vertical slice: RSS (keyless) + Tiingo/NewsAPI (keyed) connectors, normalization, dedup (url/title/content fp), rule-based entity extraction, SQLite storage (`data/processed/a02.db`) â€” `scan` command live-tested (137 items, dedup verified)
+- Phase 1 âœ… Ingestion vertical slice: RSS (keyless) + Tiingo/NewsAPI (keyed) connectors, normalization, dedup (url/title/content fp), rule-based entity extraction, SQLite storage (`data/processed/a002.db`) â€” `scan` command live-tested (137 items, dedup verified)
 - Phase 2 âœ… Narrative intelligence: claim extraction (entity sentence + time hints), clustering (title-jaccard + entity overlap; no-shared-entity titles penalized 0.5x to stop pattern-headline false merges), stance (support/deny/neutral/question), propagation (mention/source/platform counts, velocity), FOMO score (velocity/sources/platforms/urgency) + lifecycle status (emergingâ†’spreadingâ†’peak_hypeâ†’verifyingâ†’resolved). `narratives` command live-tested.
 - Phase 3 âœ… Verification + manipulation: credibility tiers (official 1 â†’ anonymous 6 by domain + source), source-level dedup for confirmations (identical content fp = 1 underlying source), epistemic status 7-tier verdict + confidence 0-1 (denies outrank confirms; official deny = confirmed_false; satire markers = fabricated), coordination score 0-100 (identical text, timing burst, author/platform concentration) â€” separate from FOMO & truth. DB auto-migrates new columns.
 - Phase 4 âœ… Market impact + prediction: Binance klines (keyless crypto) + Alpha Vantage (keyed) price data, event-study returns (1h/6h/24h) + volatility + volume surge, category classification (etf/hack/delisting/regulatory/fraud/earnings/partnership/macro), historical correlation engine (similar past events â†’ expected range + confidence), prediction = measured move + historical analog + verification â†’ direction/probability/range/risk. `impact <id>` command live-tested with real BTC data (learning loop: each query stores an impact event).
 - Phase 5 âœ… Learning + backtest: prediction snapshot stored per impact (direction/probability/mean), `resolve` captures realized outcome vs live price, `metrics` computes accuracy + multi-class Brier + calibration bins (overconfident flagged) + verification truth agreement + scan drift snapshots, `backtest` replays resolved events vs naive baseline, `output <id>` = flagship 12-point consumer report (claim â†’ next signal). All 5 suites green (168 assertions).
 - Phase 6 âœ… ML models + extended categories + new connectors: sklearn TF-IDF+LogReg classifiers for category/stance/verification with rule fallback (models/ml_models.py); 21 impact categories including product_launch, executive_change, merger_acquisition, guidance_change, dividend, stock_split, bankruptcy, clinical_trial, patent, contract_win, investigation, sanctions; Telegram (bot API) and X/Twitter (API v2) connectors; ML verification signal integrated into verdict; source tiers for new connectors. All 6 suites green (199 assertions).
-- Phase 7 âœ… Reddit connector + transformer fake detector + multi-asset correlation + retraining: Reddit public API connector; Hugging Face transformer pipeline with rule fallback; cross-asset Pearson correlation + prediction propagation; export/retrain utilities for ML models. All 7 suites green (212 assertions). A02 phase plan complete (7/7).
+- Phase 7 âœ… Reddit connector + transformer fake detector + multi-asset correlation + retraining: Reddit public API connector; Hugging Face transformer pipeline with rule fallback; cross-asset Pearson correlation + prediction propagation; export/retrain utilities for ML models. All 7 suites green (212 assertions). A002 phase plan complete (7/7).
 - Phase 8+ (optional stretch): Reddit OAuth for private subreddits, fine-tuned FinFakeBERT, multi-horizon impact modeling, portfolio-level risk integration
 
-## A02 Gotchas
-- **Env prefix `A02_`** â€” read from repo-root `.env`; all keys optional (degraded mode)
-- **Minimal structure rule** â€” do NOT expand folders like A01; add files only when a phase needs them
+## A002 Gotchas
+- **Env prefix `A002_`** â€” read from repo-root `.env`; all keys optional (degraded mode)
+- **Minimal structure rule** â€” do NOT expand folders like A001; add files only when a phase needs them
 - **No binary FAKE/REAL output** â€” epistemic status + confidence + impact range + uncertainty
 - **FOMO â‰  Truth â‰  Coordination** â€” three separate scores
 - Source-level dedup mandatory: 10 articles copying 1 tweet = 1 underlying source, not 10 confirmations

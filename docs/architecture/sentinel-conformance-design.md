@@ -14,7 +14,7 @@
 ## 1. Context
 
 026 is an OS for a fleet; a **sentinel** (platform actor, trust 3, home `security/`)
-"sits over every action." Two agents (A01 Blockchain, A02 News) were migrated in and
+"sits over every action." Two agents (A001 Blockchain, A002 News) were migrated in and
 declared with `agent.yaml` manifests + `config/agents/registry.yaml`. Those manifests
 make claims — `trust.level: 2`, `invariants.execution_enabled: false`,
 `reports_deviation_only: true`, `evidence.detectors`. Nothing yet **enforces** that the
@@ -91,11 +91,11 @@ edits the manifest).
 ### C3 · execution — *`execution_enabled:false` ⇒ no execution surface* → breach = **FAIL**
 - **Scan:** every `.py` under the agent dir **except** `tests/`, `fixtures/`, `examples/`,
   `sandbox/`, `docs/`, `__pycache__/`. A match counts **only in live code** — matches
-  inside comments or string literals are ignored (generalizes A01's own
+  inside comments or string literals are ignored (generalizes A001's own
   `test_no_signing_primitive_exists_in_the_source`). Preferred mechanism: Python
-  `tokenize` to classify tokens; fallback = A01's line heuristic (skip lines whose
+  `tokenize` to classify tokens; fallback = A001's line heuristic (skip lines whose
   stripped start is `# * " '`).
-- **Banned patterns** (policy; baseline = A01's proven set + order primitives):
+- **Banned patterns** (policy; baseline = A001's proven set + order primitives):
   `eth_sendRawTransaction, eth_sendTransaction, sendTransaction, sign_transaction,
   signTransaction, eth_sign, personal_sign, from_mnemonic, private_key, PRIVATE_KEY,
   place_order, submit_order, create_order, execute_trade`.
@@ -127,10 +127,10 @@ edits the manifest).
   composer) — for advice/verdict imperatives (policy word list):
   `\bbuy\b, \bsell\b, bullish, bearish, "you should", "we recommend", "guaranteed",
   "price will (rise|fall|go up|go down)"`. The list **deliberately excludes** legitimate
-  score/detector names (`manipulation`, `whale`, `anomaly`, `coordination`) — A02's
+  score/detector names (`manipulation`, `whale`, `anomaly`, `coordination`) — A002's
   `manipulation.py` is a coordination score, not a verdict.
 - **Verdict:** any match → `HOLD` (evidence: `file:line` for operator review); else
-  `PASS`. Expected: both A01 ("Deviation, not judgement") and A02 ("no FAKE/REAL binary")
+  `PASS`. Expected: both A001 ("Deviation, not judgement") and A002 ("no FAKE/REAL binary")
   `PASS`; C6 mainly guards against future drift.
 
 ## 5. Policy-as-data — `security/policies/sentinel.yaml`
@@ -177,13 +177,13 @@ FleetReport { generated_at, sentinel_version, policy_version,
   `PASS`. (`make sentinel` hard-fails on a lie; a downgrade/best-effort concern is a
   warning.)
 
-**CLI:** `python -m security.sentinel scan [--json] [--agent A01] [--policy PATH]`.
+**CLI:** `python -m security.sentinel scan [--json] [--agent A001] [--policy PATH]`.
 
 ## 7. Test plan (the gate must be a gate, not a decoration)
 
 `security/sentinel/tests/test_sentinel.py`, verified by execution
 (`python -m pytest security/sentinel/tests -q`, per `AGENTS.md` §9):
-1. **Fleet passes:** real fleet (A01, A02) → **no `FAIL`** (both expected `PASS`). Living
+1. **Fleet passes:** real fleet (A001, A002) → **no `FAIL`** (both expected `PASS`). Living
    successor to the manual SP-2 audit.
 2. **Planted violations caught** (proves enforcement) — temp fake-agents:
    - live `sign_transaction(...)` with `execution_enabled:false` → C3 `FAIL`.

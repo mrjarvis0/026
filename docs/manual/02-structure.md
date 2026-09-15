@@ -11,7 +11,7 @@
 
 | Folder | What it holds |
 |--------|---------------|
-| `agents/` | The fleet — one folder per agent (`A01_…` through `A06_…` are defined in [`AGENTS.md`](../../AGENTS.md) §3; higher numbers are reserved, not yet assigned), plus a `_template/` to copy from. Each agent is a self-contained pipeline. |
+| `agents/` | The fleet — one folder per agent (`A001_…` through `A06_…` are defined in [`AGENTS.md`](../../AGENTS.md) §3; higher numbers are reserved, not yet assigned), plus a `_template/` to copy from. Each agent is a self-contained pipeline. |
 | `bootstrap/` | **Added 2026-09-07** — the composition root. Wires the fleet's read-only bus adapters into the orchestrator bus (`wire.build_bus()`). The only layer that imports *both* the kernel and the agents; ADR-0001 keeps the kernel itself agent-free, so this wiring lives here. |
 | `brain/` | Shared memory: embeddings, knowledge graph, RAG, reasoning, LLM access, and shared prompts. |
 | `config/` | All configuration: agent registry, environments (dev/prod), feature flags, model routing. |
@@ -43,8 +43,8 @@ intact at `F:\CIE-OS`), copied as-is and then declared as fleet members:
 
 | Folder | Agent | Manifest |
 |--------|-------|----------|
-| `A01_Blockchain_Intelligence/` | A01 · Blockchain Intelligence — on-chain whales/flows/anomaly, read-only (`NO_TRADE_EXECUTION`) | `agents/A01_Blockchain_Intelligence/agent.yaml` |
-| `A02_News_Intelligence/` | A02 · News Intelligence — fake-news/rumor/market-impact, graded verdicts | `agents/A02_News_Intelligence/agent.yaml` |
+| `A001_Blockchain_Intelligence/` | A001 · Blockchain Intelligence — on-chain whales/flows/anomaly, read-only (`NO_TRADE_EXECUTION`) | `agents/A001_Blockchain_Intelligence/agent.yaml` |
+| `A002_News_Intelligence/` | A002 · News Intelligence — fake-news/rumor/market-impact, graded verdicts | `agents/A002_News_Intelligence/agent.yaml` |
 
 Each agent is a self-contained vertical pipeline (per [`AGENTS.md`](../../AGENTS.md) §1)
 and is registered in `config/agents/registry.yaml`. Their internal structure is
@@ -76,7 +76,7 @@ are still empty — later slices.
 | `environments` | Per-environment settings (dev, prod). |
 | `feature_flags` | On/off switches for features. |
 | `models` | Model routing — which model each tier uses. |
-| `sources` | Machine-config for source access (endpoints + key-NAMES code reads; never secrets). **Built 2026-09-07:** `sources/a01.yaml` — A01's sources by role, each referencing a `sources/` stable ID; free-first priority tiers. A01's live RPC resolution still lives in the agent's own `config/rpc/`. |
+| `sources` | Machine-config for source access (endpoints + key-NAMES code reads; never secrets). **Built 2026-09-07:** `sources/a001.yaml` — A001's sources by role, each referencing a `sources/` stable ID; free-first priority tiers. A001's live RPC resolution still lives in the agent's own `config/rpc/`. |
 
 ### `dashboard/`
 | Folder | What it holds |
@@ -143,7 +143,7 @@ Plus top-level files in `docs/`: `STACK.md` (the chosen tech stack) and `SOURCES
 | Folder | What it holds |
 |--------|---------------|
 | `core` | The orchestrator runtime. |
-| `event_bus` | **Built 2026-09-07 (slice 1)** — the message bus: `Message`/`Budget`/`Response`, an append-only replayable `TraceLog`, and `MessageBus` (register a handler, `send` a message). Every send is traced, gated (via `security.sentinel.gate`), and budgeted; handlers are thin adapters over an agent's entry points (stub/echo for now — real A01/A02 adapters are the next slice). |
+| `event_bus` | **Built 2026-09-07 (slice 1)** — the message bus: `Message`/`Budget`/`Response`, an append-only replayable `TraceLog`, and `MessageBus` (register a handler, `send` a message). Every send is traced, gated (via `security.sentinel.gate`), and budgeted; handlers are thin adapters over an agent's entry points (stub/echo for now — real A001/A002 adapters are the next slice). |
 | `router` | Task routing to agents (folded into `event_bus.send` for slice 1). |
 | `scheduler` | Scheduled/periodic work. |
 | `workflows` | Multi-step agent workflows. |
@@ -259,7 +259,7 @@ files.*
 | File | Role |
 |------|------|
 | `README.md` | Index, rules, **canonical row schema**, and the **master ID index** *(index added 2026-09-06)*. |
-| `apis.md` · `datasets.md` · `mcp.md` · `models.md` · `infra.md` · `links.md` | Per-access-type catalogs; schema-aligned 2026-09-06 (+ 4 new sources S048–S051). **2026-09-07: +67 blockchain sources for A01** (S052–S118) from the operator's notes → registry now **109 rows, highest S118** (all `⬜`/`TBV`, not yet web-verified). |
+| `apis.md` · `datasets.md` · `mcp.md` · `models.md` · `infra.md` · `links.md` | Per-access-type catalogs; schema-aligned 2026-09-06 (+ 4 new sources S048–S051). **2026-09-07: +67 blockchain sources for A001** (S052–S118) from the operator's notes → registry now **109 rows, highest S118** (all `⬜`/`TBV`, not yet web-verified). |
 
 ---
 

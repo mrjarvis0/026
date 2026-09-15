@@ -142,7 +142,7 @@ def test_worst_ordering():
     assert worst([]) == Verdict.PASS
 
 def test_agent_and_fleet_verdict_and_exit_code():
-    a = AgentReport(id="A01", dir="agents/A01", effective_trust=2, checks=[
+    a = AgentReport(id="A001", dir="agents/A001", effective_trust=2, checks=[
         CheckResult("manifest", Verdict.PASS, "ok"),
         CheckResult("trust", Verdict.HOLD, "capped"),
     ])
@@ -154,9 +154,9 @@ def test_agent_and_fleet_verdict_and_exit_code():
     assert fleet.exit_code() == 2
 
 def test_to_json_roundtrips_structure():
-    fleet = FleetReport(agents=[AgentReport("A02", "agents/A02", 2, [CheckResult("secrets", Verdict.PASS, "clean", ["scanned 5 files"], 5)])])
+    fleet = FleetReport(agents=[AgentReport("A002", "agents/A002", 2, [CheckResult("secrets", Verdict.PASS, "clean", ["scanned 5 files"], 5)])])
     data = json.loads(fleet.to_json())
-    assert data["agents"][0]["id"] == "A02"
+    assert data["agents"][0]["id"] == "A002"
     assert data["agents"][0]["checks"][0]["verdict"] == "PASS"
     assert data["agents"][0]["verdict"] == "PASS"
 ```
@@ -426,25 +426,25 @@ from security.sentinel.policy import load_policy
 FLEET_MD = """
 | ID    | Agent                     | Status    | Domain          |
 | ----- | ------------------------- | --------- | --------------- |
-| `A01` | Blockchain Intelligence   | substantial | On-chain        |
-| `A02` | News Intelligence         | substantial | Rumor           |
+| `A001` | Blockchain Intelligence   | substantial | On-chain        |
+| `A002` | News Intelligence         | substantial | Rumor           |
 | `A03` | *(reserved)* DeFi Flow    | planned   | Liquidity       |
 """
 
 def test_parse_fleet_table_skips_reserved():
     table = parse_fleet_table(FLEET_MD)
-    assert table["A01"]["name"] == "Blockchain Intelligence"
-    assert table["A01"]["status"] == "substantial"
+    assert table["A001"]["name"] == "Blockchain Intelligence"
+    assert table["A001"]["status"] == "substantial"
     assert "A03" not in table  # reserved row skipped
 
 def test_load_fleet_reads_real_agents():
     root = Path(__file__).resolve().parents[3]  # F:\026
     records = load_fleet(root, load_policy())
     ids = {r.id for r in records}
-    assert {"A01", "A02"} <= ids
-    a01 = next(r for r in records if r.id == "A01")
-    assert a01.manifest["invariants"]["execution_enabled"] is False
-    assert a01.dir.name == "A01_Blockchain_Intelligence"
+    assert {"A001", "A002"} <= ids
+    a001 = next(r for r in records if r.id == "A001")
+    assert a001.manifest["invariants"]["execution_enabled"] is False
+    assert a001.dir.name == "A001_Blockchain_Intelligence"
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -465,7 +465,7 @@ from typing import Any
 
 import yaml
 
-_ROW = re.compile(r"^\|\s*`(A\d{2})`\s*\|\s*(.*?)\s*\|\s*(.*?)\s*\|")
+_ROW = re.compile(r"^\|\s*`(A\d+)`\s*\|\s*(.*?)\s*\|\s*(.*?)\s*\|")
 
 
 @dataclass
@@ -818,14 +818,14 @@ def test_registry_absent_from_fleet_table_fails(tmp_path):
     assert check_registry(rec, POLICY).verdict == Verdict.FAIL
 
 def test_registry_status_drift_holds(tmp_path):
-    rec = AgentRecord("A01", tmp_path, {"id": "A01", "name": "Blockchain Intelligence", "status": "partial"},
+    rec = AgentRecord("A001", tmp_path, {"id": "A001", "name": "Blockchain Intelligence", "status": "partial"},
                       {"name": "Blockchain Intelligence", "status": "partial"},
-                      fleet_row={"id": "A01", "name": "Blockchain Intelligence", "status": "substantial"})
+                      fleet_row={"id": "A001", "name": "Blockchain Intelligence", "status": "substantial"})
     assert check_registry(rec, POLICY).verdict == Verdict.HOLD
 
 def test_registry_all_agree_passes(tmp_path):
-    row = {"id": "A01", "name": "Blockchain Intelligence", "status": "substantial"}
-    rec = AgentRecord("A01", tmp_path, {"id": "A01", "name": "Blockchain Intelligence", "status": "substantial"},
+    row = {"id": "A001", "name": "Blockchain Intelligence", "status": "substantial"}
+    rec = AgentRecord("A001", tmp_path, {"id": "A001", "name": "Blockchain Intelligence", "status": "substantial"},
                       {"name": "Blockchain Intelligence", "status": "substantial"}, fleet_row=row)
     assert check_registry(rec, POLICY).verdict == Verdict.PASS
 
@@ -947,7 +947,7 @@ ROOT = Path(__file__).resolve().parents[3]  # F:\026
 def test_real_fleet_has_no_fail():
     report = run_sentinel(ROOT)
     ids = {a.id for a in report.agents}
-    assert {"A01", "A02"} <= ids
+    assert {"A001", "A002"} <= ids
     for a in report.agents:
         assert a.verdict != Verdict.FAIL, f"{a.id}: {[c.summary for c in a.checks if c.verdict==Verdict.FAIL]}"
 

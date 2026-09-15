@@ -19,7 +19,7 @@ import http.server
 import socketserver
 import time
 
-sys.path.insert(0, os.path.abspath("agents/A01_Blockchain_Intelligence"))
+sys.path.insert(0, os.path.abspath("agents/A001_Blockchain_Intelligence"))
 
 from tools.adapters import (
     AdapterRequest,

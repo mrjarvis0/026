@@ -8,7 +8,7 @@ from typing import Any
 
 import yaml
 
-_ROW = re.compile(r"^\|\s*`(A\d{2})`\s*\|\s*(.*?)\s*\|\s*(.*?)\s*\|")
+_ROW = re.compile(r"^\|\s*`(A\d+)`\s*\|\s*(.*?)\s*\|\s*(.*?)\s*\|")
 
 
 @dataclass

@@ -3,7 +3,7 @@
 Delivery order per message: trace it, refuse if no handler, run the sentinel gate on
 any declared action (DENY/HOLD short-circuit), enforce the budget (exhausted -> degrade),
 then route to the registered handler. A handler returns a payload dict; the bus wraps it
-in a Response. Handlers are thin adapters over an agent's own entry points; real A01/A02
+in a Response. Handlers are thin adapters over an agent's own entry points; real A001/A002
 adapters come later (SP-4 next slice) — this slice proves the path with any handler.
 """
 from __future__ import annotations

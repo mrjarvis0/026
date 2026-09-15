@@ -18,7 +18,7 @@ would have no place to live that keeps each half's evidence separate.
 
 Build 026 as an **operating system for a fleet of agents**: a shared kernel (config,
 core runtime, brain, message bus), platform services (sentinel, observability,
-dashboard), and a fleet of numbered agents (`A01`…), each owning a full vertical
+dashboard), and a fleet of numbered agents (`A001`…), each owning a full vertical
 pipeline. The differentiator is **cross-agent correlation** under one governance
 layer (the sentinel) that never lets a claim outrun its evidence.
 

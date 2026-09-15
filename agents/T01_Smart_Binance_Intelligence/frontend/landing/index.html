@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>T01 · Smart Binance Intelligence</title>
+  <style>
+    :root{--bg:#0b0e13;--panel:#131924;--line:#232c3b;--text:#e6edf6;--muted:#8b98ad;--accent:#3b82f6;--up:#26a37b}
+    *{box-sizing:border-box}
+    body{margin:0;background:radial-gradient(1200px 600px at 70% -10%,rgba(59,130,246,.12),transparent),var(--bg);
+      color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.6}
+    .wrap{max-width:960px;margin:0 auto;padding:0 20px}
+    header{display:flex;align-items:center;justify-content:space-between;padding:18px 0}
+    .brand{font-weight:700;font-size:18px;letter-spacing:.02em}
+    .brand span{color:var(--muted);font-weight:400;font-size:14px;margin-left:8px}
+    .cta{background:var(--up);color:#fff;border:0;border-radius:9px;padding:10px 18px;
+      text-decoration:none;font-weight:600;font-size:14px;display:inline-block}
+    .cta.ghost{background:transparent;border:1px solid var(--line);color:var(--text)}
+    .hero{padding:70px 0 40px;text-align:center}
+    .hero h1{font-size:clamp(30px,6vw,52px);margin:0 0 14px;line-height:1.1}
+    .hero h1 em{color:var(--accent);font-style:normal}
+    .hero p{color:var(--muted);font-size:18px;max-width:620px;margin:0 auto 28px}
+    .actions{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+    .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;padding:30px 0 60px}
+    @media(max-width:720px){.grid{grid-template-columns:1fr}}
+    .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px}
+    .card h3{margin:0 0 8px;font-size:16px}
+    .card p{margin:0;color:var(--muted);font-size:14px}
+    .badge{display:inline-block;background:rgba(38,163,123,.14);color:var(--up);
+      border:1px solid var(--up);border-radius:20px;padding:4px 12px;font-size:12px;margin-bottom:20px}
+    footer{border-top:1px solid var(--line);padding:24px 0;color:var(--muted);font-size:13px;text-align:center}
+    .note{background:rgba(230,162,60,.1);border:1px solid rgba(230,162,60,.4);color:#e6a23c;
+      border-radius:10px;padding:12px 16px;font-size:13px;margin:0 0 30px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="brand">T01<span>Smart Binance Intelligence</span></div>
+      <a class="cta" href="/terminal">Open Terminal →</a>
+    </header>
+
+    <section class="hero">
+      <span class="badge">● Paper-trading first · real trading gated on proven accuracy</span>
+      <h1>Trade Binance with a bot that <em>earns</em> real money.</h1>
+      <p>Live technical analysis on any Binance pair, a self-tuning signal engine, and a
+         hard safety gate: real orders stay locked until the paper record proves itself.</p>
+      <div class="actions">
+        <a class="cta" href="/terminal">Launch dashboard</a>
+        <a class="cta ghost" href="/api/status">API status</a>
+      </div>
+    </section>
+
+    <p class="note">⚠️ Educational tool. Paper mode uses a simulated wallet on real market prices.
+       Real trading requires your own Binance keys and is disabled until the accuracy gate unlocks.</p>
+
+    <section class="grid">
+      <div class="card"><h3>📈 Any pair, live</h3><p>RSI, MACD, EMAs, Bollinger — computed every cycle on the symbol you pick.</p></div>
+      <div class="card"><h3>🧠 Self-tuning</h3><p>The net-score threshold adapts to recent accuracy: fewer, higher-quality trades when it's wrong.</p></div>
+      <div class="card"><h3>🛡️ Safety first</h3><p>Emergency stop, daily-loss circuit breaker, and a real-trading lock you can't bypass early.</p></div>
+    </section>
+
+    <footer>T01 · runs locally on your machine · not financial advice</footer>
+  </div>
+</body>
+</html>
