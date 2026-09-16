@@ -41,10 +41,26 @@ def bollinger_bands(series: pd.Series, period: int = 20, std_mult: float = 2.0):
     return upper, mid, lower
 
 
+def atr(high: pd.Series, low: pd.Series, close: pd.Series, period: int = 14) -> pd.Series:
+    """Average True Range for volatility estimation."""
+    tr1 = high - low
+    tr2 = (high - close.shift()).abs()
+    tr3 = (low - close.shift()).abs()
+    tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
+    return tr.rolling(window=period, min_periods=period).mean()
+
+def vwap(df: pd.DataFrame) -> pd.Series:
+    """Volume Weighted Average Price (daily anchored approximation or rolling)."""
+    typical_price = (df["high"] + df["low"] + df["close"]) / 3
+    # Use a rolling 24-period VWAP as a simplified intraday approximation
+    return (typical_price * df["volume"]).rolling(window=24).sum() / df["volume"].rolling(window=24).sum()
+
 def compute_all(ohlcv: list[list]) -> pd.DataFrame:
     """Attach all indicators to an OHLCV dataframe."""
     df = ohlcv_to_df(ohlcv)
     close = df["close"]
+    high = df["high"]
+    low = df["low"]
 
     df["rsi"] = rsi(close)
     macd_line, signal_line, hist = macd(close)
@@ -60,4 +76,6 @@ def compute_all(ohlcv: list[list]) -> pd.DataFrame:
     df["bb_mid"] = mid
     df["bb_lower"] = lower
     df["vol_sma_20"] = sma(df["volume"], 20)
+    df["atr"] = atr(high, low, close)
+    df["vwap"] = vwap(df)
     return df

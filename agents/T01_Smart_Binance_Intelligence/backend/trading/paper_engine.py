@@ -49,7 +49,7 @@ class PaperEngine:
         return sum(p["quantity"] * p["entry_price"] for p in self.open_positions())
 
     # ---------- trade actions ----------
-    def open_trade(self, symbol: str, price: float, reason: str = "") -> dict | None:
+    def open_trade(self, symbol: str, price: float, reason: str = "", atr: float = None) -> dict | None:
         if not risk.can_open_position(len(self.open_positions())):
             return None
         # one position per symbol at a time
@@ -57,12 +57,19 @@ class PaperEngine:
             return None
 
         qty = risk.position_size(self.balance, price, mode=MODE,
-                                 open_count=len(self.open_positions()))
+                                 open_count=len(self.open_positions()), atr=atr)
         cost = qty * price
         if qty <= 0 or cost > self.balance:
             return None
 
         self.balance -= cost
+        self._save_balance()
+
+        # Apply simulated slippage and maker/taker fee for paper mode (e.g. 0.1% fee)
+        fee_pct = 0.001
+        fee_cost = cost * fee_pct
+
+        self.balance -= fee_cost
         self._save_balance()
 
         trade = {
@@ -71,8 +78,8 @@ class PaperEngine:
             "side": "buy",
             "entry_price": price,
             "quantity": qty,
-            "stop_loss": risk.stop_loss_price(price, "buy"),
-            "take_profit": risk.take_profit_price(price, "buy"),
+            "stop_loss": risk.stop_loss_price(price, "buy", atr),
+            "take_profit": risk.take_profit_price(price, "buy", atr),
             "entry_reason": reason,
             "opened_at": datetime.now(timezone.utc).isoformat(),
         }
@@ -86,11 +93,17 @@ class PaperEngine:
         qty = position["quantity"]
         entry = position["entry_price"]
         proceeds = qty * price
-        cost = qty * entry
-        pnl = proceeds - cost
-        pnl_pct = (price - entry) / entry * 100.0 if entry else 0.0
 
-        self.balance += proceeds
+        # Apply simulated maker/taker fee on exit
+        fee_pct = 0.001
+        fee_cost = proceeds * fee_pct
+        net_proceeds = proceeds - fee_cost
+
+        cost = qty * entry
+        pnl = net_proceeds - cost
+        pnl_pct = pnl / cost * 100.0 if cost else 0.0
+
+        self.balance += net_proceeds
         self._save_balance()
 
         db.close_trade(position["id"], price, pnl, pnl_pct, reason)
@@ -105,12 +118,21 @@ class PaperEngine:
         }
 
     def check_exits(self, mark_prices: dict[str, float]) -> list[dict]:
-        """Close positions that hit stop-loss or take-profit."""
+        """Close positions that hit stop-loss or take-profit, and manage trailing stops."""
         closed = []
         for pos in self.open_positions():
             price = mark_prices.get(pos["symbol"])
             if price is None:
                 continue
+
+            # Trailing stop logic: if price goes up, raise stop_loss to lock in profit
+            trail_dist = price * 0.015
+            potential_new_stop = price - trail_dist
+
+            if pos["stop_loss"] and potential_new_stop > pos["stop_loss"] and price > pos["entry_price"]:
+                pos["stop_loss"] = potential_new_stop
+                db.update_trade_stop_loss(pos["id"], potential_new_stop)
+
             if pos["stop_loss"] and price <= pos["stop_loss"]:
                 closed.append(self.close_trade(pos, price, "stop_loss"))
             elif pos["take_profit"] and price >= pos["take_profit"]:

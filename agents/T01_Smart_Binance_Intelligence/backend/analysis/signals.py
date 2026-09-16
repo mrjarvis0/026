@@ -33,8 +33,8 @@ def _safe(value, default=0.0):
 
 # Max achievable magnitude on one side, used to normalise confidence:
 # rsi_oversold 2.0 + macd_pos 1.0 + macd_turn_up 1.0 + trend_up 0.8
-# + bb_below 1.2 + vol 0.6 = 6.6 (mirror on the bearish side).
-_MAX_SCORE = 6.6
+# + bb_below 1.2 + vol 0.6 + vwap 0.7 = 7.3 (mirror on the bearish side).
+_MAX_SCORE = 7.3
 
 # Minimum closed bars before we trust the indicators. Below this, RSI(14)/
 # BB(20)/MACD(26) are still NaN or warming up; _safe() would default the
@@ -126,6 +126,13 @@ def generate_signal(df: pd.DataFrame, params: dict | None = None) -> Signal:
         factors.append(("vol_up_bull" if price >= ema50 else "vol_up_bear",
                         +0.6 if price >= ema50 else -0.6))
 
+    # VWAP Confluence (Smart money proxy)
+    vwap_v = _safe(last.get("vwap"), price)
+    if price > vwap_v:
+        factors.append(("above_vwap", +0.7))
+    elif price < vwap_v:
+        factors.append(("below_vwap", -0.7))
+
     bull = sum(s for _, s in factors if s > 0)
     bear = -sum(s for _, s in factors if s < 0)
     net = bull - bear
@@ -143,6 +150,7 @@ def generate_signal(df: pd.DataFrame, params: dict | None = None) -> Signal:
             "bb_lower": round(bb_lower, 6),
             "volume": round(vol, 2),
             "vol_avg": round(vol_avg, 2),
+            "vwap": round(vwap_v, 6),
             "trend": "up" if ema50 >= ema200 else "down",
         },
         "factors": [{"name": n, "score": round(s, 2)} for n, s in factors],

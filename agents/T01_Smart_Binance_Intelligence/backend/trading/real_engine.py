@@ -112,7 +112,7 @@ class RealEngine:
             return 0.0
 
     # ---------- trade actions (mirror PaperEngine) ----------
-    def open_trade(self, symbol: str, price: float, reason: str = "") -> dict | None:
+    def open_trade(self, symbol: str, price: float, reason: str = "", atr: float = None) -> dict | None:
         self._guard()
         # New entries respect the circuit breaker (emergency stop + daily loss).
         allowed, _ = circuit_breaker.trading_allowed(MODE)
@@ -125,7 +125,7 @@ class RealEngine:
 
         free = self._free_quote(symbol)
         qty = self._round_amount(symbol, risk.position_size(
-            free, price, mode=MODE, open_count=len(self.open_positions())))
+            free, price, mode=MODE, open_count=len(self.open_positions()), atr=atr))
         notional = qty * price
         if qty <= 0 or notional > free or notional < self._min_notional(symbol):
             return None
@@ -139,8 +139,8 @@ class RealEngine:
         trade = {
             "mode": MODE, "symbol": symbol, "side": "buy",
             "entry_price": fill_price, "quantity": fill_qty,
-            "stop_loss": risk.stop_loss_price(fill_price, "buy"),
-            "take_profit": risk.take_profit_price(fill_price, "buy"),
+            "stop_loss": risk.stop_loss_price(fill_price, "buy", atr),
+            "take_profit": risk.take_profit_price(fill_price, "buy", atr),
             "entry_reason": reason,
             "opened_at": datetime.now(timezone.utc).isoformat(),
         }
@@ -170,6 +170,15 @@ class RealEngine:
             price = mark_prices.get(pos["symbol"])
             if not price or price <= 0:   # a bad/zero mark must never trigger an exit
                 continue
+
+            # Trailing stop logic to protect profits
+            trail_dist = price * 0.015
+            potential_new_stop = price - trail_dist
+
+            if pos["stop_loss"] and potential_new_stop > pos["stop_loss"] and price > pos["entry_price"]:
+                pos["stop_loss"] = potential_new_stop
+                db.update_trade_stop_loss(pos["id"], potential_new_stop)
+
             if pos["stop_loss"] and price <= pos["stop_loss"]:
                 closed.append(self.close_trade(pos, price, "stop_loss"))
             elif pos["take_profit"] and price >= pos["take_profit"]:

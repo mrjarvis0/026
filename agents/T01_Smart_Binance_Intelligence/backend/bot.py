@@ -210,6 +210,8 @@ class TradingBot:
 
         # Analyze on CLOSED bars only (the forming candle repaints).
         bars = self._closed_bars(ohlcv)
+        # Calculate DF locally so we can grab the ATR
+        df = indicators.compute_all(bars)
         signal = engine.decide(bars)
         self.last_indicators = signal.details.get("indicators", {})
         self.last_signal = {
@@ -224,7 +226,9 @@ class TradingBot:
         tag = mode.upper()
         try:
             if allowed and signal.action == "buy":
-                opened = await asyncio.to_thread(trader.open_trade, self.symbol, price, signal.reason)
+                # Extract ATR from the computed DataFrame for dynamic risk sizing
+                atr_v = float(df.iloc[-1].get("atr", 0.0)) if "atr" in df.columns else 0.0
+                opened = await asyncio.to_thread(trader.open_trade, self.symbol, price, signal.reason, atr_v)
                 if opened:
                     self.log("trade", f"[{tag}] ENTRY BUY {self.symbol} @ {price:.4f} "
                                       f"qty {opened['quantity']:.6f}")

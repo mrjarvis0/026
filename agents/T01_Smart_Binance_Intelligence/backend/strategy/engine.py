@@ -58,7 +58,6 @@ def decide(ohlcv: list[list]) -> signals.Signal:
     best_signal = evaluations["standard"]
 
     # If aggressive or conservative has a higher confidence for the SAME action, prefer it.
-    # We mainly just want to pick the scenario that gives us the most confident actionable signal.
     actionable_signals = [sig for sig in evaluations.values() if sig.action in ("buy", "sell")]
 
     if actionable_signals:
