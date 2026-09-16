@@ -91,38 +91,10 @@ class SecuritySkill(Skill):
             if address.value in (t.from_address, t.to_address)
         ]
 
-        mixer_interactions = 0
-        dust_transfers = 0
-        for t in addr_transfers:
-            counterparty = (
-                t.to_address if t.from_address == address.value else t.from_address
-            )
-            if counterparty and mixer_labels and mixer_labels.is_labelled(counterparty):
-                mixer_interactions += 1
-            if t.value.raw > 0 and t.value.raw < DUST_THRESHOLD_WEI:
-                dust_transfers += 1
-
-        counterparties: dict[str, int] = {}
-        for t in addr_transfers:
-            cp = (
-                t.to_address if t.from_address == address.value else t.from_address
-            )
-            if cp:
-                counterparties[cp] = counterparties.get(cp, 0) + 1
-
-        top_share = 0.0
-        if counterparties and addr_transfers:
-            top_share = max(counterparties.values()) / len(addr_transfers)
-
-        flags: list[str] = []
-        if mixer_interactions > 0:
-            flags.append(f"{mixer_interactions} interaction(s) with labelled mixer(s)")
-        if dust_transfers > 3:
-            flags.append(f"{dust_transfers} dust-sized transfer(s)")
-        if top_share > 0.8 and len(addr_transfers) > 5:
-            flags.append(
-                f"concentrated counterparty ({top_share:.0%} of transfers to one address)"
-            )
+        mixer_interactions = self._count_mixer_interactions(address.value, addr_transfers, mixer_labels)
+        dust_transfers = self._count_dust_transfers(addr_transfers)
+        top_share = self._calculate_top_counterparty_share(address.value, addr_transfers)
+        flags = self._generate_flags(mixer_interactions, dust_transfers, top_share, len(addr_transfers))
 
         data: dict[str, Any] = {
             "chain": request.chain,
@@ -160,6 +132,45 @@ class SecuritySkill(Skill):
             else f"no suspicious patterns in {len(addr_transfers)} transfer(s)"
         )
         return self.answer(coverage, data, subject, reason)
+
+    def _count_mixer_interactions(self, address_value: str, addr_transfers: list, mixer_labels: Any) -> int:
+        mixer_interactions = 0
+        for t in addr_transfers:
+            counterparty = t.to_address if t.from_address == address_value else t.from_address
+            if counterparty and mixer_labels and mixer_labels.is_labelled(counterparty):
+                mixer_interactions += 1
+        return mixer_interactions
+
+    def _count_dust_transfers(self, addr_transfers: list) -> int:
+        dust_transfers = 0
+        for t in addr_transfers:
+            if t.value.raw > 0 and t.value.raw < DUST_THRESHOLD_WEI:
+                dust_transfers += 1
+        return dust_transfers
+
+    def _calculate_top_counterparty_share(self, address_value: str, addr_transfers: list) -> float:
+        counterparties: dict[str, int] = {}
+        for t in addr_transfers:
+            cp = t.to_address if t.from_address == address_value else t.from_address
+            if cp:
+                counterparties[cp] = counterparties.get(cp, 0) + 1
+
+        top_share = 0.0
+        if counterparties and addr_transfers:
+            top_share = max(counterparties.values()) / len(addr_transfers)
+        return top_share
+
+    def _generate_flags(self, mixer_interactions: int, dust_transfers: int, top_share: float, num_transfers: int) -> list[str]:
+        flags: list[str] = []
+        if mixer_interactions > 0:
+            flags.append(f"{mixer_interactions} interaction(s) with labelled mixer(s)")
+        if dust_transfers > 3:
+            flags.append(f"{dust_transfers} dust-sized transfer(s)")
+        if top_share > 0.8 and num_transfers > 5:
+            flags.append(
+                f"concentrated counterparty ({top_share:.0%} of transfers to one address)"
+            )
+        return flags
 
 
 __all__ = ["SecuritySkill"]
