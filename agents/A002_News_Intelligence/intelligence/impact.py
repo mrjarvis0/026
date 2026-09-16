@@ -19,8 +19,11 @@ Purpose:
 
 from __future__ import annotations
 
+import json
 import math
 import statistics
+import urllib.error
+import urllib.request
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
@@ -261,7 +264,7 @@ class OptionsDataProvider:
     
     def __init__(self, api_key: str | None = None):
         self.api_key = api_key
-        self.enabled = api_key is not None
+        self.enabled = True  # Deribit public API does not require an API key
     
     def get_implied_volatility(self, symbol: str, expiry_days: int = 7) -> float | None:
         """Get ATM implied volatility for symbol.
@@ -270,11 +273,84 @@ class OptionsDataProvider:
         """
         if not self.enabled:
             return None
-        # TODO: Implement actual options chain fetching
-        # - Deribit: /get_instruments + /get_order_book for ATM option
-        # - Binance Options: /eapi/v1/mark
-        # - Parse ATM IV from options chain
-        return None
+
+        # Normalize symbol to base currency if a pair is passed (e.g., BTCUSDT -> BTC)
+        currency = symbol.upper()
+        if currency.endswith("USDT"):
+            currency = currency[:-4]
+        elif currency.endswith("USD"):
+            currency = currency[:-3]
+        elif "-" in currency:
+            currency = currency.split("-")[0]
+
+        url = f"https://www.deribit.com/api/v2/public/get_book_summary_by_currency?currency={currency}&kind=option"
+        req = urllib.request.Request(url)
+        try:
+            with urllib.request.urlopen(req, timeout=10) as response:
+                data = json.loads(response.read().decode())
+        except (urllib.error.URLError, json.JSONDecodeError):
+            return None
+
+        options = data.get("result", [])
+        if not options:
+            return None
+
+        now = datetime.now(UTC)
+        parsed_options = []
+        for opt in options:
+            parts = opt.get("instrument_name", "").split("-")
+            if len(parts) != 4:
+                continue
+            _, date_str, strike_str, type_str = parts
+
+            iv = opt.get("mark_iv")
+            if iv is None or iv <= 0:
+                continue
+
+            underlying = opt.get("underlying_price") or opt.get("estimated_delivery_price")
+            if not underlying:
+                continue
+
+            try:
+                # Deribit expiry format e.g. 27SEP24
+                # strptime parses it correctly as naive, so we make it UTC
+                expiry_date = datetime.strptime(date_str, "%d%b%y").replace(tzinfo=UTC)
+                strike = float(strike_str)
+            except (ValueError, TypeError):
+                continue
+
+            days_to_expiry = (expiry_date - now).total_seconds() / (24 * 3600)
+
+            parsed_options.append({
+                "instrument": opt["instrument_name"],
+                "expiry_date": expiry_date,
+                "days_to_expiry": days_to_expiry,
+                "strike": strike,
+                "type": type_str,
+                "iv": iv,
+                "underlying": underlying,
+            })
+
+        if not parsed_options:
+            return None
+
+        # Find closest expiry
+        parsed_options.sort(key=lambda x: abs(x["days_to_expiry"] - expiry_days))
+        closest_expiry = parsed_options[0]["expiry_date"]
+
+        expiry_options = [o for o in parsed_options if o["expiry_date"] == closest_expiry]
+
+        # Find ATM by closest strike
+        expiry_options.sort(key=lambda x: abs(x["strike"] - x["underlying"]))
+        closest_strike = expiry_options[0]["strike"]
+
+        atm_options = [o for o in expiry_options if o["strike"] == closest_strike]
+
+        if not atm_options:
+            return None
+
+        avg_iv_pct = sum(o["iv"] for o in atm_options) / len(atm_options)
+        return avg_iv_pct / 100.0
     
     def get_iv_term_structure(self, symbol: str) -> dict[int, float] | None:
         """Get IV term structure (days to expiry -> IV)."""
@@ -381,7 +457,7 @@ def compute_measured_impact(
     options_provider = get_options_provider()
     iv = None
     if options_provider.enabled:
-        symbol = candles[0]["symbol"] if candles else None
+        symbol = candles[0].get("symbol") if candles else None
         if symbol:
             iv = options_provider.get_implied_volatility(symbol)
     
