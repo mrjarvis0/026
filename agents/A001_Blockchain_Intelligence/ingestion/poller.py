@@ -247,38 +247,8 @@ class BlockPoller:
 
     # -- block handling ---------------------------------------------------
 
-    def _process_height(self, height: int) -> PollResult:
-        """Fetch one height and classify what it means for the recorded chain."""
-        read = self._sensor.block(height, include_transactions=self._include_transactions)
-
-        if not read.determined:
-            self.stats.undetermined += 1
-            return PollResult(
-                PollStatus.UNDETERMINED,
-                self._chain,
-                height=height,
-                reason=read.reason or "block undetermined",
-            )
-
-        # Determined with no record: the height is not yet available at this
-        # provider even though the head implied it. A wait, not a failure.
-        if read.record is None:
-            return PollResult(
-                PollStatus.NOT_YET,
-                self._chain,
-                height=height,
-                reason=read.reason or f"block {height} not present",
-            )
-
-        record = read.record
-        try:
-            ref = block_ref_from_record(record)
-        except LinkageError as exc:
-            self.stats.malformed += 1
-            return PollResult(
-                PollStatus.MALFORMED, self._chain, height=height, reason=str(exc)
-            )
-
+    def _verify_block(self, height: int, ref: BlockRef, record: RawRecord) -> PollResult | None:
+        """Observe the block and check for duplicates or gaps."""
         observation = self._tracker.observe(ref)
 
         if observation.observation is Observation.REORG:
@@ -310,6 +280,10 @@ class BlockPoller:
                 PollStatus.DUPLICATE, self._chain, height=height, record=record
             )
 
+        return None
+
+    def _queue_and_advance(self, height: int, ref: BlockRef, record: RawRecord) -> PollResult:
+        """Handle log fetching, queuing the block and logs, and advancing the checkpoint."""
         # Logs are *read* before the block is queued and *queued* after it, and
         # both halves of that are load-bearing.
         #
@@ -371,6 +345,44 @@ class BlockPoller:
         return PollResult(
             PollStatus.ADVANCED, self._chain, height=height, record=record
         )
+
+    def _process_height(self, height: int) -> PollResult:
+        """Fetch one height and classify what it means for the recorded chain."""
+        read = self._sensor.block(height, include_transactions=self._include_transactions)
+
+        if not read.determined:
+            self.stats.undetermined += 1
+            return PollResult(
+                PollStatus.UNDETERMINED,
+                self._chain,
+                height=height,
+                reason=read.reason or "block undetermined",
+            )
+
+        # Determined with no record: the height is not yet available at this
+        # provider even though the head implied it. A wait, not a failure.
+        if read.record is None:
+            return PollResult(
+                PollStatus.NOT_YET,
+                self._chain,
+                height=height,
+                reason=read.reason or f"block {height} not present",
+            )
+
+        record = read.record
+        try:
+            ref = block_ref_from_record(record)
+        except LinkageError as exc:
+            self.stats.malformed += 1
+            return PollResult(
+                PollStatus.MALFORMED, self._chain, height=height, reason=str(exc)
+            )
+
+        early_result = self._verify_block(height, ref, record)
+        if early_result is not None:
+            return early_result
+
+        return self._queue_and_advance(height, ref, record)
 
     def _read_logs(self, height: int) -> RawRecord | None:
         """
