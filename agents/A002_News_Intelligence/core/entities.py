@@ -25,14 +25,18 @@ _SYMBOL_TAG_RE = re.compile(r"[$\u20bf#]\s*([A-Za-z0-9]{2,10})")
 _PAIR_RE = re.compile(r"\b([A-Z]{3})\s*/\s*([A-Z]{3})\b")
 _TICKER_RE = re.compile(r"(?<![A-Za-z])[A-Z]{2,5}(?![A-Za-z])")
 
+_ALIAS_PATTERNS = [
+    (name, re.compile(rf"(?<![a-z0-9]){re.escape(name)}(?![a-z0-9])"))
+    for name in sorted(NAME_ALIASES, key=len, reverse=True)
+]
+
 
 def _find_aliases(text: str) -> list[Entity]:
     """Match known company/crypto names to symbols (case-insensitive, longest-first)."""
 
     found: dict[str, Entity] = {}
     lowered = text.lower()
-    for name in sorted(NAME_ALIASES, key=len, reverse=True):
-        pattern = re.compile(rf"(?<![a-z0-9]){re.escape(name)}(?![a-z0-9])")
+    for name, pattern in _ALIAS_PATTERNS:
         for match in pattern.finditer(lowered):
             symbol = NAME_ALIASES[name]
             found.setdefault(
