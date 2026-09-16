@@ -58,7 +58,7 @@ class PaperEngine:
 
         qty = risk.position_size(self.balance, price, mode=MODE,
                                  open_count=len(self.open_positions()))
-        cost = qty * price
+        cost = qty * price * (1 + config.PAPER_FEE_PCT)
         if qty <= 0 or cost > self.balance:
             return None
 
@@ -85,10 +85,10 @@ class PaperEngine:
     def close_trade(self, position: dict, price: float, reason: str = "") -> dict:
         qty = position["quantity"]
         entry = position["entry_price"]
-        proceeds = qty * price
-        cost = qty * entry
+        proceeds = (qty * price) * (1 - config.PAPER_FEE_PCT)
+        cost = (qty * entry) * (1 + config.PAPER_FEE_PCT)
         pnl = proceeds - cost
-        pnl_pct = (price - entry) / entry * 100.0 if entry else 0.0
+        pnl_pct = (proceeds - cost) / cost * 100.0 if cost else 0.0
 
         self.balance += proceeds
         self._save_balance()

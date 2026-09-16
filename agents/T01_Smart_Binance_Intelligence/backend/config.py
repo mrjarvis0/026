@@ -36,6 +36,7 @@ BINANCE_TESTNET = _get_bool("BINANCE_TESTNET", True)
 
 # --- Paper trading ---
 PAPER_START_BALANCE = _get_float("PAPER_START_BALANCE", 1000.0)
+PAPER_FEE_PCT = _get_float("PAPER_FEE_PCT", 0.001)
 
 # --- Accuracy gate ---
 ACCURACY_UNLOCK_THRESHOLD = _get_float("ACCURACY_UNLOCK_THRESHOLD", 70.0)
