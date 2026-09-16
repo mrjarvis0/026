@@ -301,15 +301,20 @@ class ExternalServiceHealthCheck(HealthCheck):
     
     async def _check(self) -> dict:
         import urllib.request
-        try:
-            req = urllib.request.Request(self.url, headers={"User-Agent": "A002-HealthCheck"})
-            with urllib.request.urlopen(req, timeout=self.timeout) as resp:
-                if 200 <= resp.status < 300:
-                    return {"status": "healthy", "message": f"HTTP {resp.status}"}
-                else:
-                    return {"status": "degraded", "message": f"HTTP {resp.status}"}
-        except Exception as e:
-            return {"status": "unhealthy", "message": str(e)}
+        import asyncio
+
+        def _sync_check():
+            try:
+                req = urllib.request.Request(self.url, headers={"User-Agent": "A002-HealthCheck"})
+                with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+                    if 200 <= resp.status < 300:
+                        return {"status": "healthy", "message": f"HTTP {resp.status}"}
+                    else:
+                        return {"status": "degraded", "message": f"HTTP {resp.status}"}
+            except Exception as e:
+                return {"status": "unhealthy", "message": str(e)}
+
+        return await asyncio.to_thread(_sync_check)
 
 
 class HealthCheckRegistry:
