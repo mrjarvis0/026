@@ -102,64 +102,73 @@ class TokenFlowSkill(Skill):
                 "no transfers in the requested window",
             )
 
-        address = request.address
         # Integer arithmetic throughout: these values exceed a float's exact
         # range, and a total that is nearly right is worse than none.
-        gross_in = 0
-        gross_out = 0
-        largest = 0
-        total = 0
-        counted = 0
-
-        for transfer in transfers:
-            raw = transfer.value.raw
-            if address is None:
-                total += raw
-                largest = max(largest, raw)
-                counted += 1
-                continue
-
-            if transfer.from_address == address.value:
-                gross_out += raw
-            elif transfer.to_address == address.value:
-                gross_in += raw
-            else:
-                continue
-
-            total += raw
-            largest = max(largest, raw)
-            counted += 1
+        gross_in, gross_out, largest, total, counted = self._aggregate_native_flow(
+            transfers, request.address
+        )
 
         if counted == 0:
             # No native movement is not the same as no movement. On L2 an
             # address that only ever moves tokens is the normal case, and
             # declining here would report it as inactive.
-            token_only = self._token_flows(analytics, address)
-            reason = (
-                f"no native movement; {len(token_only)} token contract(s) touched"
-                if token_only
-                else "address does not appear in the stored transfers"
-            )
-            return self.answer(
-                coverage,
-                {
-                    "chain": request.chain,
-                    "address": address.value if address else None,
-                    "transfer_count": 0,
-                    "scope": "native_and_tokens",
-                    "token_flows": token_only,
-                    "tokens_touched": len(token_only),
-                    "coverage_limitation": coverage.limitation,
-                },
-                {
-                    "flow_determinable": bool(token_only),
-                    "token_flows": token_only,
-                },
-                reason,
-            )
+            token_only = self._token_flows(analytics, request.address)
+            return self._handle_no_native_movement(request, coverage, token_only)
 
+        token_flows = self._token_flows(analytics, request.address)
+        return self._format_flow_result(
+            request,
+            coverage,
+            gross_in,
+            gross_out,
+            largest,
+            total,
+            counted,
+            token_flows,
+        )
+
+    def _handle_no_native_movement(
+        self, request: SkillRequest, coverage: Any, token_only: list[dict[str, Any]]
+    ) -> SkillResult:
+        """Handles the case where there are no native transfers."""
+        address = request.address
+        reason = (
+            f"no native movement; {len(token_only)} token contract(s) touched"
+            if token_only
+            else "address does not appear in the stored transfers"
+        )
+        return self.answer(
+            coverage,
+            {
+                "chain": request.chain,
+                "address": address.value if address else None,
+                "transfer_count": 0,
+                "scope": "native_and_tokens",
+                "token_flows": token_only,
+                "tokens_touched": len(token_only),
+                "coverage_limitation": coverage.limitation,
+            },
+            {
+                "flow_determinable": bool(token_only),
+                "token_flows": token_only,
+            },
+            reason,
+        )
+
+    def _format_flow_result(
+        self,
+        request: SkillRequest,
+        coverage: Any,
+        gross_in: int,
+        gross_out: int,
+        largest: int,
+        total: int,
+        counted: int,
+        token_flows: list[dict[str, Any]],
+    ) -> SkillResult:
+        """Constructs the flow SkillResult from aggregated inputs."""
+        address = request.address
         concentration = largest / total if total else 0.0
-        token_flows = self._token_flows(analytics, address)
 
         data: dict[str, Any] = {
             "chain": request.chain,
@@ -212,6 +221,38 @@ class TokenFlowSkill(Skill):
             subject,
             f"{counted} transfer(s), net {data['net_direction']}",
         )
+
+    @staticmethod
+    def _aggregate_native_flow(transfers: list[Any], address: Any) -> tuple[int, int, int, int, int]:
+        """
+        Iterates over native transfers to compute totals.
+        """
+        gross_in = 0
+        gross_out = 0
+        largest = 0
+        total = 0
+        counted = 0
+
+        for transfer in transfers:
+            raw = transfer.value.raw
+            if address is None:
+                total += raw
+                largest = max(largest, raw)
+                counted += 1
+                continue
+
+            if transfer.from_address == address.value:
+                gross_out += raw
+            elif transfer.to_address == address.value:
+                gross_in += raw
+            else:
+                continue
+
+            total += raw
+            largest = max(largest, raw)
+            counted += 1
+
+        return gross_in, gross_out, largest, total, counted
 
     @staticmethod
     def _token_flows(
