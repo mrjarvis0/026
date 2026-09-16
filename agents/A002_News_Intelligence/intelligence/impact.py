@@ -19,8 +19,11 @@ Purpose:
 
 from __future__ import annotations
 
+import json
 import math
 import statistics
+import time
+import urllib.request
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
@@ -257,11 +260,12 @@ def amihud_illiquidity(candles: list[dict], window_hours: int = 24) -> float | N
 
 
 class OptionsDataProvider:
-    """Stub for options data provider (Deribit, Binance Options, etc.)."""
+    """Options data provider (Deribit)."""
     
     def __init__(self, api_key: str | None = None):
         self.api_key = api_key
-        self.enabled = api_key is not None
+        # Deribit public API doesn't strictly need a key for public data, so we can enable it
+        self.enabled = True
     
     def get_implied_volatility(self, symbol: str, expiry_days: int = 7) -> float | None:
         """Get ATM implied volatility for symbol.
@@ -270,10 +274,66 @@ class OptionsDataProvider:
         """
         if not self.enabled:
             return None
-        # TODO: Implement actual options chain fetching
-        # - Deribit: /get_instruments + /get_order_book for ATM option
-        # - Binance Options: /eapi/v1/mark
-        # - Parse ATM IV from options chain
+
+        try:
+            currency = symbol.upper()
+            index_name = f"{symbol.lower()}_usd"
+
+            # 1. Get index price
+            req_idx = urllib.request.Request(
+                f"https://www.deribit.com/api/v2/public/get_index_price?index_name={index_name}",
+                headers={'User-Agent': 'Mozilla/5.0'}
+            )
+            with urllib.request.urlopen(req_idx, timeout=5) as resp:
+                data = json.loads(resp.read())
+                index_price = data['result']['index_price']
+
+            # 2. Get instruments
+            req_inst = urllib.request.Request(
+                f"https://www.deribit.com/api/v2/public/get_instruments?currency={currency}&kind=option&expired=false",
+                headers={'User-Agent': 'Mozilla/5.0'}
+            )
+            with urllib.request.urlopen(req_inst, timeout=5) as resp:
+                data = json.loads(resp.read())
+                instruments = data.get('result', [])
+
+            if not instruments:
+                return None
+
+            # 3. Find target expiry
+            now_ms = time.time() * 1000
+            target_expiry_ms = now_ms + (expiry_days * 24 * 60 * 60 * 1000)
+
+            expirations = list({inst['expiration_timestamp'] for inst in instruments})
+            if not expirations:
+                return None
+
+            closest_expiry = min(expirations, key=lambda x: abs(x - target_expiry_ms))
+
+            # 4. Find closest strike for that expiry
+            expiry_insts = [inst for inst in instruments if inst['expiration_timestamp'] == closest_expiry]
+            if not expiry_insts:
+                return None
+
+            closest_inst = min(expiry_insts, key=lambda x: abs(x['strike'] - index_price))
+            instrument_name = closest_inst['instrument_name']
+
+            # 5. Get order book for ATM option to get mark_iv
+            req_book = urllib.request.Request(
+                f"https://www.deribit.com/api/v2/public/get_order_book?instrument_name={instrument_name}",
+                headers={'User-Agent': 'Mozilla/5.0'}
+            )
+            with urllib.request.urlopen(req_book, timeout=5) as resp:
+                data = json.loads(resp.read())
+                mark_iv = data['result'].get('mark_iv')
+
+            if mark_iv is not None:
+                return mark_iv / 100.0
+
+        except Exception:
+            # Fallback to returning None on API errors, timeouts, etc
+            pass
+
         return None
     
     def get_iv_term_structure(self, symbol: str) -> dict[int, float] | None:
@@ -380,8 +440,8 @@ def compute_measured_impact(
     # Options IV (if available)
     options_provider = get_options_provider()
     iv = None
-    if options_provider.enabled:
-        symbol = candles[0]["symbol"] if candles else None
+    if options_provider.enabled and candles:
+        symbol = candles[0].get("symbol")
         if symbol:
             iv = options_provider.get_implied_volatility(symbol)
     
