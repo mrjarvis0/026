@@ -30,7 +30,7 @@ from agents.A002_News_Intelligence.intelligence.impact import (
     severity_label,
 )
 from agents.A002_News_Intelligence.intelligence.narrative import Narrative
-from agents.A002_News_Intelligence.intelligence.predict import predict_asset
+from agents.A002_News_Intelligence.intelligence.predict import predict_asset, _assess_risk_factors
 
 PASS = 0
 FAIL = 0
@@ -205,10 +205,53 @@ def test_prediction() -> None:
     print()
 
 
+def test_assess_risk_factors() -> None:
+    print("assess risk factors:")
+    now = datetime.now(UTC)
+
+    # Base mock narrative
+    n = narrative_with("Some claim", now, status="confirmed_true", confidence=0.8, coord=10.0)
+
+    # 1. Base case: perfect conditions
+    risks = _assess_risk_factors(n, {}, {"used": 5, "similarity": 0.8}, {}, {})
+    check("standard risk only", risks == ["standard market risk"])
+
+    # 2. Narrative risks
+    n.epistemic_status = "confirmed_false"
+    check("narrative false risk", "narrative likely false — impact may reverse" in _assess_risk_factors(n, {}, {"used": 5, "similarity": 0.8}, {}, {}))
+    n.epistemic_status = "disputed"
+    check("narrative disputed risk", "conflicting sources — high uncertainty" in _assess_risk_factors(n, {}, {"used": 5, "similarity": 0.8}, {}, {}))
+    n.epistemic_status = "unconfirmed"
+    check("narrative unconfirmed risk", "unverified claim — treat with caution" in _assess_risk_factors(n, {}, {"used": 5, "similarity": 0.8}, {}, {}))
+    n.epistemic_status = "confirmed_true" # reset
+
+    # 3. Market risks
+    check("multiple jumps risk", "multiple price jumps detected — unstable" in _assess_risk_factors(n, {"jump_count": 3}, {"used": 5, "similarity": 0.8}, {}, {}))
+    check("high tail risk", "high tail risk (VaR95 < -3%)" in _assess_risk_factors(n, {"var_95_pct": -4.0}, {"used": 5, "similarity": 0.8}, {}, {}))
+    check("max drawdown risk", "recent max drawdown 15.0%" in _assess_risk_factors(n, {}, {"used": 5, "similarity": 0.8}, {"max_drawdown_pct": 15.0}, {}))
+    check("recent jumps risk", "1 price jump(s) in recent history" in _assess_risk_factors(n, {}, {"used": 5, "similarity": 0.8}, {}, {"jump_count": 1}))
+
+    # 4. Historical risks
+    check("no analog risk", "no historical analog — pure speculation" in _assess_risk_factors(n, {}, None, {}, {}))
+    check("small sample risk", "historical sample is small" in _assess_risk_factors(n, {}, {"used": 2, "similarity": 0.8}, {}, {}))
+    check("poor analog risk", "low historical similarity — analog quality poor" in _assess_risk_factors(n, {}, {"used": 5, "similarity": 0.3}, {}, {}))
+
+    # 5. Verification / Coordination risks
+    n.confidence = 0.2
+    check("low confidence risk", "low verification confidence" in _assess_risk_factors(n, {}, {"used": 5, "similarity": 0.8}, {}, {}))
+    n.confidence = 0.8 # reset
+
+    n.coordination_score = 70.0
+    check("manipulation risk", "coordinated amplification detected — manipulation risk" in _assess_risk_factors(n, {}, {"used": 5, "similarity": 0.8}, {}, {}))
+
+    print()
+
+
 if __name__ == "__main__":
     test_categories()
     test_impact_measurement()
     test_history()
     test_prediction()
+    test_assess_risk_factors()
     print(f"RESULT: {PASS} passed, {FAIL} failed")
     sys.exit(1 if FAIL else 0)
