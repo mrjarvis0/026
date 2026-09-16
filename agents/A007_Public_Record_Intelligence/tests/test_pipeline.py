@@ -8,10 +8,10 @@ from pathlib import Path
 # Add project root to sys.path to allow imports
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
 
-from agents.A007_Public_Record_Intelligence.store.db import init_db, store_trade, get_trades_by_ticker
-from agents.A007_Public_Record_Intelligence.ingestion.mcp_client import fetch_congress_trades
-from agents.A007_Public_Record_Intelligence.normalization.cleaner import normalize_trade
-from agents.A007_Public_Record_Intelligence.intelligence.cluster import detect_congress_clusters
+from agents.A007_Public_Record_Intelligence.store.db import init_db, store_trade, get_trades_by_ticker, store_insider_trade, get_insider_trades_by_ticker
+from agents.A007_Public_Record_Intelligence.ingestion.mcp_client import fetch_congress_trades, fetch_insider_trades
+from agents.A007_Public_Record_Intelligence.normalization.cleaner import normalize_trade, normalize_insider_trade
+from agents.A007_Public_Record_Intelligence.intelligence.cluster import detect_congress_clusters, detect_congress_insider_correlation
 
 class TestA007Pipeline(unittest.TestCase):
     def setUp(self):
@@ -46,9 +46,7 @@ class TestA007Pipeline(unittest.TestCase):
         db_trades = get_trades_by_ticker(self.conn, "NVDA")
         self.assertEqual(len(db_trades), 2)
 
-        # 4. Intelligence (Clustering)
-        # We need to fetch from DB and map to dict for the detector
-        # Columns: id, politician, ticker, transaction_date, filing_date, transaction_type, amount_min, amount_max, raw_data, source_id
+        # 4. Intelligence (Clustering Congress Trades)
         db_trades_dicts = []
         for row in db_trades:
             db_trades_dicts.append({
@@ -68,6 +66,43 @@ class TestA007Pipeline(unittest.TestCase):
         self.assertEqual(cluster["trade_count"], 2)
         self.assertIn("Nancy Pelosi", cluster["politicians"])
         self.assertIn("Tommy Tuberville", cluster["politicians"])
+
+    def test_insider_pipeline_and_correlation(self):
+        # 1. Ingestion
+        raw_congress = fetch_congress_trades(mock=True)
+        raw_insider = fetch_insider_trades(mock=True)
+
+        # 2. Normalization & Store
+        for rt in raw_congress:
+            nt = normalize_trade(rt)
+            store_trade(self.conn, nt)
+
+        for rt in raw_insider:
+            nit = normalize_insider_trade(rt)
+            store_insider_trade(self.conn, nit)
+
+        # Verify store
+        insider_db = get_insider_trades_by_ticker(self.conn, "NVDA")
+        self.assertEqual(len(insider_db), 2)
+
+        congress_db = get_trades_by_ticker(self.conn, "NVDA")
+
+        c_dicts = [{"id": r[0], "politician": r[1], "ticker": r[2], "transaction_date": r[3], "transaction_type": r[5]} for r in congress_db]
+        i_dicts = [{"id": r[0], "insider_name": r[1], "ticker": r[3], "transaction_date": r[4], "transaction_type": r[6]} for r in insider_db]
+
+        # 3. Cross-Domain Intelligence (Correlation)
+        correlations = detect_congress_insider_correlation(c_dicts, i_dicts, window_days=7)
+
+        self.assertEqual(len(correlations), 1)
+        corr = correlations[0]
+        self.assertEqual(corr["detector_id"], "DET-PUBREC-CORRELATION-01")
+        self.assertEqual(corr["ticker"], "NVDA")
+        self.assertEqual(corr["transaction_type"], "Purchase")
+        # Mark Stevens bought on 2026-09-01, Pelosi bought on 2026-09-01, Tuberville bought on 2026-09-02
+        self.assertEqual(corr["insider_name"], "Stevens Mark A")
+        self.assertIn("Nancy Pelosi", corr["congress_politicians"])
+        self.assertIn("Tommy Tuberville", corr["congress_politicians"])
+        self.assertEqual(len(corr["evidence_ids"]), 3)
 
 if __name__ == '__main__':
     unittest.main()

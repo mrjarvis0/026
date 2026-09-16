@@ -42,3 +42,35 @@ def fetch_congress_trades(mock=False):
         ]
     # We could implement real fetch logic here if needed.
     return []
+
+def fetch_insider_trades(mock=False):
+    if mock:
+        return [
+            {
+                "id": str(uuid.uuid4()),
+                "insider_name": "Huang Jen Hsun",
+                "insider_title": "CEO",
+                "ticker": "NVDA",
+                "transaction_date": "2026-09-02",
+                "filing_date": "2026-09-03",
+                "transaction_type": "Sale",
+                "shares": 10000,
+                "price": 450.50,
+                "value": 4505000,
+                "source": "S028"
+            },
+            {
+                "id": str(uuid.uuid4()),
+                "insider_name": "Stevens Mark A",
+                "insider_title": "Director",
+                "ticker": "NVDA",
+                "transaction_date": "2026-09-01",
+                "filing_date": "2026-09-03",
+                "transaction_type": "Purchase",
+                "shares": 5000,
+                "price": 448.20,
+                "value": 2241000,
+                "source": "S028"
+            }
+        ]
+    return []
