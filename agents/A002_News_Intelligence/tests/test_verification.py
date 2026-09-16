@@ -21,7 +21,10 @@ from agents.A002_News_Intelligence.core.models import Entity, NormalizedItem
 from agents.A002_News_Intelligence.core.storage import Storage
 from agents.A002_News_Intelligence.intelligence.manipulation import coordination_score
 from agents.A002_News_Intelligence.intelligence.narrative import Narrative, NarrativeEngine
+import math
+
 from agents.A002_News_Intelligence.intelligence.verification import (
+    _platt_scale,
     credibility_tier,
     independent_confirmations,
     verify_narrative,
@@ -58,6 +61,24 @@ def make_item(source: str, key: str, title: str, published: datetime, url: str |
     )
     item.entities = [Entity(type="crypto", symbol="BTC", name="Bitcoin", context=None)]
     return item
+
+
+def test_platt_scale() -> None:
+    print("platt_scale:")
+
+    # High confidence verdicts bypass scaling
+    check("high conf (confirmed_true) bypass", _platt_scale(0.8, "confirmed_true") == 0.8)
+    check("high conf (likely_false) low score bypass", _platt_scale(0.2, "likely_false") == 0.2)
+
+    # Low confidence verdicts (raw <= 0.5) scale by 0.7
+    check("low conf (unconfirmed) 0.5", math.isclose(_platt_scale(0.5, "unconfirmed"), 0.35))
+    check("low conf (disputed) 0.3", math.isclose(_platt_scale(0.3, "disputed"), 0.21))
+    check("low conf (unconfirmed) 0.0", math.isclose(_platt_scale(0.0, "unconfirmed"), 0.0))
+
+    # Low confidence verdicts (raw > 0.5) scale smoothly
+    check("low conf (unconfirmed) 0.6", math.isclose(_platt_scale(0.6, "unconfirmed"), 0.40))
+    check("low conf (disputed) 1.0", math.isclose(_platt_scale(1.0, "disputed"), 0.60))
+    print()
 
 
 def test_credibility() -> None:
@@ -223,6 +244,7 @@ def test_engine_integration() -> None:
 
 
 if __name__ == "__main__":
+    test_platt_scale()
     test_credibility()
     test_confirmations()
     test_verdicts()
