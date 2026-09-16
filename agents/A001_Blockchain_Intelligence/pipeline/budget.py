@@ -233,17 +233,7 @@ class CallBudget:
             ceiling=self.ceiling_for(provider, window),
         )
 
-    def check(self, provider: str, *, now: datetime | None = None) -> Verdict:
-        """
-        Whether ``provider`` may be called, and how tight it is.
-
-        Both windows are evaluated and the worse one binds. A provider with a
-        comfortable day and an exhausted month is exhausted.
-        """
-        moment = now or datetime.now(UTC)
-        day = self.allowance(provider, Window.DAY, now=moment)
-        month = self.allowance(provider, Window.MONTH, now=moment)
-
+    def _check_from_allowances(self, provider: str, day: Allowance, month: Allowance) -> Verdict:
         worst = max(
             (day, month),
             key=lambda a: (a.fraction if a.fraction is not None else -1.0),
@@ -275,6 +265,19 @@ class CallBudget:
             day=day,
             month=month,
         )
+
+    def check(self, provider: str, *, now: datetime | None = None) -> Verdict:
+        """
+        Whether ``provider`` may be called, and how tight it is.
+
+        Both windows are evaluated and the worse one binds. A provider with a
+        comfortable day and an exhausted month is exhausted.
+        """
+        moment = now or datetime.now(UTC)
+        day = self.allowance(provider, Window.DAY, now=moment)
+        month = self.allowance(provider, Window.MONTH, now=moment)
+
+        return self._check_from_allowances(provider, day, month)
 
     # -- writing ----------------------------------------------------------
 
@@ -396,17 +399,77 @@ class CallBudget:
     def snapshot(self, *, now: datetime | None = None) -> dict[str, Any]:
         """Every provider with a ledger entry in the current windows."""
         moment = now or datetime.now(UTC)
-        providers = {
-            row["provider"]
-            for row in self._db.connection.execute(
-                "SELECT DISTINCT provider FROM call_ledger WHERE window_start IN (?, ?)",
-                (Window.DAY.key_for(moment), Window.MONTH.key_for(moment)),
+        day_start = Window.DAY.key_for(moment)
+        month_start = Window.MONTH.key_for(moment)
+
+        spent_map: dict[tuple[str, str], int] = {}
+        providers = set()
+        for row in self._db.connection.execute(
+            "SELECT provider, window_kind, spent FROM call_ledger WHERE window_start IN (?, ?)",
+            (day_start, month_start),
+        ):
+            providers.add(row["provider"])
+            spent_map[(row["provider"], row["window_kind"])] = int(row["spent"])
+
+        if not providers:
+            return {}
+
+        obs_map: dict[tuple[str, str], int] = {}
+        providers_list = sorted(providers)
+        # Chunk to avoid hitting SQLite parameter limits (default 999)
+        for i in range(0, len(providers_list), 900):
+            chunk = providers_list[i : i + 900]
+            placeholders = ", ".join("?" for _ in chunk)
+            query = f"""
+                SELECT provider, window_kind, observed_limit
+                FROM (
+                    SELECT provider, window_kind, observed_limit,
+                           ROW_NUMBER() OVER(PARTITION BY provider, window_kind ORDER BY window_start DESC) as rn
+                    FROM call_ledger
+                    WHERE provider IN ({placeholders})
+                      AND observed_limit IS NOT NULL
+                ) WHERE rn = 1
+            """
+            for row in self._db.connection.execute(query, chunk):
+                obs_map[(row["provider"], row["window_kind"])] = int(row["observed_limit"])
+
+        results = {}
+        for provider in providers_list:
+            day_configured = self._ceilings.get(provider, {}).get(Window.DAY)
+            day_observed = obs_map.get((provider, Window.DAY.value))
+            if day_configured is None:
+                day_ceiling = day_observed
+            elif day_observed is None:
+                day_ceiling = day_configured
+            else:
+                day_ceiling = min(day_configured, day_observed)
+
+            month_configured = self._ceilings.get(provider, {}).get(Window.MONTH)
+            month_observed = obs_map.get((provider, Window.MONTH.value))
+            if month_configured is None:
+                month_ceiling = month_observed
+            elif month_observed is None:
+                month_ceiling = month_configured
+            else:
+                month_ceiling = min(month_configured, month_observed)
+
+            day = Allowance(
+                provider=provider,
+                window=Window.DAY,
+                window_start=day_start,
+                spent=spent_map.get((provider, Window.DAY.value), 0),
+                ceiling=day_ceiling,
             )
-        }
-        return {
-            provider: self.check(provider, now=moment).as_dict()
-            for provider in sorted(providers)
-        }
+            month = Allowance(
+                provider=provider,
+                window=Window.MONTH,
+                window_start=month_start,
+                spent=spent_map.get((provider, Window.MONTH.value), 0),
+                ceiling=month_ceiling,
+            )
+            results[provider] = self._check_from_allowances(provider, day, month).as_dict()
+
+        return results
 
     # -- internals --------------------------------------------------------
 
