@@ -30,7 +30,7 @@ from agents.A002_News_Intelligence.intelligence.impact import (
     severity_label,
 )
 from agents.A002_News_Intelligence.intelligence.narrative import Narrative
-from agents.A002_News_Intelligence.intelligence.predict import predict_asset
+from agents.A002_News_Intelligence.intelligence.predict import predict_asset, _direction_of
 
 PASS = 0
 FAIL = 0
@@ -205,10 +205,24 @@ def test_prediction() -> None:
     print()
 
 
+def test_direction_of() -> None:
+    print("direction_of:")
+    check("None is unknown", _direction_of(None, 0.5) == "unknown")
+    check("0.0 is flat", _direction_of(0.0, 0.5) == "flat")
+    check("0.09 is flat", _direction_of(0.09, 0.5) == "flat")
+    check("-0.09 is flat", _direction_of(-0.09, 0.5) == "flat")
+    check("0.11 is up", _direction_of(0.11, 0.5) == "up")
+    check("-0.11 is down", _direction_of(-0.11, 0.5) == "down")
+    check("1.5 is up", _direction_of(1.5, 0.5) == "up")
+    check("-1.5 is down", _direction_of(-1.5, 0.5) == "down")
+    print()
+
+
 if __name__ == "__main__":
     test_categories()
     test_impact_measurement()
     test_history()
     test_prediction()
+    test_direction_of()
     print(f"RESULT: {PASS} passed, {FAIL} failed")
     sys.exit(1 if FAIL else 0)
