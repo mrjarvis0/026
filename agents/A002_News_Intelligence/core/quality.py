@@ -15,11 +15,18 @@ Purpose:
 from __future__ import annotations
 
 import hashlib
+import json
+import logging
+import os
 import random
 import re
+import urllib.parse
+import urllib.request
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from agents.A002_News_Intelligence.core.models import NormalizedItem
@@ -408,22 +415,115 @@ class LanguageDetector:
 
 
 class Translator:
-    """Translation stub (integrate with Google Translate, DeepL, etc.)."""
+    """Translation integration with external APIs (DeepL, Google Translate, LibreTranslate)."""
     
-    def __init__(self, api_key: str | None = None):
-        self.api_key = api_key
-        self.enabled = api_key is not None
+    def __init__(
+        self,
+        api_key: str | None = None,
+        provider: str | None = None,
+        api_url: str | None = None,
+    ):
+        self.api_key = api_key or os.getenv("TRANSLATOR_API_KEY")
+        self.provider = (provider or os.getenv("TRANSLATOR_PROVIDER", "deepl")).lower()
+        self.api_url = api_url or os.getenv("TRANSLATOR_API_URL")
+
+        # LibreTranslate doesn't always require an API key
+        self.enabled = bool(self.api_key) or self.provider == "libretranslate"
     
     def translate(self, text: str, target_lang: str = "en", source_lang: str | None = None) -> str:
         """Translate text to target language."""
-        if not self.enabled:
-            return text  # Return original if no API
-        
-        # TODO: Implement actual translation API
-        # - Google Translate API
-        # - DeepL API
-        # - LibreTranslate
+        if not self.enabled or not text.strip():
+            return text  # Return original if no API or empty text
+
+        try:
+            if self.provider == "deepl":
+                return self._translate_deepl(text, target_lang, source_lang)
+            elif self.provider == "google":
+                return self._translate_google(text, target_lang, source_lang)
+            elif self.provider == "libretranslate":
+                return self._translate_libre(text, target_lang, source_lang)
+            else:
+                logger.warning(f"Unknown translation provider: {self.provider}")
+        except Exception as e:
+            logger.warning(f"Translation failed via {self.provider}: {e}")
+
         return text
+
+    def _translate_deepl(self, text: str, target_lang: str, source_lang: str | None) -> str:
+        url = self.api_url
+        if not url:
+            if self.api_key and self.api_key.endswith(":fx"):
+                url = "https://api-free.deepl.com/v2/translate"
+            else:
+                url = "https://api.deepl.com/v2/translate"
+
+        # DeepL requires specific target language codes (e.g. EN-US or EN-GB instead of just EN)
+        # but also accepts EN depending on context. Defaulting EN to EN-US is safest.
+        target = target_lang.upper()
+        if target == "EN":
+            target = "EN-US"
+        elif target == "PT":
+            target = "PT-PT"
+
+        data = {
+            "text": [text],
+            "target_lang": target
+        }
+        if source_lang:
+            data["source_lang"] = source_lang.upper()
+
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(data).encode("utf-8"),
+            headers={
+                "Authorization": f"DeepL-Auth-Key {self.api_key}",
+                "Content-Type": "application/json"
+            }
+        )
+        with urllib.request.urlopen(req, timeout=10) as response:
+            result = json.loads(response.read().decode("utf-8"))
+            return result["translations"][0]["text"]
+
+    def _translate_google(self, text: str, target_lang: str, source_lang: str | None) -> str:
+        url = self.api_url or "https://translation.googleapis.com/language/translate/v2"
+        params = {
+            "q": text,
+            "target": target_lang,
+            "key": self.api_key
+        }
+        if source_lang:
+            params["source"] = source_lang
+
+        req_data = urllib.parse.urlencode(params).encode("utf-8")
+        req = urllib.request.Request(
+            url,
+            data=req_data,
+            method="POST",
+            headers={"Content-Type": "application/x-www-form-urlencoded"}
+        )
+        with urllib.request.urlopen(req, timeout=10) as response:
+            result = json.loads(response.read().decode("utf-8"))
+            return result["data"]["translations"][0]["translatedText"]
+
+    def _translate_libre(self, text: str, target_lang: str, source_lang: str | None) -> str:
+        url = self.api_url or "https://libretranslate.com/translate"
+        data = {
+            "q": text,
+            "source": source_lang or "auto",
+            "target": target_lang,
+            "format": "text"
+        }
+        if self.api_key:
+            data["api_key"] = self.api_key
+
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(data).encode("utf-8"),
+            headers={"Content-Type": "application/json"}
+        )
+        with urllib.request.urlopen(req, timeout=10) as response:
+            result = json.loads(response.read().decode("utf-8"))
+            return result["translatedText"]
     
     def translate_batch(self, texts: list[str], target_lang: str = "en") -> list[str]:
         return [self.translate(t, target_lang) for t in texts]
