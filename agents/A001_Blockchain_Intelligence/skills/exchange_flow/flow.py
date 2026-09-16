@@ -123,14 +123,38 @@ class ExchangeFlowSkill(Skill):
         )
 
         entities = totals_by_entity(hours)
+        floor = self._floor_of(hours)
+
+        data = self._compile_data(
+            request, labels, source, hours, entities, stats, capped, floor, coverage
+        )
+
+        if stats.attributed == 0:
+            return self._negative_claim(coverage, data, floor)
+
+        return self._positive_claim(coverage, data, stats, hours, entities)
+
+    # -- helpers ----------------------------------------------------------
+
+    def _compile_data(
+        self,
+        request: SkillRequest,
+        labels: Any,
+        source: str,
+        hours: tuple[ExchangeFlowHour, ...],
+        entities: dict[str, Any],
+        stats: FlowStats,
+        capped: bool,
+        floor: Amount | None,
+        coverage: Any,
+    ) -> dict[str, Any]:
         # From the per-transfer counters, never from the hourly rows. A transfer
         # between two exchanges is recorded on both of their hours -- correctly,
         # it is a fact about each -- so summing the rows would report one
         # rebalance as two.
         totals = stats.totals()
-        floor = self._floor_of(hours)
 
-        data: dict[str, Any] = {
+        return {
             "chain": request.chain,
             "labelled_addresses": len(labels),
             "labelled_entities": len(labels.entities()),
@@ -151,36 +175,46 @@ class ExchangeFlowSkill(Skill):
             "bounds": self._bounds(labels, capped, stats, floor),
         }
 
+    def _negative_claim(
+        self, coverage: Any, data: dict[str, Any], floor: Amount | None
+    ) -> SkillResult:
         # The negative claim, and the only place this skill makes one. A window
         # that cannot license it reports the absence as undetermined rather than
         # as zero -- "no exchange deposits" from a four-block window is a
         # statement about storage wearing the clothes of a statement about the
         # chain.
-        if stats.attributed == 0:
-            licensed = (
-                coverage.supports_absence_above(floor)
-                if floor is not None
-                else coverage.supports_absence
-            )
-            data["absence_licensed"] = licensed
-            data["absence_floor"] = str(floor.raw) if floor is not None else None
-            reason = (
-                "no transfer in the stored window touched a labelled exchange "
-                "address"
-                if licensed
-                else "no attributed flow found, and the window cannot license "
-                "an absence"
-            )
-            subject: dict[str, Any] = {"exchange_flow": data} if licensed else {}
-            return SkillResult(
-                skill=self.name,
-                determined=licensed,
-                coverage=coverage,
-                data=data,
-                subject=subject,
-                reason=reason,
-            )
+        licensed = (
+            coverage.supports_absence_above(floor)
+            if floor is not None
+            else coverage.supports_absence
+        )
+        data["absence_licensed"] = licensed
+        data["absence_floor"] = str(floor.raw) if floor is not None else None
+        reason = (
+            "no transfer in the stored window touched a labelled exchange "
+            "address"
+            if licensed
+            else "no attributed flow found, and the window cannot license "
+            "an absence"
+        )
+        subject: dict[str, Any] = {"exchange_flow": data} if licensed else {}
+        return SkillResult(
+            skill=self.name,
+            determined=licensed,
+            coverage=coverage,
+            data=data,
+            subject=subject,
+            reason=reason,
+        )
 
+    def _positive_claim(
+        self,
+        coverage: Any,
+        data: dict[str, Any],
+        stats: FlowStats,
+        hours: tuple[ExchangeFlowHour, ...],
+        entities: dict[str, Any],
+    ) -> SkillResult:
         subject = {
             "exchange_flow": data,
             "exchange_flow_hours": [hour.as_dict() for hour in hours],
@@ -190,8 +224,6 @@ class ExchangeFlowSkill(Skill):
             f"{len(entities)} exchange(s) across {len(hours)} hour(s)"
         )
         return self.answer(coverage, data, subject, reason)
-
-    # -- helpers ----------------------------------------------------------
 
     @staticmethod
     def _floor_of(hours: tuple[ExchangeFlowHour, ...]) -> Amount | None:
