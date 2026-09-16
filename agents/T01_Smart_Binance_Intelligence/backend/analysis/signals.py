@@ -44,6 +44,61 @@ _MAX_SCORE = 6.6
 _MIN_BARS = 30
 
 
+def _evaluate_rsi(rsi_v: float, rsi_buy: float, rsi_sell: float) -> list[tuple[str, float]]:
+    factors = []
+    if rsi_v < 30:
+        factors.append(("rsi_oversold", +2.0))
+    elif rsi_v < rsi_buy:
+        factors.append(("rsi_low", +1.0))
+    elif rsi_v > 70:
+        factors.append(("rsi_overbought", -2.0))
+    elif rsi_v > rsi_sell:
+        factors.append(("rsi_high", -1.0))
+    return factors
+
+
+def _evaluate_macd(macd_hist: float, macd_hist_prev: float, price: float, macd_eps_frac: float) -> list[tuple[str, float]]:
+    factors = []
+    macd_eps = macd_eps_frac * price
+    if macd_hist > macd_eps:
+        factors.append(("macd_pos", +1.0))
+    elif macd_hist < -macd_eps:
+        factors.append(("macd_neg", -1.0))
+
+    if macd_hist > macd_eps and macd_hist_prev <= macd_eps:
+        factors.append(("macd_turn_up", +1.0))
+    elif macd_hist < -macd_eps and macd_hist_prev >= -macd_eps:
+        factors.append(("macd_turn_down", -1.0))
+    return factors
+
+
+def _evaluate_trend(ema50: float, ema200: float, trend_band: float) -> list[tuple[str, float]]:
+    factors = []
+    trend_sep = (ema50 - ema200) / ema200 if ema200 else 0.0
+    if trend_sep > trend_band:
+        factors.append(("trend_up", +0.8))
+    elif trend_sep < -trend_band:
+        factors.append(("trend_down", -0.8))
+    return factors
+
+
+def _evaluate_bollinger(price: float, bb_lower: float, bb_upper: float) -> list[tuple[str, float]]:
+    factors = []
+    if price <= bb_lower:
+        factors.append(("bb_below", +1.2))
+    elif price >= bb_upper:
+        factors.append(("bb_above", -1.2))
+    return factors
+
+
+def _evaluate_volume(vol: float, vol_avg: float, price: float, ema50: float) -> list[tuple[str, float]]:
+    factors = []
+    if vol > vol_avg:
+        factors.append(("vol_up_bull" if price >= ema50 else "vol_up_bear",
+                        +0.6 if price >= ema50 else -0.6))
+    return factors
+
+
 def generate_signal(df: pd.DataFrame, params: dict | None = None) -> Signal:
     p = {
         "rsi_buy": 45.0,
@@ -83,48 +138,19 @@ def generate_signal(df: pd.DataFrame, params: dict | None = None) -> Signal:
     factors: list[tuple[str, float]] = []
 
     # RSI zones
-    if rsi_v < 30:
-        factors.append(("rsi_oversold", +2.0))
-    elif rsi_v < p["rsi_buy"]:
-        factors.append(("rsi_low", +1.0))
-    elif rsi_v > 70:
-        factors.append(("rsi_overbought", -2.0))
-    elif rsi_v > p["rsi_sell"]:
-        factors.append(("rsi_high", -1.0))
+    factors.extend(_evaluate_rsi(rsi_v, p["rsi_buy"], p["rsi_sell"]))
 
-    # MACD position — three-state. Only counts when the histogram is clearly
-    # off zero; within the dead-band (near a crossover) it contributes nothing,
-    # so a flat tape no longer forces a side every single bar.
-    macd_eps = p["macd_eps"] * price
-    if macd_hist > macd_eps:
-        factors.append(("macd_pos", +1.0))
-    elif macd_hist < -macd_eps:
-        factors.append(("macd_neg", -1.0))
-    # momentum turn: a fresh cross OUT of the dead-band (a real shift), not a
-    # hairline wiggle across zero in a flat tape.
-    if macd_hist > macd_eps and macd_hist_prev <= macd_eps:
-        factors.append(("macd_turn_up", +1.0))
-    elif macd_hist < -macd_eps and macd_hist_prev >= -macd_eps:
-        factors.append(("macd_turn_down", -1.0))
+    # MACD position and turn
+    factors.extend(_evaluate_macd(macd_hist, macd_hist_prev, price, p["macd_eps"]))
 
-    # Trend — three-state. Only when EMA50/EMA200 are meaningfully separated;
-    # when they are coiled together (a range) trend is neutral (0), not ±0.8.
-    trend_sep = (ema50 - ema200) / ema200 if ema200 else 0.0
-    if trend_sep > p["trend_band"]:
-        factors.append(("trend_up", +0.8))
-    elif trend_sep < -p["trend_band"]:
-        factors.append(("trend_down", -0.8))
+    # Trend
+    factors.extend(_evaluate_trend(ema50, ema200, p["trend_band"]))
 
     # Bollinger mean-reversion
-    if price <= bb_lower:
-        factors.append(("bb_below", +1.2))
-    elif price >= bb_upper:
-        factors.append(("bb_above", -1.2))
+    factors.extend(_evaluate_bollinger(price, bb_lower, bb_upper))
 
-    # Volume confirmation nudges in the direction of the candle
-    if vol > vol_avg:
-        factors.append(("vol_up_bull" if price >= ema50 else "vol_up_bear",
-                        +0.6 if price >= ema50 else -0.6))
+    # Volume confirmation
+    factors.extend(_evaluate_volume(vol, vol_avg, price, ema50))
 
     bull = sum(s for _, s in factors if s > 0)
     bear = -sum(s for _, s in factors if s < 0)
