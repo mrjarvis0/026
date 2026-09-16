@@ -35,7 +35,10 @@ invariants:
   reports_deviation_only: true
 
 evidence:
-  detectors: []               # none implemented — scaffold only, cannot alert
+  detectors:
+    - id: DET-PUBREC-CLUSTER-01
+      maturity: implemented  # implemented → may NOT alert until validated
+      ceiling: 0.60
   coverage_required_for_absence: true
 
 charter: |

@@ -43,11 +43,11 @@ agents:
     manifest: agents/A007_Public_Record_Intelligence/agent.yaml
     name: "Public-Record Intelligence"
     domain: "Government/insider records: Congress trades, insider filings, 13F, lobbying, campaign finance, patents, clinical trials, FDA, hearings"
-    status: scaffold
+    status: substantial
     trust: 1
-    enabled: false                # scaffold only — not a routable fleet member yet
+    enabled: true
     kernel_wired: false
-    runtime_verified: false
+    runtime_verified: true
     origin: "Proposed 2026-09-15 — LuxAlgo MCP source research (sources/mcp.md S119); see docs/manual/06-agents.md §6"
 
 # Reserved / planned fleet members (AGENTS.md §3) — not yet built:
