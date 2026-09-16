@@ -269,6 +269,76 @@ class DockerAdapter(BaseAdapter):
 
     # -- unified execution -------------------------------------------------- #
 
+    def _execute_pull(self, request: AdapterRequest, params: Dict[str, Any], action: str) -> AdapterResponse:
+        data = self.pull_image(params.get("image"), tag=params.get("tag", "latest"))
+        return self.normalize_response(
+            True, data=data, method=action, request_id=request.request_id
+        )
+
+    def _execute_run(self, request: AdapterRequest, params: Dict[str, Any], action: str) -> AdapterResponse:
+        image = params.get("image")
+        if image is None:
+            raise AdapterValidationError(
+                "params['image'] is required to run", transport=self.transport
+            )
+        created = self.create(
+            image,
+            name=params.get("name"),
+            command=params.get("command"),
+            env=params.get("env"),
+            memory=params.get("memory"),
+            nano_cpus=params.get("nano_cpus"),
+            network=params.get("network"),
+        )
+        cid = created.get("Id")
+        if cid is None:
+            raise AdapterExecutionError(
+                f"docker create returned no container id: {created}",
+                transport=self.transport,
+            )
+        self.start(cid)
+        wait_result = self.wait(
+            cid, timeout=float(params.get("timeout") or request.timeout or 60.0)
+        )
+        output_log = self.logs(cid, tail=params.get("tail", 100))
+        if params.get("remove", True):
+            self.remove(cid)
+        data = {"container_id": cid, **wait_result, "logs": output_log}
+        return self.normalize_response(
+            True, data=data, method="run", request_id=request.request_id
+        )
+
+    def _execute_start(self, request: AdapterRequest, params: Dict[str, Any], action: str) -> AdapterResponse:
+        self.start(params["container_id"])
+        return self.normalize_response(True, data=None, method=action)
+
+    def _execute_stop(self, request: AdapterRequest, params: Dict[str, Any], action: str) -> AdapterResponse:
+        self.stop(params["container_id"], timeout=params.get("timeout"))
+        return self.normalize_response(True, data=None, method=action)
+
+    def _execute_remove(self, request: AdapterRequest, params: Dict[str, Any], action: str) -> AdapterResponse:
+        self.remove(params["container_id"], force=params.get("force", True))
+        return self.normalize_response(True, data=None, method=action)
+
+    def _execute_wait(self, request: AdapterRequest, params: Dict[str, Any], action: str) -> AdapterResponse:
+        return self.normalize_response(
+            True, data=self.wait(params["container_id"]), method=action
+        )
+
+    def _execute_logs(self, request: AdapterRequest, params: Dict[str, Any], action: str) -> AdapterResponse:
+        return self.normalize_response(
+            True,
+            data=self.logs(
+                params["container_id"], tail=params.get("tail", 100)
+            ),
+            method=action,
+        )
+
+    def _execute_list(self, request: AdapterRequest, params: Dict[str, Any], action: str) -> AdapterResponse:
+        return self.normalize_response(
+            True, data=self.list_images(), method=action
+        )
+
     def execute(self, request: AdapterRequest) -> AdapterResponse:
         self.validate_request(request)
         params = dict(request.params or {})
@@ -277,9 +347,20 @@ class DockerAdapter(BaseAdapter):
         if action == "ping":
             return self.normalize_response(True, data="pong", method="ping")
 
-        if action not in (
-            "pull", "run", "start", "stop", "remove", "wait", "logs", "list", "ls",
-        ):
+        handlers = {
+            "pull": self._execute_pull,
+            "run": self._execute_run,
+            "start": self._execute_start,
+            "stop": self._execute_stop,
+            "remove": self._execute_remove,
+            "wait": self._execute_wait,
+            "logs": self._execute_logs,
+            "list": self._execute_list,
+            "ls": self._execute_list,
+        }
+
+        handler = handlers.get(action)
+        if not handler:
             return self.normalize_response(
                 False,
                 error=AdapterValidationError(
@@ -289,72 +370,8 @@ class DockerAdapter(BaseAdapter):
                 request_id=request.request_id,
             )
 
-        image = params.get("image")
-
         try:
-            if action == "pull":
-                data = self.pull_image(image, tag=params.get("tag", "latest"))
-                return self.normalize_response(
-                    True, data=data, method=action, request_id=request.request_id
-                )
-
-            if action == "run":
-                if image is None:
-                    raise AdapterValidationError(
-                        "params['image'] is required to run", transport=self.transport
-                    )
-                created = self.create(
-                    image,
-                    name=params.get("name"),
-                    command=params.get("command"),
-                    env=params.get("env"),
-                    memory=params.get("memory"),
-                    nano_cpus=params.get("nano_cpus"),
-                    network=params.get("network"),
-                )
-                cid = created.get("Id")
-                if cid is None:
-                    raise AdapterExecutionError(
-                        f"docker create returned no container id: {created}",
-                        transport=self.transport,
-                    )
-                self.start(cid)
-                wait_result = self.wait(
-                    cid, timeout=float(params.get("timeout") or request.timeout or 60.0)
-                )
-                output_log = self.logs(cid, tail=params.get("tail", 100))
-                if params.get("remove", True):
-                    self.remove(cid)
-                data = {"container_id": cid, **wait_result, "logs": output_log}
-                return self.normalize_response(
-                    True, data=data, method="run", request_id=request.request_id
-                )
-
-            if action == "start":
-                self.start(params["container_id"])
-                return self.normalize_response(True, data=None, method=action)
-            if action == "stop":
-                self.stop(params["container_id"], timeout=params.get("timeout"))
-                return self.normalize_response(True, data=None, method=action)
-            if action == "remove":
-                self.remove(params["container_id"], force=params.get("force", True))
-                return self.normalize_response(True, data=None, method=action)
-            if action == "wait":
-                return self.normalize_response(
-                    True, data=self.wait(params["container_id"]), method=action
-                )
-            if action == "logs":
-                return self.normalize_response(
-                    True,
-                    data=self.logs(
-                        params["container_id"], tail=params.get("tail", 100)
-                    ),
-                    method=action,
-                )
-            if action in ("list", "ls"):
-                return self.normalize_response(
-                    True, data=self.list_images(), method=action
-                )
+            return handler(request, params, action)
         except KeyError as exc:
             return self.normalize_response(
                 False,
@@ -368,8 +385,3 @@ class DockerAdapter(BaseAdapter):
             return self.normalize_response(
                 False, error=exc, method=action, request_id=request.request_id
             )
-
-        # Unreachable: every known action returns above.
-        raise AdapterValidationError(  # pragma: no cover - defensive
-            f"unsupported docker action {action!r}", transport=self.transport
-        )
