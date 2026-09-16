@@ -123,17 +123,23 @@ class SubprocessAdapter(BaseAdapter):
         self.validate_request(request)
         method = (request.method or "run").lower()
         if method == "ping":
-            return self.normalize_response(True, data="pong", method="ping")
-        if method not in ("run", "exec"):
-            return self.normalize_response(
-                False,
-                error=AdapterValidationError(
-                    f"unsupported method {method!r}; expected 'run' or 'ping'",
-                    transport=self.transport,
-                ),
-                method=method,
-            )
+            return self._execute_ping(request, method)
+        if method in ("run", "exec"):
+            return self._execute_run(request, method)
 
+        return self.normalize_response(
+            False,
+            error=AdapterValidationError(
+                f"unsupported method {method!r}; expected 'run' or 'ping'",
+                transport=self.transport,
+            ),
+            method=method,
+        )
+
+    def _execute_ping(self, request: AdapterRequest, method: str) -> AdapterResponse:
+        return self.normalize_response(True, data="pong", method=method)
+
+    def _execute_run(self, request: AdapterRequest, method: str) -> AdapterResponse:
         params = request.params or {}
         try:
             proc = self._spawn(params)
