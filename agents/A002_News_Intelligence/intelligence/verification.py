@@ -22,6 +22,10 @@ import math
 import re
 from collections import defaultdict
 from dataclasses import dataclass
+import json
+import urllib.error
+import urllib.parse
+import urllib.request
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
@@ -282,11 +286,49 @@ class FactCheckClient:
         """Query fact-check APIs. Returns list of fact-check results."""
         if not self.enabled:
             return []
-        # TODO: Implement actual API calls to:
-        # - Google Fact Check Tools API
-        # - ClaimReview schema.org markup search
-        # - Snopes, PolitiFact, FactCheck.org APIs
-        return []
+
+        results = []
+        # Query Google Fact Check Tools API
+        base_url = "https://factchecktools.googleapis.com/v1alpha1/claims:search"
+        params = {
+            "query": claim,
+            "key": self.api_key,
+        }
+        query_string = urllib.parse.urlencode(params)
+        url = f"{base_url}?{query_string}"
+
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "CIE-OS-A002/0.1"})
+            with urllib.request.urlopen(req, timeout=10.0) as response:
+                data = json.loads(response.read().decode("utf-8"))
+
+                claims = data.get("claims", [])
+                for item in claims:
+                    text = item.get("text", "")
+                    claimant = item.get("claimant", "")
+                    reviews = item.get("claimReview", [])
+
+                    for review in reviews:
+                        rating = review.get("textualRating", "")
+                        publisher = review.get("publisher", {}).get("name", "")
+                        review_url = review.get("url", "")
+
+                        results.append({
+                            "claim": text,
+                            "claimant": claimant,
+                            "rating": rating,
+                            "publisher": publisher,
+                            "url": review_url,
+                            "source": "google_fact_check_tools"
+                        })
+        except urllib.error.URLError as e:
+            # Catch all urllib errors (including HTTPError and timeout)
+            # Fail silently to not block the rest of the verification flow
+            pass
+        except Exception:
+            pass
+
+        return results
 
 
 _fact_check_client: FactCheckClient | None = None
