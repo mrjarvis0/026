@@ -156,6 +156,54 @@ def test_verdicts() -> None:
     print()
 
 
+def test_coordination_flags() -> None:
+    print("coordination flags:")
+    now = datetime.now(UTC)
+
+    # 1. Test empty / <2 items
+    class MockNarrative:
+        def __init__(self, items):
+            self.items = items
+
+    empty = []
+    coord_0, flags_0 = coordination_score(MockNarrative(empty))
+    check("empty items zero score", coord_0 == 0.0)
+    check("empty items identical_text_ratio", flags_0["identical_text_ratio"] == 0.0)
+    check("empty items timing_burst", flags_0["timing_burst"] is False)
+    check("empty items author_concentration", flags_0["author_concentration"] == 1.0)
+    check("empty items platform_concentration", flags_0["platform_concentration"] == 1.0)
+
+    # 2. Test exact ratios for identical text and concentrations
+    # 4 items total.
+    # 3 identical text, 1 different -> identical ratio = (3-1)/4 = 2/4 = 0.5
+    # 2 author_1, 1 author_2, 1 no author -> authors = 3. max share = 2/3 ~ 0.667
+    # 3 platform_web, 1 platform_social -> platforms = 4. max share = 3/4 = 0.75
+    # time span > 30 mins -> burst = False
+
+    mock_items = [
+        make_item("a", "1", "t1", now, fp="FP_A", author="author_1", platform="web"),
+        make_item("b", "2", "t2", now - timedelta(hours=1), fp="FP_A", author="author_1", platform="web"),
+        make_item("c", "3", "t3", now - timedelta(hours=2), fp="FP_A", author="author_2", platform="social"),
+        make_item("d", "4", "t4", now - timedelta(hours=3), fp="FP_B", author=None, platform="web"),
+    ]
+    coord, flags = coordination_score(MockNarrative(mock_items))
+    check("calc identical_text_ratio", flags["identical_text_ratio"] == 0.5)
+    check("calc author_concentration", flags["author_concentration"] == 0.667)
+    check("calc platform_concentration", flags["platform_concentration"] == 0.75)
+    check("calc timing_burst", flags["timing_burst"] is False)
+
+    # 3. Test timing burst exact
+    burst_items = [
+        make_item("a", "1", "t1", now, fp="FP_1", author="a1", platform="p1"),
+        make_item("b", "2", "t2", now - timedelta(minutes=10), fp="FP_2", author="a2", platform="p2"),
+        make_item("c", "3", "t3", now - timedelta(minutes=20), fp="FP_3", author="a3", platform="p3"),
+    ]
+    _, burst_flags = coordination_score(MockNarrative(burst_items))
+    check("calc timing_burst true", burst_flags["timing_burst"] is True)
+
+    print()
+
+
 def test_manipulation() -> None:
     print("manipulation:")
     now = datetime.now(UTC)
@@ -226,6 +274,7 @@ if __name__ == "__main__":
     test_credibility()
     test_confirmations()
     test_verdicts()
+    test_coordination_flags()
     test_manipulation()
     test_engine_integration()
     print(f"RESULT: {PASS} passed, {FAIL} failed")
