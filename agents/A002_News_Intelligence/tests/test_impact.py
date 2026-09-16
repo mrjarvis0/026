@@ -169,6 +169,42 @@ def test_history() -> None:
     print()
 
 
+
+def test_predict_asset_enhanced() -> None:
+    print("predict_asset enhanced metrics:")
+    now = datetime.now(UTC).replace(minute=0, second=0, microsecond=0)
+    t0 = now - timedelta(hours=30)
+
+    # create high volatility candles to trigger regime changes and jumps
+    # base candles end exactly at t0. make_candles(start=t0) actually ends at t0.
+    # The previous code made base end at t0, so volatile crash should start at t0
+    base = make_candles(100.0, 100, start=t0)
+
+    # create a very sudden, massive drop to trigger tail risk and jumps
+    # starting from t0 moving forward
+    volatile_crash = [
+        {"open_time": (t0 + timedelta(hours=1)).isoformat(), "open": 100.0, "high": 100.0, "low": 90.0, "close": 90.0, "volume": 10000.0},
+        {"open_time": (t0 + timedelta(hours=2)).isoformat(), "open": 90.0, "high": 90.0, "low": 80.0, "close": 82.0, "volume": 15000.0},
+        {"open_time": (t0 + timedelta(hours=3)).isoformat(), "open": 82.0, "high": 85.0, "low": 75.0, "close": 78.0, "volume": 12000.0},
+    ]
+    candles = base + volatile_crash
+
+    narrative = narrative_with("Massive hack drains exchange", t0, fomo=90, confidence=0.8, status="confirmed_true")
+    history = [
+        {"asset": "BTC", "category": "hack", "fomo_score": 85, "measured_return": -15.0, "epistemic_status": "confirmed_true"}
+    ]
+
+    pred = predict_asset("BTC", narrative, candles, history)
+
+    check("asset and category matched", pred.asset == "BTC" and pred.category == "hack")
+    check("realized vol calculated", pred.realized_vol_pct is not None and pred.realized_vol_pct > 0)
+    check("jump detected", pred.jump_count > 0 and len(pred.jumps) > 0)
+    check("tail risk (var_95) populated", pred.var_95_pct is not None)
+    check("regime is high_vol or crisis", pred.regime in ("high_vol", "crisis"))
+    check("risk factors include jump/tail warnings", any("jump" in r.lower() or "tail" in r.lower() for r in pred.risk_factors))
+    print()
+
+
 def test_prediction() -> None:
     print("prediction:")
     now = datetime.now(UTC).replace(minute=0, second=0, microsecond=0)
@@ -209,6 +245,7 @@ if __name__ == "__main__":
     test_categories()
     test_impact_measurement()
     test_history()
+    test_predict_asset_enhanced()
     test_prediction()
     print(f"RESULT: {PASS} passed, {FAIL} failed")
     sys.exit(1 if FAIL else 0)
