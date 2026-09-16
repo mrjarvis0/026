@@ -22,7 +22,7 @@ from pathlib import Path
 
 import aiosqlite
 
-from .models import Entity, NormalizedItem
+from .models import NormalizedItem
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS items (
@@ -174,20 +174,28 @@ class Storage:
             if name not in impact_columns:
                 await db.execute(f"ALTER TABLE impact_events ADD COLUMN {ddl}")
 
-    async def is_duplicate(self, url: str | None, title_fp: str, content_fp: str) -> bool:
+    async def is_duplicate(
+        self, url: str | None, title_fp: str, content_fp: str
+    ) -> bool:
         """Check whether an item is already known (url / title fp / content fp)."""
 
         async with aiosqlite.connect(self.db_path) as db:
             if url:
-                cursor = await db.execute("SELECT 1 FROM items WHERE url = ? LIMIT 1", (url,))
+                cursor = await db.execute(
+                    "SELECT 1 FROM items WHERE url = ? LIMIT 1", (url,)
+                )
                 if await cursor.fetchone():
                     return True
             if title_fp:
-                cursor = await db.execute("SELECT 1 FROM items WHERE title_fp = ? LIMIT 1", (title_fp,))
+                cursor = await db.execute(
+                    "SELECT 1 FROM items WHERE title_fp = ? LIMIT 1", (title_fp,)
+                )
                 if await cursor.fetchone():
                     return True
             if content_fp:
-                cursor = await db.execute("SELECT 1 FROM items WHERE content_fp = ? LIMIT 1", (content_fp,))
+                cursor = await db.execute(
+                    "SELECT 1 FROM items WHERE content_fp = ? LIMIT 1", (content_fp,)
+                )
                 if await cursor.fetchone():
                     return True
         return False
@@ -335,7 +343,9 @@ class Storage:
             )
             await db.commit()
 
-    async def add_narrative_item(self, narrative_id: int, item: NormalizedItem, stance: str) -> None:
+    async def add_narrative_item(
+        self, narrative_id: int, item: NormalizedItem, stance: str
+    ) -> None:
         """Link an item to a narrative with its stance (idempotent)."""
 
         async with aiosqlite.connect(self.db_path) as db:
@@ -354,31 +364,66 @@ class Storage:
                 "SELECT * FROM narratives WHERE last_seen >= ?", (since,)
             )
             rows = [dict(row) for row in await cursor.fetchall()]
+
+            if not rows:
+                return rows
+
+            narrative_by_id = {}
             for row in rows:
                 row["platforms"] = json.loads(row["platforms"])
                 row["stance_counts"] = json.loads(row["stances"])
                 row["entities"] = json.loads(row["entities"])
                 row["manipulation_flags"] = json.loads(row.get("manipulation", "{}"))
                 row["evidence"] = json.loads(row.get("evidence", "{}"))
+                row["items"] = []
+                narrative_by_id[row["id"]] = row
+
+            narrative_ids = list(narrative_by_id.keys())
+            all_items = []
+
+            def chunker(seq, size):
+                return (seq[pos : pos + size] for pos in range(0, len(seq), size))
+
+            for chunk in chunker(narrative_ids, 900):
+                placeholders = ",".join("?" for _ in chunk)
                 icursor = await db.execute(
-                    """
+                    f"""
                     SELECT i.id, i.source, i.source_key, i.url, i.title, i.content,
                            i.author, i.published_at, i.fetched_at, i.language,
-                           i.platform, i.title_fp, i.content_fp, ni.stance
+                           i.platform, i.title_fp, i.content_fp, ni.stance, ni.narrative_id
                     FROM narrative_items ni
                     JOIN items i ON i.id = ni.item_id
-                    WHERE ni.narrative_id = ?
+                    WHERE ni.narrative_id IN ({placeholders})
                     """,
-                    (row["id"],),
+                    chunk,
                 )
-                items = [dict(item) for item in await icursor.fetchall()]
-                for item in items:
-                    ecursor = await db.execute(
-                        "SELECT entity_type, symbol, name FROM entities WHERE item_id = ?",
-                        (item["id"],),
-                    )
-                    item["entities"] = [dict(e) for e in await ecursor.fetchall()]
-                row["items"] = items
+                all_items.extend([dict(item) for item in await icursor.fetchall()])
+
+            from collections import defaultdict
+
+            item_by_id = defaultdict(list)
+            for item in all_items:
+                item["entities"] = []
+                narrative_by_id[item["narrative_id"]]["items"].append(item)
+                item_by_id[item["id"]].append(item)
+
+            item_ids = list(item_by_id.keys())
+
+            for chunk in chunker(item_ids, 900):
+                placeholders = ",".join("?" for _ in chunk)
+                ecursor = await db.execute(
+                    f"SELECT item_id, entity_type, symbol, name FROM entities WHERE item_id IN ({placeholders})",
+                    chunk,
+                )
+                for e in await ecursor.fetchall():
+                    e_dict = dict(e)
+                    item_id = e_dict.pop("item_id")
+                    for it in item_by_id[item_id]:
+                        it["entities"].append(e_dict)
+
+            for item in all_items:
+                item.pop("narrative_id", None)
+
             return rows
 
     # ==========================================================================
