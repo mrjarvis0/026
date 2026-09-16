@@ -23,6 +23,7 @@ from agents.A002_News_Intelligence.intelligence.history import (
     fomo_bucket,
 )
 from agents.A002_News_Intelligence.intelligence.impact import (
+    _price_at,
     compute_measured_impact,
     price_after,
     price_before,
@@ -169,6 +170,38 @@ def test_history() -> None:
     print()
 
 
+def test_price_at() -> None:
+    print("price at:")
+    t1 = datetime(2023, 1, 1, 12, 0, 0, tzinfo=UTC)
+    t2 = datetime(2023, 1, 1, 13, 0, 0, tzinfo=UTC)
+    t3 = datetime(2023, 1, 1, 14, 0, 0, tzinfo=UTC)
+
+    candles = [
+        {"open_time": t1.isoformat(), "close": 100.0},
+        {"open_time": t2.isoformat(), "close": 110.0},
+        {"open_time": t3.isoformat(), "close": 120.0},
+    ]
+
+    # exact match
+    check("exact match t2", _price_at(candles, t2) == 110.0)
+
+    # between t1 and t2 -> should return t1's close
+    t_between = datetime(2023, 1, 1, 12, 30, 0, tzinfo=UTC)
+    check("between match", _price_at(candles, t_between) == 100.0)
+
+    # after all candles -> should return t3's close
+    t_after = datetime(2023, 1, 1, 15, 0, 0, tzinfo=UTC)
+    check("after match", _price_at(candles, t_after) == 120.0)
+
+    # before all candles -> should return None
+    t_before = datetime(2023, 1, 1, 11, 0, 0, tzinfo=UTC)
+    check("before match", _price_at(candles, t_before) is None)
+
+    # empty candles
+    check("empty match", _price_at([], t1) is None)
+    print()
+
+
 def test_prediction() -> None:
     print("prediction:")
     now = datetime.now(UTC).replace(minute=0, second=0, microsecond=0)
@@ -210,5 +243,6 @@ if __name__ == "__main__":
     test_impact_measurement()
     test_history()
     test_prediction()
+    test_price_at()
     print(f"RESULT: {PASS} passed, {FAIL} failed")
     sys.exit(1 if FAIL else 0)
