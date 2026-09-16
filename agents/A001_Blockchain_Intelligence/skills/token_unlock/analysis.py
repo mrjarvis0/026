@@ -92,35 +92,9 @@ class TokenUnlockSkill(Skill):
                 f"{len(outflows)} outflow(s), not enough for pattern detection",
             )
 
-        heights = sorted(t.height for t in outflows)
-        intervals = [heights[i + 1] - heights[i] for i in range(len(heights) - 1)]
-
-        if intervals:
-            mean_interval = sum(intervals) / len(intervals)
-            variance = sum((i - mean_interval) ** 2 for i in intervals) / len(intervals)
-            cv = (variance ** 0.5 / mean_interval) if mean_interval > 0 else float("inf")
-        else:
-            mean_interval = 0.0
-            cv = float("inf")
-
-        periodic = cv < 0.5 and len(intervals) >= 2
-
-        values = sorted((float(t.value.raw) for t in outflows), reverse=True)
-        value_cv = 0.0
-        if len(values) >= 2:
-            v_mean = sum(values) / len(values)
-            if v_mean > 0:
-                v_var = sum((v - v_mean) ** 2 for v in values) / len(values)
-                value_cv = (v_var ** 0.5) / v_mean
-
-        recipients: dict[str | None, int] = {}
-        for t in outflows:
-            recipients[t.to_address] = recipients.get(t.to_address, 0) + 1
-        concentrated = (
-            max(recipients.values()) / len(outflows) > 0.5
-            if recipients and outflows
-            else False
-        )
+        mean_interval, cv, periodic = self._analyze_intervals(outflows)
+        value_cv = self._analyze_values(outflows)
+        concentrated, unique_recipients = self._analyze_recipients(outflows)
 
         data = {
             "chain": request.chain,
@@ -132,7 +106,7 @@ class TokenUnlockSkill(Skill):
             "value_cv": round(value_cv, 4),
             "consistent_values": value_cv < 1.0,
             "concentrated_recipient": concentrated,
-            "unique_recipients": len(recipients),
+            "unique_recipients": unique_recipients,
             "coverage_limitation": coverage.limitation,
             "bounds": self._bounds(),
         }
@@ -156,6 +130,45 @@ class TokenUnlockSkill(Skill):
             )
 
         return self.answer(coverage, data, subject, reason)
+
+    @staticmethod
+    def _analyze_intervals(outflows: list[Any]) -> tuple[float, float, bool]:
+        heights = sorted(t.height for t in outflows)
+        intervals = [heights[i + 1] - heights[i] for i in range(len(heights) - 1)]
+
+        if intervals:
+            mean_interval = sum(intervals) / len(intervals)
+            variance = sum((i - mean_interval) ** 2 for i in intervals) / len(intervals)
+            cv = (variance ** 0.5 / mean_interval) if mean_interval > 0 else float("inf")
+        else:
+            mean_interval = 0.0
+            cv = float("inf")
+
+        periodic = cv < 0.5 and len(intervals) >= 2
+        return mean_interval, cv, periodic
+
+    @staticmethod
+    def _analyze_values(outflows: list[Any]) -> float:
+        values = sorted((float(t.value.raw) for t in outflows), reverse=True)
+        value_cv = 0.0
+        if len(values) >= 2:
+            v_mean = sum(values) / len(values)
+            if v_mean > 0:
+                v_var = sum((v - v_mean) ** 2 for v in values) / len(values)
+                value_cv = (v_var ** 0.5) / v_mean
+        return value_cv
+
+    @staticmethod
+    def _analyze_recipients(outflows: list[Any]) -> tuple[bool, int]:
+        recipients: dict[str | None, int] = {}
+        for t in outflows:
+            recipients[t.to_address] = recipients.get(t.to_address, 0) + 1
+        concentrated = (
+            max(recipients.values()) / len(outflows) > 0.5
+            if recipients and outflows
+            else False
+        )
+        return concentrated, len(recipients)
 
     @staticmethod
     def _bounds() -> list[str]:
