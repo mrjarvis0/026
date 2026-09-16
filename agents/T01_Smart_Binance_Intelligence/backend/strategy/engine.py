@@ -36,9 +36,37 @@ def save_params(params: dict) -> None:
 
 
 def decide(ohlcv: list[list]) -> signals.Signal:
-    """Analyze candles and return a trade signal using current tuned params."""
+    """Analyze candles and return a trade signal using current tuned params.
+    It evaluates multiple scenarios (Conservative, Standard, Aggressive) and
+    picks the best signal (highest confidence if actions align, or defaulting to Standard).
+    """
     df = indicators.compute_all(ohlcv)
-    return signals.generate_signal(df, load_params())
+
+    current_params = load_params()
+
+    scenarios = {
+        "standard": dict(current_params),
+        "conservative": dict(current_params, net_threshold=current_params["net_threshold"] + 0.5),
+        "aggressive": dict(current_params, net_threshold=max(1.0, current_params["net_threshold"] - 0.5)),
+    }
+
+    evaluations = {}
+    for name, p in scenarios.items():
+        evaluations[name] = signals.generate_signal(df, p)
+
+    # Default to standard
+    best_signal = evaluations["standard"]
+
+    # If aggressive or conservative has a higher confidence for the SAME action, prefer it.
+    # We mainly just want to pick the scenario that gives us the most confident actionable signal.
+    actionable_signals = [sig for sig in evaluations.values() if sig.action in ("buy", "sell")]
+
+    if actionable_signals:
+        # Sort by confidence descending
+        actionable_signals.sort(key=lambda s: s.confidence, reverse=True)
+        best_signal = actionable_signals[0]
+
+    return best_signal
 
 
 def self_tune() -> dict:

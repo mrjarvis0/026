@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from backend import config
 from backend.analysis import indicators, signals
 from backend.data import collector, database as db
-from backend.strategy import engine
+from backend.strategy import engine, reflection
 from backend.safety import circuit_breaker
 from backend.trading.paper_engine import PaperEngine
 from backend.trading.real_engine import RealEngine
@@ -210,8 +210,7 @@ class TradingBot:
 
         # Analyze on CLOSED bars only (the forming candle repaints).
         bars = self._closed_bars(ohlcv)
-        df = indicators.compute_all(bars)
-        signal = signals.generate_signal(df, engine.load_params())
+        signal = engine.decide(bars)
         self.last_indicators = signal.details.get("indicators", {})
         self.last_signal = {
             "action": signal.action,
@@ -245,7 +244,11 @@ class TradingBot:
 
         # Learn only when a trade actually resolved this cycle — not every
         # wall-clock tick, which would drive the threshold to its clamp in minutes.
-        params = (await asyncio.to_thread(engine.self_tune)) if did_close else engine.load_params()
+        if did_close:
+            await asyncio.to_thread(engine.self_tune)
+            await asyncio.to_thread(reflection.reflect_on_losses, mode)
+
+        params = engine.load_params()
 
         await self._broadcast({
             "type": "tick",
