@@ -30,7 +30,7 @@ from agents.A002_News_Intelligence.intelligence.impact import (
     severity_label,
 )
 from agents.A002_News_Intelligence.intelligence.narrative import Narrative
-from agents.A002_News_Intelligence.intelligence.predict import predict_asset
+from agents.A002_News_Intelligence.intelligence.predict import predict_asset, _detect_regime
 
 PASS = 0
 FAIL = 0
@@ -169,6 +169,16 @@ def test_history() -> None:
     print()
 
 
+def test_detect_regime() -> None:
+    print("detect regime:")
+    check("None -> normal", _detect_regime(None, 0, {}) == "normal")
+    check("> 5.0 -> crisis", _detect_regime(5.1, 0, {}) == "crisis")
+    check("> 2.0 -> high_vol", _detect_regime(2.1, 0, {}) == "high_vol")
+    check("< 0.5 -> low_vol", _detect_regime(0.4, 0, {}) == "low_vol")
+    check("between 0.5 and 2.0 -> normal", _detect_regime(1.0, 0, {}) == "normal")
+    print()
+
+
 def test_prediction() -> None:
     print("prediction:")
     now = datetime.now(UTC).replace(minute=0, second=0, microsecond=0)
@@ -209,6 +219,7 @@ if __name__ == "__main__":
     test_categories()
     test_impact_measurement()
     test_history()
+    test_detect_regime()
     test_prediction()
     print(f"RESULT: {PASS} passed, {FAIL} failed")
     sys.exit(1 if FAIL else 0)
