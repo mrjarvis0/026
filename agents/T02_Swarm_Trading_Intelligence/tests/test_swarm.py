@@ -26,6 +26,8 @@ def test_swarm_generation(db):
     # Check that strategies are assigned properly
     strategies = set([b.get('strategy') for b in bots])
     assert len(strategies) > 1
+    assert 'noise_trader' in strategies
+    assert 'momentum_chaser' in strategies
 
     # Verify parameter access using .get()
     for bot in bots[:10]:

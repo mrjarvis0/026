@@ -8,7 +8,7 @@ class SwarmSimulator:
 
     def initialize_swarm(self, num_bots: int = 1000):
         """Procedurally generates the swarm and stores them in the db."""
-        strategies = ['trend_following', 'mean_reversion', 'contrarian', 'random']
+        strategies = ['trend_following', 'mean_reversion', 'contrarian', 'random', 'noise_trader', 'momentum_chaser']
         bots = []
         for _ in range(num_bots):
             strategy = random.choice(strategies)
@@ -20,6 +20,10 @@ class SwarmSimulator:
                 params['deviation_threshold'] = random.uniform(0.02, 0.08)
             elif strategy == 'contrarian':
                 params['reversal_factor'] = random.uniform(0.8, 1.2)
+            elif strategy == 'noise_trader':
+                params['chaos_factor'] = random.uniform(0.1, 1.0)
+            elif strategy == 'momentum_chaser':
+                params['momentum_threshold'] = random.uniform(0.01, 0.04)
             else:
                 params['noise_level'] = random.uniform(0.1, 0.5)
 
@@ -67,6 +71,24 @@ class SwarmSimulator:
                     action = 'sell' if random.random() < 0.7 else 'hold'
                 elif price_change_pct < 0:
                     action = 'buy' if random.random() < 0.7 else 'hold'
+
+            elif strategy == 'noise_trader':
+                # Ignores price completely, pure random noise typical in agent-based financial models
+                r = random.random()
+                if r < 0.33:
+                    action = 'buy'
+                elif r < 0.66:
+                    action = 'sell'
+                else:
+                    action = 'hold'
+
+            elif strategy == 'momentum_chaser':
+                # Chases the herd: buys on any positive momentum above a threshold, sells on negative
+                mom_threshold = params.get('momentum_threshold', 0.02)
+                if price_change_pct > mom_threshold:
+                    action = 'buy'
+                elif price_change_pct < -mom_threshold:
+                    action = 'sell'
 
             else: # random
                 r = random.random()
