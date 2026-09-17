@@ -50,5 +50,17 @@ agents:
     runtime_verified: false
     origin: "Proposed 2026-09-15 — LuxAlgo MCP source research (sources/mcp.md S119); see docs/manual/06-agents.md §6"
 
+  T02:
+    dir: agents/T02_Swarm_Trading_Intelligence
+    manifest: agents/T02_Swarm_Trading_Intelligence/agent.yaml
+    name: "Swarm Trading Intelligence"
+    domain: "Market consensus: 1000 bot swarm simulation reacting to trades"
+    status: partial
+    trust: 1
+    enabled: true
+    kernel_wired: false
+    runtime_verified: false
+    origin: "Proposed via swarm simulation task"
+
 # Reserved / planned fleet members (AGENTS.md §3) — not yet built:
 #   A003 DeFi Flow · A004 Sentiment · A005 Market Data · A006 Macro / Econ
