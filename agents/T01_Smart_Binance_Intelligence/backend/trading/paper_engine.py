@@ -105,12 +105,22 @@ class PaperEngine:
         }
 
     def check_exits(self, mark_prices: dict[str, float]) -> list[dict]:
-        """Close positions that hit stop-loss or take-profit."""
+        """Close positions that hit stop-loss or take-profit. Also trails stop loss."""
         closed = []
         for pos in self.open_positions():
             price = mark_prices.get(pos["symbol"])
             if price is None:
                 continue
+
+            # Trailing stop logic for buy positions
+            if pos.get("side", "buy") == "buy":
+                # If price moves up in our favor, trail the stop loss to lock in profits
+                trail_distance = pos["entry_price"] * config.STOP_LOSS_PCT
+                new_stop = price - trail_distance
+                if pos["stop_loss"] and new_stop > pos["stop_loss"]:
+                    pos["stop_loss"] = new_stop
+                    db.update_trade(pos["id"], {"stop_loss": pos["stop_loss"]})
+
             if pos["stop_loss"] and price <= pos["stop_loss"]:
                 closed.append(self.close_trade(pos, price, "stop_loss"))
             elif pos["take_profit"] and price >= pos["take_profit"]:

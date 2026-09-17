@@ -41,6 +41,26 @@ def bollinger_bands(series: pd.Series, period: int = 20, std_mult: float = 2.0):
     return upper, mid, lower
 
 
+def atr(df: pd.DataFrame, period: int = 14) -> pd.Series:
+    high = df["high"]
+    low = df["low"]
+    close = df["close"].shift(1)
+
+    tr1 = high - low
+    tr2 = (high - close).abs()
+    tr3 = (low - close).abs()
+
+    tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
+    return tr.rolling(window=period, min_periods=period).mean()
+
+
+def vwap(df: pd.DataFrame) -> pd.Series:
+    q = df["volume"]
+    p = (df["high"] + df["low"] + df["close"]) / 3
+    # Approximating VWAP over a rolling 20-period window to reset cumulative sum appropriately for short timeframes
+    return (p * q).rolling(window=20, min_periods=1).sum() / q.rolling(window=20, min_periods=1).sum()
+
+
 def compute_all(ohlcv: list[list]) -> pd.DataFrame:
     """Attach all indicators to an OHLCV dataframe."""
     df = ohlcv_to_df(ohlcv)
@@ -60,4 +80,7 @@ def compute_all(ohlcv: list[list]) -> pd.DataFrame:
     df["bb_mid"] = mid
     df["bb_lower"] = lower
     df["vol_sma_20"] = sma(df["volume"], 20)
+
+    df["atr"] = atr(df)
+    df["vwap"] = vwap(df)
     return df

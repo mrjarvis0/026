@@ -3,7 +3,7 @@ from backend import config
 
 
 def position_size(balance: float, price: float, mode: str = "paper",
-                  open_count: int = 0) -> float:
+                  open_count: int = 0, atr: float = 0.0) -> float:
     """Quantity to trade, sized by per-trade risk and capped by affordability.
 
     Two independent ceilings; the smaller wins:
@@ -22,7 +22,13 @@ def position_size(balance: float, price: float, mode: str = "paper",
         return 0.0
     risk_pct = (config.RISK_PER_TRADE_PAPER if mode == "paper"
                 else config.RISK_PER_TRADE_REAL)
-    stop_distance = price * config.STOP_LOSS_PCT
+
+    if atr > 0:
+        # Dynamic risk sizing based on ATR volatility
+        stop_distance = atr * 2.0
+    else:
+        stop_distance = price * config.STOP_LOSS_PCT
+
     if stop_distance <= 0:
         return 0.0
 
@@ -35,16 +41,18 @@ def position_size(balance: float, price: float, mode: str = "paper",
     return round(min(qty_risk, qty_cap), 8)
 
 
-def stop_loss_price(entry: float, side: str = "buy") -> float:
+def stop_loss_price(entry: float, side: str = "buy", atr: float = 0.0) -> float:
+    stop_dist = (atr * 2.0) if atr > 0 else (entry * config.STOP_LOSS_PCT)
     if side == "buy":
-        return round(entry * (1 - config.STOP_LOSS_PCT), 8)
-    return round(entry * (1 + config.STOP_LOSS_PCT), 8)
+        return round(entry - stop_dist, 8)
+    return round(entry + stop_dist, 8)
 
 
-def take_profit_price(entry: float, side: str = "buy") -> float:
+def take_profit_price(entry: float, side: str = "buy", atr: float = 0.0) -> float:
+    tp_dist = (atr * 3.0) if atr > 0 else (entry * config.TAKE_PROFIT_PCT)
     if side == "buy":
-        return round(entry * (1 + config.TAKE_PROFIT_PCT), 8)
-    return round(entry * (1 - config.TAKE_PROFIT_PCT), 8)
+        return round(entry + tp_dist, 8)
+    return round(entry - tp_dist, 8)
 
 
 def can_open_position(open_count: int) -> bool:
