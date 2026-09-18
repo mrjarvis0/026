@@ -4,14 +4,14 @@
 > This file describes what *is* â€” not what is planned. Planned work lives in the
 > roadmaps in `README.md`, `ROADMAP.md`, and `AGENTS.md`.
 
-- **Last updated:** 2026-09-06
+- **Last updated:** 2026-09-18
 - **Repo root:** `F:\026`
 - **Phase:** Genesis Â· **Phase 1 (source inventory)** â€” documentation system
   established and hardened; **platform kernel still unbuilt, but A001+A002 agents migrated in from CIE-OS 2026-09-06;** Stack chosen (`docs/STACK.md`);
   execution charter gated (`ADR-0002`).
 - **Interpreter:** not yet provisioned for 026 (`.venv` does not exist); the two
   migrated agents target `python >= 3.11` (system has 3.14 — verify in SP-5).
-- **Fleet:** A001 (Blockchain) + A002 (News) migrated in from CIE-OS on 2026-09-06 —
+- **Fleet:** A001 (Blockchain) + A002 (News) migrated in from CIE-OS on 2026-09-06 — A006 scaffolded based on MacroEconAgent specification —
   declared as fleet members (manifests + registry) and **runtime-verified 2026-09-07**
   (A001: 1831 pytest passed / 1 skipped; A002: 212 offline checks passed) — but **not yet
   kernel-wired** (SP-4). See `BUILD_LOG.md` (CIE-OS migration / SP-5).
@@ -164,7 +164,7 @@ green-lights code. A tenant on an unverified foundation inherits an unverified o
 
 > Current snapshot. Overwritten each session. History lives in `BUILD_LOG.md`.
 
-- **Last updated:** 2026-08-21
+- **Last updated:** 2026-09-18
 - **Repo root:** `F:\CIE-OS`
 - **Agent root:** `F:\CIE-OS\agents\A001_Blockchain_Intelligence`
 - **Interpreter:** `F:\CIE-OS\.venv\Scripts\python.exe`

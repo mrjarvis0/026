@@ -38,6 +38,18 @@ agents:
     runtime_verified: true       # SP-5 done 2026-09-07 (tests pass on py3.14) — see BUILD_LOG
     origin: "CIE-OS migration 2026-09-06"
 
+  A006:
+    dir: agents/A006_Macro_Econ_Intelligence
+    manifest: agents/A006_Macro_Econ_Intelligence/agent.yaml
+    name: "Macro/Econ Intelligence"
+    domain: "Forex / Global Macroeconomics"
+    status: scaffold
+    trust: 1
+    enabled: false                # scaffold only
+    kernel_wired: false
+    runtime_verified: false
+    origin: "Proposed via MacroEconAgent Specification"
+
   A007:
     dir: agents/A007_Public_Record_Intelligence
     manifest: agents/A007_Public_Record_Intelligence/agent.yaml
@@ -51,4 +63,4 @@ agents:
     origin: "Proposed 2026-09-15 — LuxAlgo MCP source research (sources/mcp.md S119); see docs/manual/06-agents.md §6"
 
 # Reserved / planned fleet members (AGENTS.md §3) — not yet built:
-#   A003 DeFi Flow · A004 Sentiment · A005 Market Data · A006 Macro / Econ
+#   A003 DeFi Flow · A004 Sentiment · A005 Market Data

@@ -17,7 +17,7 @@
 
 | Layer | Series | Can it act on the world? | Trust (§6 of `AGENTS.md`) | Members today |
 |---|---|---|---|---|
-| **Intelligence** | `A0NN` | No — read-only, `NO_TRADE_EXECUTION`. Writes findings to the brain, never money, never orders. | 2 — scoped writes | A001, A002 *(A003–A006 reserved; A007 scaffolded)* |
+| **Intelligence** | `A0NN` | No — read-only, `NO_TRADE_EXECUTION`. Writes findings to the brain, never money, never orders. | 2 — scoped writes | A001, A002 *(A003–A005 reserved; A006, A007 scaffolded)* |
 | **Execution** | `T0N` | Yes — but **gated** (ADR-0002): paper-trade proof required before real orders, real orders must pass the sentinel gate. | not yet assigned — see [§4](#4-open-item-t01-is-not-yet-onboarded) | T01 |
 | **Platform** | actor | Runs the fleet itself — not a domain question-answerer. | 3 — human-adjacent | `orchestrator`, `sentinel`, `librarian`, `operator-io` |
 
@@ -40,9 +40,7 @@ read-only intelligence agent would make the name lie about
 | `A002` | News Intelligence | Intelligence | Fake-news / rumor / market impact | substantial | ✅ `agent.yaml` + `config/agents/registry.yaml` |
 | `T01` | Smart Binance Intelligence | Execution | Binance spot trading — paper-trade now, real orders locked behind a 70%-accuracy gate | built (live FastAPI dashboard, paper trading works) | ❌ see [§4](#4-open-item-t01-is-not-yet-onboarded) |
 
-*(Reserved, not yet built: `A003` DeFi Flow, `A004` Sentiment, `A005` Market Data,
-`A006` Macro/Econ — `AGENTS.md` §3. `A007` Public-Record is scaffolded — has
-`agent.yaml` + README, still not a registered fleet member — see §6 below.)*
+*(Reserved, not yet built: `A003` DeFi Flow, `A004` Sentiment, `A005` Market Data — `AGENTS.md` §3. `A006` Macro/Econ and `A007` Public-Record are scaffolded — have `agent.yaml` + README, still not registered fleet members — see §6 below.)*
 
 ---
 
@@ -109,7 +107,7 @@ server) and `S120` (Whale Options, a separate local MCP); the Broker SDK is
 | LuxAlgo tool family | Target | Change | Why |
 |---|---|---|---|
 | `trackers_*` — 10 of 18 datasets (Congress trades, insider Forms 3/4/5, 13F, lobbying, campaign finance, PAC, patents, clinical trials, FDA, hearings) | **`A007`** *(new, scaffolded)* | New agent | Doesn't fit `A004`/`A006` without blurring both — see [`agents/A007_Public_Record_Intelligence/README.md`](../../agents/A007_Public_Record_Intelligence/README.md) |
-| `trackers_*` — COT, Fed communications, legislation | `A006` Macro/Econ *(reserved)* | Upgrade — first real source | Matches `A006`'s existing domain (rates, indicators, filings) |
+| `trackers_*` — COT, Fed communications, legislation | `A006` Macro/Econ *(scaffolded)* | Upgrade — first real source | Matches `A006`'s existing domain (rates, indicators, filings) |
 | `trackers_*` — Wikipedia pageviews | `A004` Sentiment *(reserved)* | Upgrade — first real source | Attention/interest proxy, not a filing |
 | `edge_*` (Edge Stats — historical win-rate, N + 95% CI) | `A005` Market Data *(reserved)* | Upgrade — first real source | Matches `A005`'s domain (OHLCV/quotes/orderbook) |
 | Whale Options (16 local tools — options prints, net GEX) | `A005` Market Data *(reserved)* | Upgrade | Same domain as Edge Stats — market microstructure |
