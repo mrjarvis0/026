@@ -212,6 +212,8 @@ class TradingBot:
         bars = self._closed_bars(ohlcv)
         df = indicators.compute_all(bars)
         signal = signals.generate_signal(df, engine.load_params())
+        # Latest ATR feeds volatility-adaptive stops/sizing; NaN while warming up.
+        atr_v = signals._safe(df.iloc[-1].get("atr"), 0.0) if len(df) else 0.0
         self.last_indicators = signal.details.get("indicators", {})
         self.last_signal = {
             "action": signal.action,
@@ -225,7 +227,7 @@ class TradingBot:
         tag = mode.upper()
         try:
             if allowed and signal.action == "buy":
-                opened = await asyncio.to_thread(trader.open_trade, self.symbol, price, signal.reason)
+                opened = await asyncio.to_thread(trader.open_trade, self.symbol, price, signal.reason, atr_v)
                 if opened:
                     self.log("trade", f"[{tag}] ENTRY BUY {self.symbol} @ {price:.4f} "
                                       f"qty {opened['quantity']:.6f}")

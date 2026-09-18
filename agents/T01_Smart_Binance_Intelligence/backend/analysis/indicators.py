@@ -1,6 +1,8 @@
 """Technical indicators computed with pure pandas/numpy (no C-extension deps)."""
 import pandas as pd
 
+from backend import config
+
 
 def ohlcv_to_df(ohlcv: list[list]) -> pd.DataFrame:
     df = pd.DataFrame(ohlcv, columns=["ts", "open", "high", "low", "close", "volume"])
@@ -41,6 +43,34 @@ def bollinger_bands(series: pd.Series, period: int = 20, std_mult: float = 2.0):
     return upper, mid, lower
 
 
+def atr(high: pd.Series, low: pd.Series, close: pd.Series, period: int = 14) -> pd.Series:
+    """Average True Range — a volatility gauge used to scale stops/targets.
+
+    True range is the greatest of: this bar's high-low, |high - prev close|, and
+    |low - prev close|. Averaged over `period` bars (simple mean). Warms up to NaN
+    for the first `period` bars, so callers must tolerate a missing reading.
+    """
+    prev_close = close.shift()
+    tr = pd.concat([
+        high - low,
+        (high - prev_close).abs(),
+        (low - prev_close).abs(),
+    ], axis=1).max(axis=1)
+    return tr.rolling(window=period, min_periods=period).mean()
+
+
+def vwap(df: pd.DataFrame, period: int = 24) -> pd.Series:
+    """Rolling Volume-Weighted Average Price over `period` bars.
+
+    A rolling window (not a true session-anchored VWAP) — a lightweight
+    'fair value / smart-money' proxy: price above it leans bullish, below bearish.
+    """
+    typical = (df["high"] + df["low"] + df["close"]) / 3.0
+    num = (typical * df["volume"]).rolling(window=period, min_periods=period).sum()
+    den = df["volume"].rolling(window=period, min_periods=period).sum()
+    return num / den.replace(0, 1e-12)
+
+
 def compute_all(ohlcv: list[list]) -> pd.DataFrame:
     """Attach all indicators to an OHLCV dataframe."""
     df = ohlcv_to_df(ohlcv)
@@ -60,4 +90,6 @@ def compute_all(ohlcv: list[list]) -> pd.DataFrame:
     df["bb_mid"] = mid
     df["bb_lower"] = lower
     df["vol_sma_20"] = sma(df["volume"], 20)
+    df["atr"] = atr(df["high"], df["low"], close, config.ATR_PERIOD)
+    df["vwap"] = vwap(df)
     return df

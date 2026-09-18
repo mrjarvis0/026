@@ -49,7 +49,8 @@ class PaperEngine:
         return sum(p["quantity"] * p["entry_price"] for p in self.open_positions())
 
     # ---------- trade actions ----------
-    def open_trade(self, symbol: str, price: float, reason: str = "") -> dict | None:
+    def open_trade(self, symbol: str, price: float, reason: str = "",
+                   atr: float = 0.0) -> dict | None:
         if not risk.can_open_position(len(self.open_positions())):
             return None
         # one position per symbol at a time
@@ -57,8 +58,10 @@ class PaperEngine:
             return None
 
         qty = risk.position_size(self.balance, price, mode=MODE,
-                                 open_count=len(self.open_positions()))
-        cost = qty * price
+                                 open_count=len(self.open_positions()), atr=atr)
+        # Entry cost includes the taker fee, so the wallet is debited what a real
+        # fill would actually cost. The affordability check uses that same figure.
+        cost = qty * price * (1 + config.PAPER_FEE_PCT)
         if qty <= 0 or cost > self.balance:
             return None
 
@@ -71,8 +74,8 @@ class PaperEngine:
             "side": "buy",
             "entry_price": price,
             "quantity": qty,
-            "stop_loss": risk.stop_loss_price(price, "buy"),
-            "take_profit": risk.take_profit_price(price, "buy"),
+            "stop_loss": risk.stop_loss_price(price, "buy", atr),
+            "take_profit": risk.take_profit_price(price, "buy", atr),
             "entry_reason": reason,
             "opened_at": datetime.now(timezone.utc).isoformat(),
         }
@@ -85,10 +88,12 @@ class PaperEngine:
     def close_trade(self, position: dict, price: float, reason: str = "") -> dict:
         qty = position["quantity"]
         entry = position["entry_price"]
-        proceeds = qty * price
-        cost = qty * entry
+        # Both legs bear the fee: proceeds are net of the exit fee, and the entry
+        # cost basis includes the entry fee — so PnL is the true round-trip result.
+        proceeds = (qty * price) * (1 - config.PAPER_FEE_PCT)
+        cost = (qty * entry) * (1 + config.PAPER_FEE_PCT)
         pnl = proceeds - cost
-        pnl_pct = (price - entry) / entry * 100.0 if entry else 0.0
+        pnl_pct = (pnl / cost * 100.0) if cost else 0.0
 
         self.balance += proceeds
         self._save_balance()
@@ -105,12 +110,18 @@ class PaperEngine:
         }
 
     def check_exits(self, mark_prices: dict[str, float]) -> list[dict]:
-        """Close positions that hit stop-loss or take-profit."""
+        """Trail profitable stops, then close positions that hit stop / target."""
         closed = []
         for pos in self.open_positions():
             price = mark_prices.get(pos["symbol"])
             if price is None:
                 continue
+            # Ratchet the stop up on a profitable long before testing exits, so a
+            # pullback from a new high locks in gain instead of round-tripping.
+            new_stop = risk.maybe_trail_stop(pos.get("stop_loss"), price, pos["entry_price"])
+            if new_stop is not None:
+                pos["stop_loss"] = new_stop
+                db.update_trade_stop_loss(pos["id"], new_stop)
             if pos["stop_loss"] and price <= pos["stop_loss"]:
                 closed.append(self.close_trade(pos, price, "stop_loss"))
             elif pos["take_profit"] and price >= pos["take_profit"]:

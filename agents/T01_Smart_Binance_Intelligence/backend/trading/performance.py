@@ -26,6 +26,7 @@ def compute_metrics(mode: str = "paper") -> dict:
             "avg_pnl": 0.0,
             "avg_win": 0.0,
             "avg_loss": 0.0,
+            "expectancy": 0.0,
             "profit_factor": 0.0,
             "sharpe": 0.0,
             "max_drawdown": 0.0,
@@ -46,6 +47,10 @@ def compute_metrics(mode: str = "paper") -> dict:
     gross_profit = sum(wins)
     gross_loss = abs(sum(losses))
     profit_factor = gross_profit / gross_loss if gross_loss > 0 else float("inf")
+    # Expectancy: average $ PnL you can expect per trade given the current
+    # win-rate and average win/loss sizes. Positive = a statistical edge.
+    win_rate = len(wins) / total
+    expectancy = (avg_win * win_rate) - (abs(avg_loss) * (1.0 - win_rate))
 
     # Sharpe ratio on per-trade returns
     mean = total_pnl / total
@@ -87,6 +92,7 @@ def compute_metrics(mode: str = "paper") -> dict:
         "avg_pnl": round(mean, 4),
         "avg_win": round(avg_win, 4),
         "avg_loss": round(avg_loss, 4),
+        "expectancy": round(expectancy, 4),
         "profit_factor": round(profit_factor, 2) if profit_factor != float("inf") else 999.0,
         "sharpe": round(sharpe, 2),
         "max_drawdown": round(max_dd, 2),

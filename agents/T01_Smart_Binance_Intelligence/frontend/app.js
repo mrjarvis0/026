@@ -100,7 +100,8 @@ function renderMetrics(m) {
     ["Trades", m.total_trades, 0], ["Accuracy", (m.accuracy ?? 0) + "%", null],
     ["Total PnL", m.total_pnl, "pnl"], ["ROI", (m.roi_pct ?? 0) + "%", "pnl"],
     ["Win / Loss", `${m.wins}/${m.losses}`, null], ["Profit factor", m.profit_factor, 2],
-    ["Sharpe", m.sharpe, 2], ["Max DD", m.max_drawdown, 2],
+    ["Expectancy", m.expectancy, 4], ["Sharpe", m.sharpe, 2],
+    ["Max DD", m.max_drawdown, 2],
   ];
   $("metrics").innerHTML = rows.map(([k, v, d]) => {
     let cls = "v", txt = v;

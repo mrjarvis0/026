@@ -111,6 +111,15 @@ def close_trade(trade_id: int, exit_price: float, pnl: float,
         )
 
 
+def update_trade_stop_loss(trade_id: int, stop_loss: float) -> None:
+    """Move a still-open trade's stop (used by trailing stops). Never closes it."""
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE trades SET stop_loss=? WHERE id=? AND status='open'",
+            (stop_loss, trade_id),
+        )
+
+
 def get_open_trades(mode: Optional[str] = None) -> list[dict]:
     query = "SELECT * FROM trades WHERE status='open'"
     params: tuple = ()

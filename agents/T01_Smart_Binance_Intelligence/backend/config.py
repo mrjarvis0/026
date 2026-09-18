@@ -36,6 +36,10 @@ BINANCE_TESTNET = _get_bool("BINANCE_TESTNET", True)
 
 # --- Paper trading ---
 PAPER_START_BALANCE = _get_float("PAPER_START_BALANCE", 1000.0)
+# Round-trip trading fee applied to paper fills so simulated PnL is net-of-fee
+# (0.001 = 0.10 %, Binance spot taker default). Real fills are charged by the
+# exchange itself, so this is a paper-only realism knob.
+PAPER_FEE_PCT = _get_float("PAPER_FEE_PCT", 0.001)
 
 # --- Accuracy gate ---
 ACCURACY_UNLOCK_THRESHOLD = _get_float("ACCURACY_UNLOCK_THRESHOLD", 70.0)
@@ -48,6 +52,21 @@ STOP_LOSS_PCT = _get_float("STOP_LOSS_PCT", 0.02)
 TAKE_PROFIT_PCT = _get_float("TAKE_PROFIT_PCT", 0.04)
 MAX_CONCURRENT_POSITIONS = _get_int("MAX_CONCURRENT_POSITIONS", 3)
 DAILY_LOSS_LIMIT_PCT = _get_float("DAILY_LOSS_LIMIT_PCT", 0.03)
+
+# --- Adaptive (ATR) stops & trailing ---
+# When enabled and an ATR reading is available, stop/target distances scale with
+# recent volatility (ATR * multiplier) instead of a flat % of price — tighter in
+# calm tape, wider in volatile tape. Falls back to STOP_LOSS_PCT/TAKE_PROFIT_PCT
+# whenever ATR is missing (e.g. too few bars), so behaviour is never worse than
+# the fixed-% baseline.
+USE_ATR_STOPS = _get_bool("USE_ATR_STOPS", True)
+ATR_PERIOD = _get_int("ATR_PERIOD", 14)
+ATR_STOP_MULT = _get_float("ATR_STOP_MULT", 1.5)    # stop distance = ATR * this
+ATR_TP_MULT = _get_float("ATR_TP_MULT", 3.0)        # target distance = ATR * this (2:1 RR)
+# Trailing stop: once a long is in profit, ratchet the stop up to lock gains.
+# Never loosens a stop; only moves it in the profitable direction.
+TRAIL_ENABLED = _get_bool("TRAIL_ENABLED", True)
+TRAIL_PCT = _get_float("TRAIL_PCT", 0.015)          # trail distance below peak (1.5%)
 
 # --- Server ---
 HOST = os.getenv("HOST", "127.0.0.1")
