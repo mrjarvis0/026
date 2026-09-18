@@ -54,7 +54,15 @@ logs/
 *.log
 data/
 !data/.gitkeep
+# T01's backend/data/ is a SOURCE package (collector.py, database.py, __init__.py),
+# NOT runtime output — the blanket data/ rule above was hiding real source, so a
+# fresh clone of main could not import backend.data and T01 failed to boot. The
+# runtime DB lives in T01/data/ (still ignored above), so track only the source .py.
+!agents/T01_Smart_Binance_Intelligence/backend/data/
+!agents/T01_Smart_Binance_Intelligence/backend/data/*.py
 *.db
+*.db-wal
+*.db-shm
 *.sqlite
 *.sqlite3
 .stakpak/
