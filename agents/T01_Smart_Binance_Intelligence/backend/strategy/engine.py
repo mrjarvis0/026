@@ -42,31 +42,36 @@ def decide(ohlcv: list[list]) -> signals.Signal:
 
 
 def self_tune() -> dict:
-    """Adjust the net-score threshold from recent paper-trading accuracy.
+    """Adjust parameters dynamically using real historical performance metrics.
 
-    Weak accuracy → demand a stronger net score (fewer, higher-quality
-    trades). Strong accuracy → loosen slightly to trade more often.
-    Threshold is clamped to a sane [1.0, 3.0] band so the engine never
-    goes fully silent or hyperactive.
+    Uses actual feedback (Sharpe Ratio and Profit Factor) from closed paper trades
+    to adjust the required confidence threshold. High quality performance loosens
+    the threshold to capture more trades, poor performance tightens it to wait for
+    higher-quality setups.
     """
     metrics = performance.compute_metrics("paper")
     params = load_params()
-    total = metrics["total_trades"]
+    total = metrics.get("total_trades", 0)
     last = int(db.get_state("tune_last_trades", "0") or 0)
 
-    # Learn once per newly-closed trade, never on wall-clock alone: if no new
-    # trade has closed since the last tune, leave the threshold untouched.
+    # Learn once per newly-closed trade, never on wall-clock alone
     if total < 10 or total <= last:
         return params
     db.set_state("tune_last_trades", str(total))
 
-    acc = metrics["accuracy"]
-    if acc < 50:
+    sharpe = metrics.get("sharpe", 0.0)
+    pf = metrics.get("profit_factor", 0.0)
+
+    # Evaluate risk-adjusted returns (Sharpe) and absolute gross profitability
+    if sharpe < 0.5 or pf < 1.0:
+        # Struggling to maintain edge: tighten threshold to filter out weak signals
         params["net_threshold"] = min(3.0, params["net_threshold"] + 0.1)
-    elif acc < 65:
-        params["net_threshold"] = min(3.0, params["net_threshold"] + 0.05)
-    elif acc > 75:
+    elif sharpe > 1.5 and pf > 1.5:
+        # Edge is exceptionally strong: loosen threshold to capture more volume
         params["net_threshold"] = max(1.0, params["net_threshold"] - 0.05)
+    else:
+        # Performance is middling/acceptable, maintain current tuning
+        pass
 
     save_params(params)
     return params

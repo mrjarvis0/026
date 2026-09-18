@@ -120,9 +120,31 @@ class PaperEngine:
                 if pos["stop_loss"] and new_stop > pos["stop_loss"]:
                     pos["stop_loss"] = new_stop
                     db.update_trade(pos["id"], {"stop_loss": pos["stop_loss"]})
+            # Trailing stop logic for sell positions
+            elif pos.get("side") == "sell":
+                trail_distance = pos["entry_price"] * config.STOP_LOSS_PCT
+                new_stop = price + trail_distance
+                if pos["stop_loss"] and new_stop < pos["stop_loss"]:
+                    pos["stop_loss"] = new_stop
+                    db.update_trade(pos["id"], {"stop_loss": pos["stop_loss"]})
 
-            if pos["stop_loss"] and price <= pos["stop_loss"]:
+            # Stop logic depending on side
+            hit_stop = False
+            if pos["stop_loss"]:
+                if pos.get("side", "buy") == "buy" and price <= pos["stop_loss"]:
+                    hit_stop = True
+                elif pos.get("side") == "sell" and price >= pos["stop_loss"]:
+                    hit_stop = True
+
+            hit_tp = False
+            if pos["take_profit"]:
+                if pos.get("side", "buy") == "buy" and price >= pos["take_profit"]:
+                    hit_tp = True
+                elif pos.get("side") == "sell" and price <= pos["take_profit"]:
+                    hit_tp = True
+
+            if hit_stop:
                 closed.append(self.close_trade(pos, price, "stop_loss"))
-            elif pos["take_profit"] and price >= pos["take_profit"]:
+            elif hit_tp:
                 closed.append(self.close_trade(pos, price, "take_profit"))
         return closed
