@@ -1,11 +1,26 @@
-# A007 — Public-Record Intelligence (scaffold)
+# A007 — Public-Record Intelligence (partial)
 
-> **Status: scaffold** — manifest only, no code, no data pipeline, no tests.
-> Not an active fleet member (`config/agents/registry.yaml`: `enabled: false`).
-> Proposed 2026-09-15 from LuxAlgo MCP source research. See
-> [`docs/manual/06-agents.md` §6](../../docs/manual/06-agents.md) for the full
-> research trail and [`sources/mcp.md`](../../sources/mcp.md) (`S119`) for the
-> source record.
+> **Status: partial** — the ingestion → normalization → SQLite-store pipeline and
+> two detectors are built and tested (`enabled: true`, sentinel PASS). Merged
+> 2026-09-18 from the Jules branch `feat/build-a007-agent`.
+> **Ingestion is MOCK-only** (`ingestion/mcp_client.py` returns sample data; the
+> live LuxAlgo MCP fetch and a CLI/skill are not built yet), so A007 does not alert
+> on real data. Proposed 2026-09-15 from LuxAlgo MCP source research — see
+> [`docs/manual/06-agents.md` §6](../../docs/manual/06-agents.md) for the research
+> trail and [`sources/mcp.md`](../../sources/mcp.md) (`S119`) for the source record.
+
+## What's built (2026-09-18)
+
+- `ingestion/mcp_client.py` — congress + insider trade fetch (**mock data**; real MCP TODO)
+- `normalization/cleaner.py` — normalizes trades, parses `$X - $Y` amount ranges
+- `store/db.py` — SQLite tables for congress & insider trades (`data/processed/a007.db`)
+- `intelligence/cluster.py` — two detectors:
+  - `DET-PUBREC-CLUSTER-01` — multiple politicians trading one ticker+direction in a window
+  - `DET-PUBREC-CORRELATION-01` — congress ↔ insider convergence on the same ticker
+- `tests/test_pipeline.py` — end-to-end pipeline + correlation tests (2 pass)
+
+**Still TODO:** live MCP ingestion (replace the mock), a CLI/skill entry point, the
+rest of the datasets in Scope below, and kernel wiring.
 
 ## Why this agent exists
 

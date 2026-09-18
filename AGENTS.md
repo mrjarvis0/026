@@ -104,7 +104,7 @@ An agent with no `evidence.detectors` and no tests **cannot leave trust level 1.
 | `A004` | *(reserved)* Sentiment    | planned   | Social/market sentiment fusion    |
 | `A005` | Market Data Intelligence  | planned   | Market OHLCV / quotes / orderbook across crypto, equities, FX |
 | `A006` | Macro / Econ Intelligence | planned   | Macro & economic series (rates, indicators, filings) |
-| `A007` | Public-Record Intelligence | scaffold | Government/insider records — Congress trades, insider filings, 13F, lobbying, patents, clinical trials, FDA, hearings |
+| `A007` | Public-Record Intelligence | partial | Government/insider records — Congress trades, insider filings, 13F, lobbying, patents, clinical trials, FDA, hearings |
 | `T02` | Swarm Trading Intelligence | partial | Market consensus: an agent-based swarm of 1000 heterogeneous bots simulating how a market reacts to a trade event |
 
 `T02` was merged on 2026-09-18 from the Jules branch `feat/t02-swarm-intelligence`
@@ -119,9 +119,14 @@ it behaves like an intelligence agent. Whether it should be renumbered into the
 they are real (if unbuilt) consumers, not placeholders. Recorded in `BUILD_LOG.md`
 (2026-09-06) and `docs/adr/ADR-0004`.
 
-`A007` was scaffolded (manifest + README, not yet a registered fleet member) on
-2026-09-15 from LuxAlgo MCP source research — see `docs/manual/06-agents.md` §6
-and `sources/mcp.md` (`S119`). `A003`–`A006` were renumbered from `A03`–`A06`
+`A007` was scaffolded on 2026-09-15 from LuxAlgo MCP source research
+(`sources/mcp.md` `S119`); on 2026-09-18 its **pipeline was merged** from the Jules
+branch `feat/build-a007-agent` — ingestion → normalization → SQLite store, plus two
+implemented detectors (`DET-PUBREC-CLUSTER-01` congressional trade clusters,
+`DET-PUBREC-CORRELATION-01` congress↔insider convergence) with tests. It is now a
+registered fleet member (`status: partial`, sentinel PASS). **Ingestion is still
+MOCK-only** — no live MCP fetch and no CLI yet, so it does not alert on real data.
+`A003`–`A006` were renumbered from `A03`–`A06`
 the same day, at the operator's request, to align with the `A001`/`A002`/`A007`
 3-digit format — see `BUILD_LOG.md` (2026-09-15, renumbering session).
 

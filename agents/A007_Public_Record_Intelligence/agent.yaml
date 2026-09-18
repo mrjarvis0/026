@@ -1,7 +1,7 @@
 id: A007
 name: "Public-Record Intelligence"
 version: 0.0.0
-status: scaffold            # scaffold | partial | substantial | complete
+status: partial             # scaffold | partial | substantial | complete
 role: >
   Tracks government and institutional public records — congressional trades,
   insider filings (Forms 3/4/5), 13F institutional holdings, lobbying,
@@ -35,7 +35,13 @@ invariants:
   reports_deviation_only: true
 
 evidence:
-  detectors: []               # none implemented — scaffold only, cannot alert
+  detectors:
+    - id: DET-PUBREC-CLUSTER-01
+      maturity: implemented  # implemented → may NOT alert until validated
+      ceiling: 0.60
+    - id: DET-PUBREC-CORRELATION-01
+      maturity: implemented
+      ceiling: 0.65
   coverage_required_for_absence: true
 
 charter: |

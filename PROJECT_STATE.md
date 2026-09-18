@@ -19,6 +19,11 @@
   deleted; the #16 commit (d3b8cb3) is **local, not yet pushed**.
   **27 other Jules branches remain unmerged on origin** (A001/A002/A006/A007/T02)
   awaiting their own review — see `BUILD_LOG.md` 2026-09-18.
+- **A007 (Public-Record Intelligence):** 2026-09-18 pipeline merged from Jules
+  branch `feat/build-a007-agent` — ingestion → normalization → SQLite store + two
+  detectors (congress trade clusters, congress↔insider correlation) + tests (2 pass).
+  Promoted scaffold→partial, enabled, sentinel PASS. **Ingestion is mock-only** (no
+  live MCP fetch, no CLI yet) — real logic + tests, but not a live alerting agent.
 - **T02 (Swarm Trading Intelligence):** 2026-09-18 merged from Jules branch
   `feat/t02-swarm-intelligence` — a working agent-based market simulator (1000
   bots, 6 strategies, SQLite, CLI; 4 tests pass). Fixed 3 bugs on the way in

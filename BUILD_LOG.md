@@ -3121,3 +3121,54 @@ the renumbering as an open operator call in AGENTS.md §3 and 06-agents.md §2.
 
 Part 2: A007 full pipeline (`feat/build-a007-agent`), then part 3: A006 scaffold
 (`scaffold-a006-macroecon-agent`). T02's commit is local — push with the others.
+
+---
+
+## Session 2026-09-18 (cont.) — merge Jules agent branches, part 2: A007 pipeline
+
+### Goal for this session
+
+Part 2 of 3: bring in the A007 Public-Record Intelligence **pipeline** from
+`feat/build-a007-agent`. On main, A007 was scaffold-only (manifest + README); this
+branch adds the real ingestion → normalization → store → detectors code + tests.
+
+### What changed (A007)
+
+Brought in the A007 agent folder from the branch (`git checkout <branch> -- agents/A007.../`):
+- `ingestion/mcp_client.py` — congress + insider trade fetch (**MOCK data only**;
+  the real LuxAlgo MCP fetch is a TODO — `mock=False` returns `[]`).
+- `normalization/cleaner.py` — normalizes trades; parses `$X - $Y` amount ranges.
+- `store/db.py` — SQLite tables `congress_trades` + `insider_trades`
+  (`data/processed/a007.db`, matching A002's convention).
+- `intelligence/cluster.py` — two real detectors: `DET-PUBREC-CLUSTER-01`
+  (multiple politicians trading one ticker+direction in a window, sliding-window
+  with subset-dedup) and `DET-PUBREC-CORRELATION-01` (congress↔insider convergence
+  on the same ticker+direction+window).
+- `agent.yaml` — the branch declared both detectors (`maturity: implemented`,
+  ceilings 0.60/0.65). Also flipped `status: scaffold → partial` (see below).
+- `tests/test_pipeline.py` — end-to-end pipeline + correlation tests (2 pass).
+
+Registry/fleet: A007 `scaffold → partial`, `enabled: false → true`,
+`runtime_verified: true`, aligned the status across registry + AGENTS.md §3 table +
+manifest (the sentinel enforces they match — a mismatch first showed as HOLD
+"status drift"). Updated AGENTS.md prose, `docs/manual/06-agents.md` §1/§2, and the
+A007 README (was "no code, no tests" — now describes the pipeline honestly).
+
+### Judgement calls
+
+- **Status `partial`, not the branch's `substantial`.** A007 has real detector
+  logic + tests, but ingestion is mock-only (no live fetch) and there's no CLI/skill
+  — genuinely less than A001/A002 ("substantial", live connectors). `partial` is the
+  honest label; recorded the mock-only caveat in the registry comment, AGENTS.md,
+  06-agents.md, and the README so nobody mistakes it for a live alerting agent.
+
+### Verified by execution
+
+- `pytest agents/A007_Public_Record_Intelligence/tests/` → **2 passed**.
+- `python -m security.sentinel scan` → **fleet verdict PASS** (A001, A002, A007, T02).
+- Combined sweep (A007 + T02 + sentinel fleet tests) → 8 passed.
+
+### Next session should start at
+
+Part 3: A006 scaffold (`scaffold-a006-macroecon-agent`). All three agent commits
+(T02, A007, and soon A006) are local — push with the earlier T01 commits.

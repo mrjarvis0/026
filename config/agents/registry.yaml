@@ -43,12 +43,12 @@ agents:
     manifest: agents/A007_Public_Record_Intelligence/agent.yaml
     name: "Public-Record Intelligence"
     domain: "Government/insider records: Congress trades, insider filings, 13F, lobbying, campaign finance, patents, clinical trials, FDA, hearings"
-    status: scaffold
+    status: partial               # pipeline + 2 detectors built & tested; ingestion still MOCK-only (no live fetch/CLI yet)
     trust: 1
-    enabled: false                # scaffold only — not a routable fleet member yet
+    enabled: true
     kernel_wired: false
-    runtime_verified: false
-    origin: "Proposed 2026-09-15 — LuxAlgo MCP source research (sources/mcp.md S119); see docs/manual/06-agents.md §6"
+    runtime_verified: true        # 2026-09-18 — 2 pipeline tests pass on py3.14
+    origin: "Proposed 2026-09-15 (LuxAlgo MCP S119); pipeline merged 2026-09-18 from Jules branch feat/build-a007-agent"
 
   T02:
     dir: agents/T02_Swarm_Trading_Intelligence
