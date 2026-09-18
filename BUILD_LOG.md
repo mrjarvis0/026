@@ -3172,3 +3172,50 @@ A007 README (was "no code, no tests" — now describes the pipeline honestly).
 
 Part 3: A006 scaffold (`scaffold-a006-macroecon-agent`). All three agent commits
 (T02, A007, and soon A006) are local — push with the earlier T01 commits.
+
+---
+
+## Session 2026-09-18 (cont.) — merge Jules agent branches, part 3: A006 scaffold
+
+### Goal for this session
+
+Part 3 of 3: bring in the A006 Macro/Econ Intelligence **scaffold** from
+`scaffold-a006-macroecon-agent`. Unlike T02/A007 this branch has no pipeline code —
+just a manifest + README promoting A006 from a `planned` reserved slot to a
+registered `scaffold` fleet member.
+
+### What changed (A006)
+
+Brought in the A006 agent folder (`README.md` + `agent.yaml`) from the branch. The
+manifest is a clean scaffold: `status: scaffold`, `trust: 1`,
+`execution_enabled: false`, `detectors: []` (cannot alert — no code). Domain is
+Forex / global macro (economic releases, central banks, rates, yields).
+
+Registered A006 in `config/agents/registry.yaml` (`enabled: false`, scaffold) and
+updated `AGENTS.md` §3 (planned → scaffold) + `docs/manual/06-agents.md` §1/§2.
+Did NOT `git checkout` the branch's copies of AGENTS.md / registry / 06-agents /
+PROJECT_STATE — those were cut from an older main and would have clobbered the T02
+and A007 work from parts 1–2; applied the A006 additions by hand instead.
+
+### Name-match gotcha (same class as A007's)
+
+The manifest name is `Macro/Econ Intelligence` (no spaces around the slash) but the
+old AGENTS.md §3 row said `Macro / Econ Intelligence` — the sentinel compares the
+table name to the registry + manifest name exactly, so I normalised the table row
+to `Macro/Econ Intelligence`. (The A006 branch's second commit, "Fix A007 name…
+and fix sentinel scan", was Jules independently hitting the same name-match rule I
+fixed in part 1 — its A007 fix was already covered.)
+
+### Verified by execution
+
+- `python -m security.sentinel scan` → **fleet verdict PASS** — A001, A002, A006,
+  A007, T02 all PASS. (A006 is a scaffold with no code, so no unit tests to run.)
+
+### Wrap-up: all three agent branches merged
+
+T02 (working simulator, 4 tests), A007 (pipeline + 2 detectors, 2 tests, mock
+ingestion), A006 (scaffold). Fleet now has five sentinel-PASS members
+(A001/A002/A006/A007/T02). Six local commits sit ahead of origin (the T01 #16 pair
++ T02 + A007 + A006) — push when the operator is ready. Open follow-ups: T02
+numbering (A- vs T-series), A007 live-MCP ingestion + CLI, A006 has no code yet,
+and the ~24 remaining A001/A002 Jules fix/perf/test branches are still unreviewed.

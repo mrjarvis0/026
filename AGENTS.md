@@ -103,7 +103,7 @@ An agent with no `evidence.detectors` and no tests **cannot leave trust level 1.
 | `A003` | *(reserved)* DeFi Flow    | planned   | Cross-protocol liquidity          |
 | `A004` | *(reserved)* Sentiment    | planned   | Social/market sentiment fusion    |
 | `A005` | Market Data Intelligence  | planned   | Market OHLCV / quotes / orderbook across crypto, equities, FX |
-| `A006` | Macro / Econ Intelligence | planned   | Macro & economic series (rates, indicators, filings) |
+| `A006` | Macro/Econ Intelligence | scaffold | Forex / global macro — economic releases, central banks, rates, yields, cross-asset reaction |
 | `A007` | Public-Record Intelligence | partial | Government/insider records — Congress trades, insider filings, 13F, lobbying, patents, clinical trials, FDA, hearings |
 | `T02` | Swarm Trading Intelligence | partial | Market consensus: an agent-based swarm of 1000 heterogeneous bots simulating how a market reacts to a trade event |
 
@@ -117,7 +117,10 @@ it behaves like an intelligence agent. Whether it should be renumbered into the
 `A005` and `A006` were promoted from proposals to `planned` fleet members on
 2026-09-06: roughly half the source registry (`sources/`) is assigned to them, so
 they are real (if unbuilt) consumers, not placeholders. Recorded in `BUILD_LOG.md`
-(2026-09-06) and `docs/adr/ADR-0004`.
+(2026-09-06) and `docs/adr/ADR-0004`. `A006` was then **scaffolded** (manifest +
+README, `enabled: false`, no code yet) on 2026-09-18 from the Jules branch
+`scaffold-a006-macroecon-agent` — a Forex/global-macro agent (releases, central
+banks, rates, yields).
 
 `A007` was scaffolded on 2026-09-15 from LuxAlgo MCP source research
 (`sources/mcp.md` `S119`); on 2026-09-18 its **pipeline was merged** from the Jules

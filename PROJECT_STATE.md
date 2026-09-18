@@ -19,6 +19,9 @@
   deleted; the #16 commit (d3b8cb3) is **local, not yet pushed**.
   **27 other Jules branches remain unmerged on origin** (A001/A002/A006/A007/T02)
   awaiting their own review — see `BUILD_LOG.md` 2026-09-18.
+- **A006 (Macro/Econ Intelligence):** 2026-09-18 scaffolded from Jules branch
+  `scaffold-a006-macroecon-agent` — manifest + README only (`enabled: false`, no
+  code/detectors/tests yet). Forex/global-macro domain. Sentinel PASS.
 - **A007 (Public-Record Intelligence):** 2026-09-18 pipeline merged from Jules
   branch `feat/build-a007-agent` — ingestion → normalization → SQLite store + two
   detectors (congress trade clusters, congress↔insider correlation) + tests (2 pass).

@@ -17,7 +17,7 @@
 
 | Layer | Series | Can it act on the world? | Trust (§6 of `AGENTS.md`) | Members today |
 |---|---|---|---|---|
-| **Intelligence** | `A0NN` | No — read-only, `NO_TRADE_EXECUTION`. Writes findings to the brain, never money, never orders. | 2 — scoped writes | A001, A002, A007 *(A003–A006 reserved)* |
+| **Intelligence** | `A0NN` | No — read-only, `NO_TRADE_EXECUTION`. Writes findings to the brain, never money, never orders. | 2 — scoped writes | A001, A002, A007 *(A006 scaffolded; A003–A005 reserved)* |
 | **Execution** | `T0N` | Yes — but **gated** (ADR-0002): paper-trade proof required before real orders, real orders must pass the sentinel gate. | not yet assigned — see [§4](#4-open-item-t01-is-not-yet-onboarded) | T01; T02 *(simulation only — never places an order, so by the one-line test below it is really intelligence‑flavoured; numbering is an open call, see §2)* |
 | **Platform** | actor | Runs the fleet itself — not a domain question-answerer. | 3 — human-adjacent | `orchestrator`, `sentinel`, `librarian`, `operator-io` |
 
@@ -50,8 +50,9 @@ branch gave it; renumbering it into the `A`-series (e.g. a Market/Consensus slot
 is a decision left to the operator. Unlike T01, T02 **is** registered in the fleet
 contract and passes the sentinel scan.
 
-*(Reserved, not yet built: `A003` DeFi Flow, `A004` Sentiment, `A005` Market Data,
-`A006` Macro/Econ — `AGENTS.md` §3.)*
+*(Reserved, not yet built: `A003` DeFi Flow, `A004` Sentiment, `A005` Market Data
+— `AGENTS.md` §3. `A006` Macro/Econ is **scaffolded** — manifest + README,
+`enabled: false`, no pipeline yet.)*
 
 ---
 
