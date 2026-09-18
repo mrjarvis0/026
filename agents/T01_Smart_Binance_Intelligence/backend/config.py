@@ -68,6 +68,16 @@ ATR_TP_MULT = _get_float("ATR_TP_MULT", 3.0)        # target distance = ATR * th
 TRAIL_ENABLED = _get_bool("TRAIL_ENABLED", True)
 TRAIL_PCT = _get_float("TRAIL_PCT", 0.015)          # trail distance below peak (1.5%)
 
+# --- Regime & loss-reflection (roadmap #16) ---
+# ADX at/above this reads as a trending regime; below it as chop/range. Used to
+# label each trade's entry regime so the reflection engine can tell "lost in chop"
+# apart from "lost in a trend" and correct the specific cause.
+ADX_TREND_MIN = _get_float("ADX_TREND_MIN", 20.0)
+# Reflection only acts once it has at least this many recent closed trades and the
+# recent loss rate is elevated — so it reacts to a real losing streak, not noise.
+REFLECT_MIN_TRADES = _get_int("REFLECT_MIN_TRADES", 8)
+REFLECT_LOSS_RATE = _get_float("REFLECT_LOSS_RATE", 0.4)   # >40% recent losses -> diagnose
+
 # --- Server ---
 HOST = os.getenv("HOST", "127.0.0.1")
 PORT = _get_int("PORT", 8000)

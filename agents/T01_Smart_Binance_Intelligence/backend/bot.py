@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from backend import config
 from backend.analysis import indicators, signals
 from backend.data import collector, database as db
-from backend.strategy import engine
+from backend.strategy import engine, reflection
 from backend.safety import circuit_breaker
 from backend.trading.paper_engine import PaperEngine
 from backend.trading.real_engine import RealEngine
@@ -211,9 +211,12 @@ class TradingBot:
         # Analyze on CLOSED bars only (the forming candle repaints).
         bars = self._closed_bars(ohlcv)
         df = indicators.compute_all(bars)
-        signal = signals.generate_signal(df, engine.load_params())
+        cur_params = engine.load_params()
+        signal = signals.generate_signal(df, cur_params)
         # Latest ATR feeds volatility-adaptive stops/sizing; NaN while warming up.
         atr_v = signals._safe(df.iloc[-1].get("atr"), 0.0) if len(df) else 0.0
+        # Non-acting foresight (conservative/standard/aggressive) for the dashboard.
+        predictions = engine.predict_scenarios(df)
         self.last_indicators = signal.details.get("indicators", {})
         self.last_signal = {
             "action": signal.action,
@@ -227,7 +230,15 @@ class TradingBot:
         tag = mode.upper()
         try:
             if allowed and signal.action == "buy":
-                opened = await asyncio.to_thread(trader.open_trade, self.symbol, price, signal.reason, atr_v)
+                # Tag the entry with its loss-attribution context so reflection can
+                # later say WHY it lost; stop_mult carries any reflection-widened stop.
+                meta = {
+                    "factor": signal.details.get("dominant_factor"),
+                    "regime": signal.details.get("regime"),
+                    "adx": signal.details.get("adx"),
+                    "stop_mult": cur_params.get("atr_stop_mult", 0.0),
+                }
+                opened = await asyncio.to_thread(trader.open_trade, self.symbol, price, signal.reason, atr_v, meta)
                 if opened:
                     self.log("trade", f"[{tag}] ENTRY BUY {self.symbol} @ {price:.4f} "
                                       f"qty {opened['quantity']:.6f}")
@@ -247,7 +258,15 @@ class TradingBot:
 
         # Learn only when a trade actually resolved this cycle — not every
         # wall-clock tick, which would drive the threshold to its clamp in minutes.
-        params = (await asyncio.to_thread(engine.self_tune)) if did_close else engine.load_params()
+        # self_tune moves the global net_threshold; reflection then diagnoses WHY
+        # recent trades lost and corrects the specific cause (different knobs, no
+        # collision). Both run off the event loop.
+        if did_close:
+            await asyncio.to_thread(engine.self_tune)
+            corrections = await asyncio.to_thread(reflection.diagnose_and_correct, mode)
+            if corrections:
+                self.log("info", f"[{tag}] reflection tuned: {', '.join(corrections)}")
+        params = engine.load_params()
 
         await self._broadcast({
             "type": "tick",
@@ -258,6 +277,7 @@ class TradingBot:
             "order_book": order_book,
             "signal": self.last_signal,
             "indicators": self.last_indicators,
+            "predictions": predictions,
             "params": params,
             "opened": opened,
             "closed": closed,

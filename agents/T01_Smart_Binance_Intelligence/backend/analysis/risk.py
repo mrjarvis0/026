@@ -2,16 +2,19 @@
 from backend import config
 
 
-def _stop_distance(price: float, atr: float) -> float:
+def _stop_distance(price: float, atr: float, stop_mult: float = 0.0) -> float:
     """Absolute price distance to the stop.
 
     Volatility-adaptive when ATR stops are enabled and a real ATR reading is
-    available (distance = ATR * ATR_STOP_MULT); otherwise the flat STOP_LOSS_PCT
-    of price. Keeping this in one place guarantees position_size and
-    stop_loss_price always agree on the stop, so realized risk matches the sizing.
+    available (distance = ATR * multiplier); otherwise the flat STOP_LOSS_PCT of
+    price. The multiplier is ATR_STOP_MULT unless the caller passes a wider
+    ``stop_mult`` override (the loss-reflection engine raises it after a
+    stop-out-driven losing streak). Keeping this in one place guarantees
+    position_size and stop_loss_price always agree, so realized risk matches sizing.
     """
     if config.USE_ATR_STOPS and atr and atr > 0:
-        return atr * config.ATR_STOP_MULT
+        mult = stop_mult if stop_mult and stop_mult > 0 else config.ATR_STOP_MULT
+        return atr * mult
     return price * config.STOP_LOSS_PCT
 
 
@@ -23,7 +26,8 @@ def _target_distance(price: float, atr: float) -> float:
 
 
 def position_size(balance: float, price: float, mode: str = "paper",
-                  open_count: int = 0, atr: float = 0.0) -> float:
+                  open_count: int = 0, atr: float = 0.0,
+                  stop_mult: float = 0.0) -> float:
     """Quantity to trade, sized by per-trade risk and capped by affordability.
 
     Two independent ceilings; the smaller wins:
@@ -44,7 +48,7 @@ def position_size(balance: float, price: float, mode: str = "paper",
         return 0.0
     risk_pct = (config.RISK_PER_TRADE_PAPER if mode == "paper"
                 else config.RISK_PER_TRADE_REAL)
-    stop_distance = _stop_distance(price, atr)
+    stop_distance = _stop_distance(price, atr, stop_mult)
     if stop_distance <= 0:
         return 0.0
 
@@ -57,8 +61,9 @@ def position_size(balance: float, price: float, mode: str = "paper",
     return round(min(qty_risk, qty_cap), 8)
 
 
-def stop_loss_price(entry: float, side: str = "buy", atr: float = 0.0) -> float:
-    dist = _stop_distance(entry, atr)
+def stop_loss_price(entry: float, side: str = "buy", atr: float = 0.0,
+                    stop_mult: float = 0.0) -> float:
+    dist = _stop_distance(entry, atr, stop_mult)
     if side == "buy":
         return round(entry - dist, 8)
     return round(entry + dist, 8)

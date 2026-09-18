@@ -50,15 +50,18 @@ class PaperEngine:
 
     # ---------- trade actions ----------
     def open_trade(self, symbol: str, price: float, reason: str = "",
-                   atr: float = 0.0) -> dict | None:
+                   atr: float = 0.0, meta: dict | None = None) -> dict | None:
         if not risk.can_open_position(len(self.open_positions())):
             return None
         # one position per symbol at a time
         if any(p["symbol"] == symbol for p in self.open_positions()):
             return None
 
+        meta = meta or {}
+        stop_mult = float(meta.get("stop_mult", 0.0) or 0.0)
         qty = risk.position_size(self.balance, price, mode=MODE,
-                                 open_count=len(self.open_positions()), atr=atr)
+                                 open_count=len(self.open_positions()),
+                                 atr=atr, stop_mult=stop_mult)
         # Entry cost includes the taker fee, so the wallet is debited what a real
         # fill would actually cost. The affordability check uses that same figure.
         cost = qty * price * (1 + config.PAPER_FEE_PCT)
@@ -74,9 +77,12 @@ class PaperEngine:
             "side": "buy",
             "entry_price": price,
             "quantity": qty,
-            "stop_loss": risk.stop_loss_price(price, "buy", atr),
+            "stop_loss": risk.stop_loss_price(price, "buy", atr, stop_mult),
             "take_profit": risk.take_profit_price(price, "buy", atr),
             "entry_reason": reason,
+            "entry_factor": meta.get("factor"),
+            "entry_regime": meta.get("regime"),
+            "entry_adx": meta.get("adx"),
             "opened_at": datetime.now(timezone.utc).isoformat(),
         }
         trade_id = db.insert_trade(trade)

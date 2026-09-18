@@ -10,6 +10,8 @@ from typing import Literal
 
 import pandas as pd
 
+from backend import config
+
 Action = Literal["buy", "sell", "hold"]
 
 
@@ -116,6 +118,17 @@ def _evaluate_vwap(price: float, vwap_v: float) -> list[tuple[str, float]]:
     return []
 
 
+def _category(name: str) -> str:
+    """Map a factor name to its sub-signal family, so per-family weight
+    adjustments (from the loss-reflection engine) can target one family."""
+    for c in ("rsi", "macd", "trend", "bb", "vol"):
+        if name.startswith(c):
+            return c
+    if "vwap" in name:
+        return "vwap"
+    return "other"
+
+
 def generate_signal(df: pd.DataFrame, params: dict | None = None) -> Signal:
     p = {
         "rsi_buy": 45.0,
@@ -123,6 +136,8 @@ def generate_signal(df: pd.DataFrame, params: dict | None = None) -> Signal:
         "net_threshold": 1.0,    # net score needed to fire a trade
         "macd_eps": 0.0002,      # MACD histogram dead-band, as a fraction of price (2 bps)
         "trend_band": 0.001,     # EMA50/EMA200 separation dead-band (0.1%)
+        "adx_min": 0.0,          # regime gate: 0 = off; >0 blocks entries when ADX < this
+        "factor_weights": {},    # per-family score multipliers (loss-reflection tunes these)
     }
     if params:
         p.update(params)
@@ -151,20 +166,32 @@ def generate_signal(df: pd.DataFrame, params: dict | None = None) -> Signal:
     vol = _safe(last["volume"])
     vol_avg = _safe(last["vol_sma_20"], vol)
     vwap_v = _safe(last.get("vwap"), price)   # optional column; falls back to price
+    adx_v = _safe(last.get("adx"), 0.0)       # trend strength; 0 when warming up
+    regime = "trend" if adx_v >= config.ADX_TREND_MIN else "chop"
 
     # ---- weighted sub-signals: (name, score) — positive = bullish ----
-    factors: list[tuple[str, float]] = []
-    factors.extend(_evaluate_rsi(rsi_v, p["rsi_buy"], p["rsi_sell"]))
-    factors.extend(_evaluate_macd(macd_hist, macd_hist_prev, price, p["macd_eps"]))
-    factors.extend(_evaluate_trend(ema50, ema200, p["trend_band"]))
-    factors.extend(_evaluate_bollinger(price, bb_lower, bb_upper))
-    factors.extend(_evaluate_volume(vol, vol_avg, price, ema50))
-    factors.extend(_evaluate_vwap(price, vwap_v))
+    raw: list[tuple[str, float]] = []
+    raw.extend(_evaluate_rsi(rsi_v, p["rsi_buy"], p["rsi_sell"]))
+    raw.extend(_evaluate_macd(macd_hist, macd_hist_prev, price, p["macd_eps"]))
+    raw.extend(_evaluate_trend(ema50, ema200, p["trend_band"]))
+    raw.extend(_evaluate_bollinger(price, bb_lower, bb_upper))
+    raw.extend(_evaluate_volume(vol, vol_avg, price, ema50))
+    raw.extend(_evaluate_vwap(price, vwap_v))
+
+    # Loss-reflection can down-weight a whole sub-signal family (e.g. Bollinger
+    # mean-reversion entries that keep losing) without touching the others.
+    fw = p.get("factor_weights") or {}
+    factors = [(n, s * float(fw.get(_category(n), 1.0))) for n, s in raw]
 
     bull = sum(s for _, s in factors if s > 0)
     bear = -sum(s for _, s in factors if s < 0)
     net = bull - bear
     confidence = min(1.0, abs(net) / _MAX_SCORE)
+
+    # The single strongest driver — recorded on the trade so reflection can later
+    # attribute a loss to the sub-signal that actually opened it.
+    dominant = max(factors, key=lambda x: abs(x[1]))[0] if factors else ""
+    dominant_cat = _category(dominant) if dominant else ""
 
     details = {
         "indicators": {
@@ -179,6 +206,8 @@ def generate_signal(df: pd.DataFrame, params: dict | None = None) -> Signal:
             "volume": round(vol, 2),
             "vol_avg": round(vol_avg, 2),
             "vwap": round(vwap_v, 6),
+            "adx": round(adx_v, 2),
+            "regime": regime,
             "trend": "up" if ema50 >= ema200 else "down",
         },
         "factors": [{"name": n, "score": round(s, 2)} for n, s in factors],
@@ -186,7 +215,19 @@ def generate_signal(df: pd.DataFrame, params: dict | None = None) -> Signal:
         "bear_score": round(bear, 2),
         "net_score": round(net, 2),
         "threshold": p["net_threshold"],
+        "dominant_factor": dominant_cat,
+        "regime": regime,
+        "adx": round(adx_v, 2),
     }
+
+    # Regime gate: when reflection has raised adx_min after a chop-driven losing
+    # streak, suppress *entries* in a weak/low-ADX tape (exits are unaffected —
+    # generate_signal never closes a position, the engines do).
+    adx_min = float(p.get("adx_min", 0.0) or 0.0)
+    if adx_min > 0 and adx_v < adx_min:
+        return Signal("hold", confidence,
+                      f"HOLD · regime filter (ADX {adx_v:.0f} < {adx_min:.0f})",
+                      price, details)
 
     if net >= p["net_threshold"]:
         drivers = ", ".join(n for n, s in factors if s > 0) or "momentum"

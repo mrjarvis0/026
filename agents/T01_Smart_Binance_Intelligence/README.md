@@ -11,6 +11,8 @@ A self-learning crypto trading agent with a live web dashboard. It works on **an
 - 🎯 **Volatility-adaptive (ATR) stops & targets** + risk-based position sizing that shrinks in choppy tape
 - 📈 **VWAP confluence** sub-signal on top of RSI/MACD/EMA/Bollinger/volume scoring
 - 🪜 **Trailing stops** — lock in profit as price runs, never loosen a stop
+- 🔬 **Loss reflection** — tags *why* each trade lost (which sub-signal, trend vs chop regime, exit type) and corrects that specific cause, not one blunt global dial
+- 🔭 **Scenario foresight** — shows what conservative / standard / aggressive settings would each decide (bot still trades the standard one)
 - 🌍 **Geo-block resilient** — auto-falls back to public Kraken data when Binance returns HTTP 451
 - 🔒 Real trading locked behind the 70% accuracy gate
 - 🛑 Emergency STOP + daily loss-limit circuit breaker
@@ -73,13 +75,14 @@ lives in [`T01_Smart_Binance_Intelligence.agent.md`](../T01_Smart_Binance_Intell
 **✅ Recently shipped** (foundation for the scalping build):
 - **Fees + expectancy** — round-trip paper fees + expectancy metric (roadmap #1)
 - **Adaptive ATR stops/targets** + volatility-scaled position sizing (roadmap #2)
-- **VWAP + ATR indicators** and a VWAP confluence sub-signal (part of roadmap #6)
+- **VWAP + ATR + ADX indicators** and a VWAP confluence sub-signal (part of roadmap #6)
 - **Trailing stops** to protect open profit (part of roadmap #12)
 - **Kraken fallback** for public data when Binance is geo-blocked (HTTP 451)
+- **Loss reflection** (roadmap #16) — per-trade loss attribution + targeted self-correction
+- **Scenario predictions** — non-acting conservative/standard/aggressive foresight
 
 **Still planned:**
 - Dedicated **scalping profile** (1m/5m/30m, maker orders), **real-time WebSocket** data
-- **Multi-timeframe** confluence, **ADX/Stochastic**, **chart-pattern & market-structure** detection
+- **Multi-timeframe** confluence, **Stochastic / volume-profile**, **chart-pattern & market-structure** detection
 - **Multi-symbol scanner**, **exchange-native OCO/stop-limit**, a **backtester**, order reconciliation
 - **Multi-strategy** engine (scalping/swing/trend) and a **futures + shorting** module
-- **Loss root-cause diagnosis** — tag *why* each trade lost and correct that specific cause, instead of one global threshold nudge

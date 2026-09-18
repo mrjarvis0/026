@@ -59,6 +59,31 @@ def atr(high: pd.Series, low: pd.Series, close: pd.Series, period: int = 14) -> 
     return tr.rolling(window=period, min_periods=period).mean()
 
 
+def adx(high: pd.Series, low: pd.Series, close: pd.Series, period: int = 14) -> pd.Series:
+    """Average Directional Index — trend *strength* (not direction), 0–100.
+
+    High ADX (≳20–25) = a directional trend; low ADX = a choppy/ranging tape. Used
+    to label each trade's entry regime for loss reflection (roadmap #16). Simple
+    rolling means (consistent with atr() above), so it warms up to NaN for the
+    first ~2·period bars.
+    """
+    prev_close = close.shift()
+    tr = pd.concat([
+        high - low,
+        (high - prev_close).abs(),
+        (low - prev_close).abs(),
+    ], axis=1).max(axis=1)
+    up = high.diff()
+    down = -low.diff()
+    plus_dm = up.where((up > down) & (up > 0), 0.0)
+    minus_dm = down.where((down > up) & (down > 0), 0.0)
+    atr_ = tr.rolling(window=period, min_periods=period).mean().replace(0, 1e-12)
+    plus_di = 100.0 * plus_dm.rolling(window=period, min_periods=period).mean() / atr_
+    minus_di = 100.0 * minus_dm.rolling(window=period, min_periods=period).mean() / atr_
+    dx = 100.0 * (plus_di - minus_di).abs() / (plus_di + minus_di).replace(0, 1e-12)
+    return dx.rolling(window=period, min_periods=period).mean()
+
+
 def vwap(df: pd.DataFrame, period: int = 24) -> pd.Series:
     """Rolling Volume-Weighted Average Price over `period` bars.
 
@@ -91,5 +116,6 @@ def compute_all(ohlcv: list[list]) -> pd.DataFrame:
     df["bb_lower"] = lower
     df["vol_sma_20"] = sma(df["volume"], 20)
     df["atr"] = atr(df["high"], df["low"], close, config.ATR_PERIOD)
+    df["adx"] = adx(df["high"], df["low"], close, config.ATR_PERIOD)
     df["vwap"] = vwap(df)
     return df

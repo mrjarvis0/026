@@ -12,6 +12,11 @@ DEFAULT_PARAMS = {
     "net_threshold": 1.0,
     "macd_eps": 0.0002,
     "trend_band": 0.001,
+    # Tuned by the loss-reflection engine (roadmap #16); all default to no-op so
+    # behaviour is unchanged until a diagnosed losing streak adjusts them.
+    "adx_min": 0.0,             # regime gate (block entries when ADX < this)
+    "atr_stop_mult": 0.0,       # 0 = use config.ATR_STOP_MULT; >0 overrides (wider stops)
+    "factor_weights": {},       # per-family score multipliers (down-weight a losing sub-signal)
 }
 
 
@@ -39,6 +44,31 @@ def decide(ohlcv: list[list]) -> signals.Signal:
     """Analyze candles and return a trade signal using current tuned params."""
     df = indicators.compute_all(ohlcv)
     return signals.generate_signal(df, load_params())
+
+
+def predict_scenarios(df) -> dict:
+    """Foresight telemetry: what a conservative / standard / aggressive threshold
+    would each decide on the current bar. **Non-acting** — the bot always trades on
+    the standard tuned signal (bot.py). This just surfaces "aggressive would buy,
+    standard holds" on the dashboard, without the earlier version's bug where it
+    silently acted on the loosest threshold (confidence is threshold-independent,
+    so a confidence sort there was a no-op that always picked 'aggressive')."""
+    base = load_params()
+    variants = {
+        "conservative": dict(base, net_threshold=base["net_threshold"] + 0.5),
+        "standard": base,
+        "aggressive": dict(base, net_threshold=max(1.0, base["net_threshold"] - 0.5)),
+    }
+    out = {}
+    for name, pp in variants.items():
+        sig = signals.generate_signal(df, pp)
+        out[name] = {
+            "action": sig.action,
+            "net": sig.details.get("net_score"),
+            "threshold": round(pp["net_threshold"], 2),
+            "confidence": round(sig.confidence, 2),
+        }
+    return out
 
 
 def self_tune() -> dict:

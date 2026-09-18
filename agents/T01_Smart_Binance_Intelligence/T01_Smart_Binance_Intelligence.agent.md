@@ -111,6 +111,7 @@ Windows:
 - **Bollinger Bands(20, 2σ)** — SMA(20) ± 2·rolling std.
 - **Volume SMA(20)** for volume confirmation.
 - **ATR(14)** — average true range, a volatility gauge driving adaptive stops/targets/sizing (§5).
+- **ADX(14)** — trend *strength* (0–100); labels each entry's regime (**trend** ≥ `ADX_TREND_MIN`, else **chop**) for loss reflection (§4.4).
 - **VWAP (rolling 24)** — a volume‑weighted fair‑value proxy feeding the VWAP confluence sub‑signal (§4.2).
 
 ### 4.2 Signal engine ([`analysis/signals.py`](T01_Smart_Binance_Intelligence/backend/analysis/signals.py))
@@ -150,6 +151,37 @@ every signal for the dashboard.
 
 This is a deliberately conservative, interpretable feedback controller — *not* a
 black‑box ML model. Tuned params persist in the `state` table.
+
+### 4.4 Loss reflection — attribute *why*, then fix the specific cause ([`strategy/reflection.py`](T01_Smart_Binance_Intelligence/backend/strategy/reflection.py))
+
+`self_tune()` only knows the *aggregate* win‑rate and turns one dial
+(`net_threshold`). Reflection answers a different question — **why** did the
+recent losers lose — and corrects that specific cause. Every entry is tagged at
+open time (stored on the `trades` row) with three pieces of context that are all
+known at signal time:
+
+- **`entry_factor`** — the dominant sub‑signal *family* that opened it (the
+  largest‑magnitude weighted factor: rsi / macd / trend / bb / vol / vwap).
+- **`entry_regime`** — **trend** or **chop**, from ADX vs `ADX_TREND_MIN`.
+- **`entry_adx`** — the raw ADX reading; plus the exit type is already recorded
+  (`stop_loss` / `take_profit` / `signal_sell`).
+
+After each close, once there are `REFLECT_MIN_TRADES` recent trades and the recent
+loss rate exceeds `REFLECT_LOSS_RATE`, `diagnose_and_correct()` groups the losers
+by cause and applies a **targeted** fix (each a *different* knob than
+`net_threshold`, so the two loops never fight):
+
+| Dominant loss cause | Targeted correction |
+|---|---|
+| ≥50 % of losers opened in **chop** | raise `adx_min` → gate out low‑ADX entries |
+| ≥50 % of losers opened by **one family** | down‑weight *that* family (`factor_weights`, floor 0.5) |
+| ≥60 % of losers exited via **stop‑loss** | widen the ATR stop (`atr_stop_mult`, cap 3.0) |
+
+All three knobs default to no‑op (`adx_min=0`, `factor_weights={}`,
+`atr_stop_mult=0`), so behaviour is identical to before until a *diagnosed* losing
+streak moves them — and every move only ever tightens (filter more, weight less,
+stop wider), the conservative direction. This is the roadmap #16 idea built
+properly: "diagnose, then fix the specific thing," not one blunt global average.
 
 ---
 
@@ -237,7 +269,10 @@ hardens the transport instead:
 
 Three SQLite tables:
 - **`trades`** — mode, symbol, side, entry/exit price, qty, stop/target, status,
-  realized `pnl`/`pnl_pct`, entry/exit reason, timestamps.
+  realized `pnl`/`pnl_pct`, entry/exit reason, the loss‑attribution tags
+  (`entry_factor`, `entry_regime`, `entry_adx` — see §4.4), and timestamps.
+  New columns are added by an idempotent `ALTER TABLE` migration in `init_db()`,
+  so existing databases upgrade in place.
 - **`equity_curve`** — balance + equity snapshots over time.
 - **`state`** — key/value store (active symbol/timeframe, `bot_running`,
   `paper_balance`, `strategy_params`, `emergency_stop`, `real_enabled`, …).
@@ -268,9 +303,19 @@ Paper balance and all learned state survive restarts.
 - **ATR & VWAP indicators + a VWAP confluence sub‑signal** (part of roadmap #6).
 - **Trailing stops** (part of roadmap #12).
 - **Kraken fallback** for public market data when Binance returns HTTP 451.
-- **First automated tests** for T01: `tests/test_t01_merge.py` (17 cases).
-  Deliberately left for later: an illusory multi‑scenario `decide()`, a duplicate
-  hardcoded fee path, and an untested Sharpe/PF tuner rewrite (see §11 #16).
+- **ADX indicator + trend/chop regime labelling** (completes the indicator side of #6).
+- **Per‑trade loss attribution + targeted self‑correction** (roadmap #16, §4.4) —
+  the proper build: tag each entry's dominant factor / regime / ADX, then diagnose
+  and fix the specific loss cause (regime filter / factor down‑weight / wider stop).
+  This is the "does T01 know *why* a trade lost" capability, done right.
+- **Non‑acting multi‑scenario predictions** — the bot broadcasts what a
+  conservative / standard / aggressive threshold would each decide (dashboard
+  foresight), while still trading only the standard signal.
+- **T01 test suite**: `tests/test_t01_merge.py` (17) + `tests/test_t01_reflection.py`
+  (13) = **30 cases**. Deliberately dropped from the Jules branches: the illusory
+  multi‑scenario `decide()` that silently acted on the loosest threshold, a
+  duplicate hardcoded fee path, an untested Sharpe/PF tuner rewrite, and the
+  double‑nudge reflect loop — the reflection here is the corrected version.
 
 **Recently fixed (2026‑09‑14)**
 - **Signal crash / phantom trades on thin data** — `generate_signal()` raised
@@ -398,8 +443,8 @@ The 2026‑09‑18 merge landed the Phase‑A/foundation pieces (#1, #2) plus pa
 5. **Multi‑timeframe confluence** — higher‑TF trend bias (30m/1h) gates lower‑TF
    (1m/5m) entries.
 6. 🟡 **More indicators for scalping** — **VWAP** ✅ (rolling; anchored VWAP still
-   TODO) and **ATR** ✅ are in and wired to signals/stops; **ADX**, Stochastic and
-   volume profile still pending.
+   TODO), **ATR** ✅ and **ADX** ✅ are in and wired to signals/stops/regime;
+   Stochastic and volume profile still pending.
 7. **Chart‑pattern & market‑structure detection** — candlesticks (engulfing,
    hammer, doji, pin‑bar), support/resistance, breakouts, and structure
    (higher‑highs/lows, break‑of‑structure).
@@ -432,28 +477,24 @@ The 2026‑09‑18 merge landed the Phase‑A/foundation pieces (#1, #2) plus pa
 
 **Phase E — learn from *why*, not just *whether***
 
-16. **Per‑trade loss attribution + targeted self‑correction.** Today's
-    `self_tune()` (§4.3) only reacts to the *aggregate* win‑rate with one global
-    knob (`net_threshold`) — it cannot say why any single trade lost, and it
-    cannot tell "the strategy is right but got unlucky" apart from "this exact
-    setup keeps failing." Planned: tag every closed trade in the `trades` table
-    (§7) with a **loss‑cause label** at exit time, built from data already
-    available at signal time — the dominant sub‑signal from `signals.py`'s factor
-    breakdown (§4.2), the volatility/ADX regime (once item 6 lands), and whether
-    the exit was a stop‑loss, a take‑profit, or a reversal. Then group losses by
-    cause and correct the *specific* thing responsible, instead of nudging the one
-    global threshold:
-    - losses clustering in a choppy/low‑ADX regime → add a regime filter, not a
-      threshold nudge;
-    - losses clustering on one sub‑signal (e.g. Bollinger mean‑reversion entries)
-      → downweight *that* sub‑signal, leave the others untouched;
-    - a stopped‑out‑then‑price‑reverses pattern repeating → widen stops (ties
-      into item 2's ATR stops) rather than trading less often.
+16. ✅ **Per‑trade loss attribution + targeted self‑correction** — *built
+    2026‑09‑18* (see §4.4, [`strategy/reflection.py`](T01_Smart_Binance_Intelligence/backend/strategy/reflection.py)).
+    Every entry is now tagged with its **dominant sub‑signal family**, its
+    **trend/chop regime** (from ADX), and the raw ADX; the exit type is already
+    recorded. After each close, `diagnose_and_correct()` groups recent losers by
+    cause and fixes the *specific* thing:
+    - losses clustering in a choppy/low‑ADX regime → raise `adx_min` (regime
+      filter), not a blanket threshold nudge;
+    - losses clustering on one sub‑signal family → down‑weight *that* family
+      (`factor_weights`), others untouched;
+    - losses mostly from stop‑outs → widen the ATR stop (`atr_stop_mult`).
 
-    This turns the tuner from "one dial, one direction" into "diagnose, then fix
-    the specific thing" — closer to how a human trader reviews a losing streak
-    instead of one blunt statistical average. **Not yet built — code lands in a
-    future session; this entry is the spec to build from.**
+    This is the "diagnose, then fix the specific thing" behaviour the spec called
+    for — a different knob than `self_tune`'s global threshold, so the two loops
+    don't fight. *Still open (a stretch of the original spec):* an explicit
+    "stopped‑out‑then‑price‑reverses" pattern detector (needs post‑exit price
+    tracking); today the stop‑out cluster is handled by the simpler "stops too
+    tight → widen" rule.
 
 ---
 
@@ -463,8 +504,10 @@ to boot; signal/reset/multi‑symbol bug‑fixes; v2 roadmap added); **revised
 added to the roadmap, per the operator's question about whether T01 understands
 *why* a trade lost, not just *that* it lost); **revised 2026‑09‑18** (merged the
 Jules AI branches: fixed the `data/` gitignore that hid `backend/data/` source;
-shipped fees+expectancy #1, ATR stops #2, VWAP/ATR indicators #6, trailing stops
-#12, and a Binance→Kraken geo‑block fallback; added the first T01 test suite).
+shipped fees+expectancy #1, ATR stops #2, VWAP/ATR/**ADX** indicators #6, trailing
+stops #12, a Binance→Kraken geo‑block fallback, and **built #16 for real** —
+per‑trade loss attribution + targeted self‑correction (§4.4) plus non‑acting
+multi‑scenario predictions; 30‑case test suite).
 Code references point at the repository as it stands in
 [`T01_Smart_Binance_Intelligence/`](T01_Smart_Binance_Intelligence/); external citations were
 verified against live sources on 2026‑08‑28. Nothing here is financial advice.*

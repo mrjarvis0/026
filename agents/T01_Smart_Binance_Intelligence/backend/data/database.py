@@ -23,6 +23,9 @@ CREATE TABLE IF NOT EXISTS trades (
     pnl_pct REAL,
     entry_reason TEXT,
     exit_reason TEXT,
+    entry_factor TEXT,                  -- dominant sub-signal family that opened it
+    entry_regime TEXT,                  -- 'trend' / 'chop' at entry (from ADX)
+    entry_adx REAL,                     -- ADX reading at entry
     opened_at TEXT NOT NULL,
     closed_at TEXT
 );
@@ -72,6 +75,15 @@ def get_conn():
 def init_db() -> None:
     with get_conn() as conn:
         conn.executescript(SCHEMA)
+        # Migrate DBs created before the loss-attribution columns existed. ADD
+        # COLUMN on an existing column raises OperationalError — ignore that.
+        for col, decl in (("entry_factor", "TEXT"),
+                          ("entry_regime", "TEXT"),
+                          ("entry_adx", "REAL")):
+            try:
+                conn.execute(f"ALTER TABLE trades ADD COLUMN {col} {decl}")
+            except sqlite3.OperationalError:
+                pass
 
 
 # ---------------- Trades ----------------
@@ -81,9 +93,10 @@ def insert_trade(trade: dict[str, Any]) -> int:
         cur = conn.execute(
             """INSERT INTO trades
                (mode, symbol, side, entry_price, quantity, stop_loss, take_profit,
-                status, entry_reason, opened_at)
+                status, entry_reason, entry_factor, entry_regime, entry_adx, opened_at)
                VALUES (:mode, :symbol, :side, :entry_price, :quantity, :stop_loss,
-                       :take_profit, 'open', :entry_reason, :opened_at)""",
+                       :take_profit, 'open', :entry_reason, :entry_factor,
+                       :entry_regime, :entry_adx, :opened_at)""",
             {
                 "mode": trade["mode"],
                 "symbol": trade["symbol"],
@@ -93,6 +106,9 @@ def insert_trade(trade: dict[str, Any]) -> int:
                 "stop_loss": trade.get("stop_loss"),
                 "take_profit": trade.get("take_profit"),
                 "entry_reason": trade.get("entry_reason", ""),
+                "entry_factor": trade.get("entry_factor"),
+                "entry_regime": trade.get("entry_regime"),
+                "entry_adx": trade.get("entry_adx"),
                 "opened_at": trade.get("opened_at", _now()),
             },
         )
