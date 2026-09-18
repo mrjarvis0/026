@@ -19,6 +19,14 @@
   deleted; the #16 commit (d3b8cb3) is **local, not yet pushed**.
   **27 other Jules branches remain unmerged on origin** (A001/A002/A006/A007/T02)
   awaiting their own review — see `BUILD_LOG.md` 2026-09-18.
+- **A001 / A002 (2026-09-18):** merged 21 of the 24 remaining Jules branches — 8
+  A001 code-health refactors (A001 suite still 1846 pass / 1 skip = behavior
+  preserved), 6 A002 features (Deribit options-IV, Google Fact Check, translation
+  APIs, async healthcheck fix, regex-compile perf, N+1 narrative-load fix), and 7
+  A002 test-coverage additions (A002 pytest 42→55; check()-style suites 63/45/4 pass
+  as scripts). Skipped 2 (a competing options-IV impl + a redundant test). Caveat:
+  the fact-check/options-IV/translation branches add blocking urllib calls that
+  should be wrapped in asyncio.to_thread if used in async paths.
 - **A006 (Macro/Econ Intelligence):** 2026-09-18 scaffolded from Jules branch
   `scaffold-a006-macroecon-agent` — manifest + README only (`enabled: false`, no
   code/detectors/tests yet). Forex/global-macro domain. Sentinel PASS.

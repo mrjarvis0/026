@@ -3219,3 +3219,64 @@ ingestion), A006 (scaffold). Fleet now has five sentinel-PASS members
 + T02 + A007 + A006) — push when the operator is ready. Open follow-ups: T02
 numbering (A- vs T-series), A007 live-MCP ingestion + CLI, A006 has no code yet,
 and the ~24 remaining A001/A002 Jules fix/perf/test branches are still unreviewed.
+
+---
+
+## Session 2026-09-18 (cont.) — merge the 24 A001/A002 Jules branches
+
+### Goal for this session
+
+Review the 24 remaining A001/A002 fix/perf/test/refactor branches, then merge the
+good ones, verify each, and delete the empty branch.
+
+### Review outcome
+
+- **8 A001 refactors** (token_flow, security scanner, docker adapter, exchange_flow,
+  subprocess adapter, token_unlock, poller `_process_height`, CallBudget bulk) —
+  all mechanical "split a long method into helpers" / bulk-query changes, each on a
+  DIFFERENT file → no inter-conflicts, behavior-preserving by intent.
+- **6 A002 features** — options-IV (Deribit), Google Fact Check API, translation
+  (DeepL/Google/Libre), async healthcheck fix, regex-compile perf, N+1 narrative
+  load fix — each on a different file.
+- **7 A002 test-only** — coverage for `_direction_of`, `_platt_scale`,
+  `coordination_score`, `_price_at`, `_assess_risk_factors`, `_detect_regime`,
+  `predict_asset` e2e.
+- **SKIPPED 2**: `implement-options-iv-fetching` (competing loser — 3 API calls +
+  bare except vs the chosen `fix-options-iv-fetching`'s 1 call + precise handling)
+  and `test-improvement-direction-of` (redundant 1-test dupe of the 4-test
+  `add-test-predict-direction-of`).
+- **empty**: `jules.ai` (0 commits) — to be deleted.
+
+### How they were merged
+
+`git cherry-pick` per branch (preserves Jules authorship). The 8 A001 and 6 A002
+features cherry-picked cleanly (distinct files). The 7 A002 tests were where the
+conflicts lived — four append to `test_impact.py` and two to `test_verification.py`
+— resolved by keeping every added test function + its `__main__` call and merging
+the shared `from ...predict import ...` line into one. Also **fixed one weak
+merged test**: `test_fact_check.py` hit Google's live API with a fake key and had
+no assertions → rewrote it offline (disabled-without-key returns [] with no
+network, enabled flag, singleton) in a follow-up commit.
+
+### Verified by execution (baselines first, then after merge)
+
+- A001: baseline **1846 passed / 1 skipped** → after 8 refactors **1846 passed / 1
+  skipped** (identical — behavior preserved).
+- A002 pytest: baseline **42 passed** → after all 13 A002 branches **55 passed**.
+- Ran the check()-style A002 suites as scripts to confirm real pass/fail (pytest
+  only sees "did not raise"): `test_impact.py` **63 passed / 0 failed**,
+  `test_verification.py` **45 passed / 0 failed**, `test_predict.py` 4 passed.
+
+### Caveat flagged (not blocking)
+
+fact-check / options-IV / translation each add a **blocking `urllib`** call that,
+if invoked from an async path, would stall the event loop — the healthcheck branch
+merged here shows the right fix (`asyncio.to_thread`); wrapping the others the same
+way is a good follow-up.
+
+### Next session should start at
+
+22 commits (21 branches + the fact-check test fix) are local → push. Delete the
+empty `jules.ai`. The 21 merged source branches and the 2 skipped ones
+(`implement-options-iv-fetching`, `test-improvement-direction-of`) can be deleted
+from origin once the operator confirms. All Jules branches will then be resolved.
