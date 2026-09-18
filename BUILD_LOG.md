@@ -2969,3 +2969,89 @@ merged Jules branches: `feat/t01-fees-expectancy`, `refactor-generate-signal`,
 Keep `feat/t02-swarm-intelligence` (it's the T02 agent, only partially T01) and all
 A001/A002/A006/A007 branches for their own review. Open idea for the operator:
 fold expectancy into the accuracy gate (win-rate ≠ edge).
+
+---
+
+## Session 2026-09-18 (cont.) — finish what was left: build roadmap #16 (loss reflection)
+
+### Goal for this session
+
+Operator pushed the 3 merge commits and deleted the 4 merged T01 branches
+themselves (verified: origin/main = 2e18bdc; 4 branches gone; t02-swarm + A0xx
+safe). Then asked to complete anything still *left* from the four T01 branches.
+
+### What was actually left
+
+Audited the four branches against what the merge landed:
+- `feat/t01-fees-expectancy` — fully merged. `refactor-generate-signal` — fully
+  merged. `feature/t01-live-paper-trade` — its real feature (Kraken 451 fallback)
+  merged. So nothing left in those three.
+- `feature/t01-autonomous-predictions-and-reflection` — ATR/VWAP/trailing were
+  merged, but TWO things were deliberately dropped and never rebuilt: the
+  **multi-scenario predictions** and the **loss reflection** (`reflection.py`).
+  The reflection is roadmap #16 — "does T01 know *why* a trade lost" — which the
+  operator had explicitly asked about earlier. Jules's version was the weak
+  "one global knob" approach #16 itself criticises, so it was correctly dropped;
+  the right move now is to build #16 *properly*.
+
+### What changed (one commit, d3b8cb3)
+
+Built roadmap #16 for real, plus the predictions as honest telemetry:
+- **ADX(14)** indicator → every entry labelled **trend/chop** via `ADX_TREND_MIN`.
+- **signals.py**: record dominant sub-signal family + regime + ADX on each signal;
+  add per-family `factor_weights` (down-weight a losing family) and an `adx_min`
+  regime gate (suppress entries in weak/low-ADX tape).
+- **trades table**: `entry_factor` / `entry_regime` / `entry_adx` columns +
+  idempotent ALTER-TABLE migration; `open_trade` tags them via a `meta` dict.
+- **risk.py**: optional `stop_mult` so a stop-out streak can widen the ATR stop.
+- **strategy/reflection.py** (new): `diagnose()` + `diagnose_and_correct()` group
+  recent losers by cause and apply ONE targeted fix each — raise `adx_min` (chop
+  cluster), down-weight the losing family, or widen the stop (stop-out cluster).
+  All bounded + tightening-only; a *different* knob than `self_tune`, so no
+  collision.
+- **engine.predict_scenarios()**: non-acting conservative/standard/aggressive
+  foresight on the tick; the bot still trades only the standard signal. This fixes
+  the Jules multi-scenario bug (its confidence sort was threshold-independent, so
+  it silently always acted on the loosest threshold).
+- **bot.py**: tag entries, run reflection after each close (alongside self_tune),
+  broadcast predictions.
+
+### Deliberately NOT built
+
+- The spec's explicit "stopped-out-then-price-reverses" pattern detector — needs
+  post-exit price tracking infra. Handled instead by the simpler "stops mostly
+  hit → widen the stop" rule; flagged as still-open in agent.md #16.
+- Frontend UI for predictions/reflection — the data is broadcast on the tick, but
+  I did not build canvas UI for it (couldn't browser-test it this session), so I'm
+  not claiming a working dashboard surface. Backend telemetry only.
+
+### Verified by execution
+
+- `compileall backend/` → clean. `pytest tests/` → **30 passed**
+  (17 merge + 13 new reflection cases).
+- Full import smoke incl. `bot` + `reflection`; new knobs default no-op
+  (`adx_min=0`, `atr_stop_mult=0`, `factor_weights={}`) → behaviour unchanged until
+  a diagnosed streak moves them.
+- Integration: 8 synthetic losers (chop / bb / stop_loss) → `diagnose()` attributes
+  100% chop, 100% bb, 100% stop_loss → `diagnose_and_correct()` applies
+  `adx_min→5`, `weight[bb]→0.8`, `atr_stop_mult→1.75`; a low-ADX bar with the raised
+  gate then returns hold. End-to-end confirmed.
+
+### Self-critique
+
+- **Threaded `stop_mult` through risk + both engines' `open_trade`.** Small
+  signature growth, but kept sizing and the stop reading the same distance so risk
+  can't desync from the stop.
+- **Reflection can stack three corrections on one diagnosis** (as the synthetic
+  test showed). That's intended — each targets a different, independent cause — but
+  on real, mixed data it will usually fire at most one. Bounds/clamps make a
+  triple-fire harmless.
+- **ADX/ATR/VWAP are simple-mean approximations, not Wilder's smoothing** — a
+  deliberate, consistent choice, fine for a signal/regime nudge; flagged in §4.1.
+
+### Next session should start at
+
+Commit d3b8cb3 is local only — push it to `origin/main` when ready. Optional:
+a small dashboard surface for `predictions` + the current reflection tuning, and
+the stretch #16 "stop-then-reverse" detector. The 27 remaining Jules branches
+(T02-swarm, A006, A007, ~24 A001/A002) are still unreviewed.

@@ -8,11 +8,16 @@
 - **Repo root:** `F:\026`
 - **T01 (Smart Binance Intelligence):** 2026-09-18 merged the reviewed Jules AI
   branch work — paper fees + expectancy, ATR-adaptive stops + volatility sizing,
-  ATR/VWAP indicators + VWAP confluence, trailing stops, and a Binance→Kraken
-  geo-block fallback; first T01 test suite added (17 pass). Also fixed a
-  repo-health bug: the blanket `data/` `.gitignore` was hiding `T01/backend/data/`
-  source, so a fresh clone of `main` could not boot T01 — now committed.
-  **29 other Jules branches remain unmerged on origin** (A001/A002/A006/A007/T02)
+  ATR/VWAP/ADX indicators + VWAP confluence, trailing stops, and a Binance→Kraken
+  geo-block fallback. Then **built roadmap #16 (loss reflection)** properly:
+  per-trade loss attribution (dominant factor / trend-chop regime / exit type) +
+  targeted self-correction (regime gate / factor down-weight / wider stop), plus
+  non-acting multi-scenario predictions. T01 test suite now 30 cases (green). Also
+  fixed a repo-health bug: the blanket `data/` `.gitignore` was hiding
+  `T01/backend/data/` source, so a fresh clone of `main` could not boot T01 — now
+  committed. The 3 merge commits are pushed to origin + the 4 merged branches
+  deleted; the #16 commit (d3b8cb3) is **local, not yet pushed**.
+  **27 other Jules branches remain unmerged on origin** (A001/A002/A006/A007/T02)
   awaiting their own review — see `BUILD_LOG.md` 2026-09-18.
 - **Phase:** Genesis Â· **Phase 1 (source inventory)** â€” documentation system
   established and hardened; **platform kernel still unbuilt, but A001+A002 agents migrated in from CIE-OS 2026-09-06;** Stack chosen (`docs/STACK.md`);
