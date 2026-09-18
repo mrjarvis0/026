@@ -104,7 +104,7 @@ An agent with no `evidence.detectors` and no tests **cannot leave trust level 1.
 | `A004` | *(reserved)* Sentiment    | planned   | Social/market sentiment fusion    |
 | `A005` | Market Data Intelligence  | planned   | Market OHLCV / quotes / orderbook across crypto, equities, FX |
 | `A006` | Macro/Econ Intelligence   | scaffold  | Forex / Global Macroeconomics |
-| `A007` | *(scaffold)* Public-Record Intelligence | scaffold | Government/insider records — Congress trades, insider filings, 13F, lobbying, patents, clinical trials, FDA, hearings |
+| `A007` | Public-Record Intelligence | scaffold | Government/insider records — Congress trades, insider filings, 13F, lobbying, patents, clinical trials, FDA, hearings |
 
 `A005` was promoted from proposal to `planned` and `A006` to `scaffold` fleet member on
 2026-09-06: roughly half the source registry (`sources/`) is assigned to them, so
