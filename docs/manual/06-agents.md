@@ -38,7 +38,7 @@ read-only intelligence agent would make the name lie about
 |---|---|---|---|---|---|
 | `A001` | Blockchain Intelligence | Intelligence | On-chain: whales, flows, anomaly | substantial | ✅ `agent.yaml` + `config/agents/registry.yaml` |
 | `A002` | News Intelligence | Intelligence | Fake-news / rumor / market impact | substantial | ✅ `agent.yaml` + `config/agents/registry.yaml` |
-| `T01` | Smart Binance Intelligence | Execution | Binance spot trading — paper-trade now, real orders locked behind a 70%-accuracy gate | built (live FastAPI dashboard, paper trading works) | ❌ see [§4](#4-open-item-t01-is-not-yet-onboarded) |
+| `T01` | Smart Binance Intelligence | Execution | Binance spot trading — paper-trade now, real orders locked behind a 70%-accuracy gate | built (live FastAPI dashboard; paper trading with fee-aware PnL, ATR/trailing stops, VWAP confluence — see agent.md §8, updated 2026-09-18) | ❌ see [§4](#4-open-item-t01-is-not-yet-onboarded) |
 
 *(Reserved, not yet built: `A003` DeFi Flow, `A004` Sentiment, `A005` Market Data,
 `A006` Macro/Econ — `AGENTS.md` §3. `A007` Public-Record is scaffolded — has

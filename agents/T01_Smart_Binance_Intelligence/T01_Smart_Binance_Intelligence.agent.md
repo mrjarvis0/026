@@ -110,6 +110,8 @@ Windows:
 - **EMA 50 / 100 / 200** and **SMA 20**.
 - **Bollinger Bands(20, 2σ)** — SMA(20) ± 2·rolling std.
 - **Volume SMA(20)** for volume confirmation.
+- **ATR(14)** — average true range, a volatility gauge driving adaptive stops/targets/sizing (§5).
+- **VWAP (rolling 24)** — a volume‑weighted fair‑value proxy feeding the VWAP confluence sub‑signal (§4.2).
 
 ### 4.2 Signal engine ([`analysis/signals.py`](T01_Smart_Binance_Intelligence/backend/analysis/signals.py))
 
@@ -127,8 +129,9 @@ trades. Weights (positive = bullish):
 | Trend | `EMA50`/`EMA200` separated beyond `trend_band` (~0.1%) | ±0.8 |
 | Bollinger mean‑reversion | price ≤ lower / ≥ upper | +1.2 / −1.2 |
 | Volume confirmation | volume > avg, in candle direction | ±0.6 |
+| VWAP confluence | price above / below rolling VWAP | +0.7 / −0.7 |
 
-`net = bull − bear`; `confidence = min(1, |net| / 6.6)` (6.6 = the max achievable
+`net = bull − bear`; `confidence = min(1, |net| / 7.3)` (7.3 = the max achievable
 one‑sided score). If `net ≥ net_threshold` → **buy**; if `net ≤ −net_threshold` →
 **sell**; else **hold**. Below **`_MIN_BARS` (30)** of history the engine returns
 **hold** — too little data leaves indicators NaN and would otherwise fabricate a
@@ -158,7 +161,8 @@ Fixed‑fractional, **risk‑based** sizing:
 
 ```
 capital_at_risk = balance × RISK_PER_TRADE       (paper 2 %, real 1 %)
-stop_distance   = price × STOP_LOSS_PCT           (2 %)
+stop_distance   = ATR × ATR_STOP_MULT (1.5)       when ATR stops enabled + ATR known
+                  else price × STOP_LOSS_PCT (2 %) # fixed-% fallback
 qty_risk        = capital_at_risk / stop_distance
 # affordability cap: split the FREE balance across the position slots still open,
 # so all MAX_CONCURRENT_POSITIONS can fit in cash (replaced the old fixed 0.30 cap)
@@ -166,7 +170,15 @@ slots_left      = max(1, MAX_CONCURRENT_POSITIONS − open_count)
 qty             = min(qty_risk, (balance / slots_left) / price)  # smaller wins
 ```
 
-- **Stop‑loss** −2 %, **take‑profit** +4 % (a 2:1 reward:risk target).
+- **Adaptive (ATR) stops & targets** (`USE_ATR_STOPS`, default on): stop distance =
+  `ATR × ATR_STOP_MULT` (1.5), target = `ATR × ATR_TP_MULT` (3.0) → a 2:1 target that
+  scales with volatility. Both sizing and the actual stop read the *same*
+  `_stop_distance`, so a wider volatility stop automatically shrinks the position.
+  Falls back to fixed **−2 % / +4 %** whenever ATR is unavailable (thin history), so
+  behaviour is never worse than the old fixed baseline.
+- **Trailing stops** (`TRAIL_ENABLED`, default on): once a long is in profit, the
+  stop ratchets up to `price × (1 − TRAIL_PCT)` (1.5 %) and never loosens — locking
+  gains on a pullback instead of round‑tripping to the entry stop.
 - **Max 3 concurrent positions**, one per symbol at a time.
 
 ### Circuit breaker ([`safety/circuit_breaker.py`](T01_Smart_Binance_Intelligence/backend/safety/circuit_breaker.py))
@@ -179,9 +191,11 @@ qty             = min(qty_risk, (balance / slots_left) / price)  # smaller wins
 ### Performance & the accuracy gate ([`trading/performance.py`](T01_Smart_Binance_Intelligence/backend/trading/performance.py))
 
 `compute_metrics()` produces: total trades, wins/losses, accuracy (%), total &
-average PnL, average win/loss, **profit factor** (gross profit / gross loss),
-**Sharpe ratio** (per‑trade mean/σ × √N), **max drawdown** (peak‑to‑trough on the
-cumulative PnL curve), and **ROI %**. Real trading is `unlocked` only when
+average PnL, average win/loss, **expectancy** (`avg_win·winrate − |avg_loss|·(1−winrate)`
+— the average $ edge per trade, and a truer profitability proxy than win‑rate),
+**profit factor** (gross profit / gross loss), **Sharpe ratio** (per‑trade mean/σ × √N),
+**max drawdown** (peak‑to‑trough on the cumulative PnL curve), and **ROI %**. All paper
+PnL is **net of round‑trip fees** (`PAPER_FEE_PCT`, 0.10 %). Real trading is `unlocked` only when
 `accuracy ≥ 70 %` **and** `total_trades ≥ 50`. Synthetic `reset` closes (created
 when the paper wallet is reset) are **excluded** from every metric, so a wallet
 reset can never inflate the trade count or accuracy toward the gate.
@@ -243,6 +257,21 @@ Paper balance and all learned state survive restarts.
 - Pure‑pandas indicators — no fragile native TA dependency.
 - Thoughtful localhost web hardening despite having no auth.
 
+**New in this build (2026‑09‑18) — reconciled & merged from the Jules AI branches**
+- **Repo‑health fix**: the blanket `data/` `.gitignore` rule was also hiding the
+  *source* package `backend/data/` (collector + database), so a fresh clone of
+  `main` could not import `backend.data` and T01 wouldn't boot. Source is now
+  tracked; the runtime `trades.db` stays ignored.
+- **Fees + expectancy** (roadmap #1) — round‑trip `PAPER_FEE_PCT` in the paper
+  engine + an `expectancy` metric and dashboard tile.
+- **Adaptive ATR stops/targets + volatility sizing** (roadmap #2).
+- **ATR & VWAP indicators + a VWAP confluence sub‑signal** (part of roadmap #6).
+- **Trailing stops** (part of roadmap #12).
+- **Kraken fallback** for public market data when Binance returns HTTP 451.
+- **First automated tests** for T01: `tests/test_t01_merge.py` (17 cases).
+  Deliberately left for later: an illusory multi‑scenario `decide()`, a duplicate
+  hardcoded fee path, and an untested Sharpe/PF tuner rewrite (see §11 #16).
+
 **Recently fixed (2026‑09‑14)**
 - **Signal crash / phantom trades on thin data** — `generate_signal()` raised
   `IndexError` on an empty frame and emitted a false BUY on 1–2 bars (defaulted
@@ -256,20 +285,22 @@ Paper balance and all learned state survive restarts.
   symbol before running `check_exits`.
 
 **Gaps / caveats (honest) — these drive the v2 roadmap in §11**
-- **No fees / slippage model** in the paper engine; real fills will differ. The
-  single biggest correctness gap — with round‑trip taker fees ~0.2 %, naive
-  scalping is usually unprofitable and paper accuracy overstates any real edge.
+- **Fees now modelled, slippage not yet.** Paper PnL is net of round‑trip fees
+  (`PAPER_FEE_PCT`), which removes the single biggest correctness gap; a spread/
+  slippage model is still pending, so very‑tight scalps remain slightly optimistic.
 - **Spot‑only, long‑only, one symbol at a time.** No shorting, no futures, no
   leverage; positions open only on the active symbol. (Binance stock tokens were
   discontinued in 2021 — real equities need a different broker.)
-- **Single strategy, single timeframe.** One net‑momentum model with fixed
-  2 %/4 % SL/TP — far too wide for 1m/5m scalping — with no multi‑timeframe
-  confluence and no chart‑pattern / market‑structure detection.
-- **Soft stops.** SL/TP fire only when the 12 s loop sees the level crossed; no
-  exchange‑native OCO/stop‑limit, so a fast wick between polls (or a downed bot)
-  is unprotected.
+- **Single strategy, single timeframe.** One net‑momentum model. Stops/targets are
+  now **ATR‑adaptive** (no longer a flat 2 %/4 %), but there is still no dedicated
+  scalping profile, no multi‑timeframe confluence, and no chart‑pattern /
+  market‑structure detection.
+- **Soft stops.** SL/TP (and the new trailing stop) fire only when the 12 s loop
+  sees the level crossed; no exchange‑native OCO/stop‑limit, so a fast wick between
+  polls (or a downed bot) is unprotected.
 - **Strategy is unvalidated out‑of‑sample.** No backtester; the 70 % gate measures
-  *paper* win‑rate — an optimistic proxy for profitability (win‑rate ≠ expectancy).
+  *paper* win‑rate. Expectancy is now reported alongside it, but is still
+  in‑sample — an optimistic proxy until a walk‑forward backtester lands.
 - **`requirements.txt` lists more than the code uses** (`aiosqlite`, `jinja2`,
   `httpx` aren't imported; storage is synchronous `sqlite3`). Harmless; worth trimming.
 
@@ -341,22 +372,24 @@ software components. Canonical primary sources for each, **verified 2026‑08‑
 
 ---
 
-## 11. Planned v2 build — roadmap (15 items)
+## 11. Planned v2 build — roadmap (16 items)
 
 The vision: trade **any Binance market**, run **multiple strategy types** (swing,
 trend, futures) with **scalping first** on **1m / 5m / 30m**, analyze **every
-timeframe** for **patterns & trend**, and **auto‑trade** the best setups. The 15
+timeframe** for **patterns & trend**, and **auto‑trade** the best setups. The 16
 features below are ordered **scalping‑first + foundation‑first** (each builds on
-the earlier ones). None are implemented yet — this is the backlog for the next
-build phase.
+the earlier ones). Status legend: **✅ done**, **🟡 partial**, **⬜ planned**.
+The 2026‑09‑18 merge landed the Phase‑A/foundation pieces (#1, #2) plus parts of
+#6 and #12; the rest remain the backlog.
 
 **Phase A — make the edge real (do first)**
-1. **Fees + slippage model** in the paper engine (per‑symbol taker/maker fee +
-   spread), and report **expectancy** (`avg_win·p − avg_loss·(1−p)`) and net‑of‑fee
-   PnL. Without this, scalping paper results are meaningless.
-2. **Adaptive ATR/volatility‑based stops & targets** replacing the fixed 2 %/4 % —
-   tight, per‑timeframe SL/TP suited to 1m/5m scalps.
-3. **Scalping strategy profile** (1m/5m/30m presets: fast cadence, tight risk,
+1. ✅ **Fees + expectancy** — round‑trip `PAPER_FEE_PCT` applied on both legs in the
+   paper engine (net‑of‑fee PnL) and an **expectancy** metric + dashboard tile.
+   *(Per‑symbol maker/taker tiers and a spread/slippage model still pending.)*
+2. ✅ **Adaptive ATR/volatility‑based stops & targets** — `ATR × ATR_STOP_MULT`
+   (1.5) / `ATR_TP_MULT` (3.0), with position sizing off the same distance and a
+   safe fixed‑% fallback. Replaces the flat 2 %/4 %.
+3. ⬜ **Scalping strategy profile** (1m/5m/30m presets: fast cadence, tight risk,
    **maker/limit entries** to avoid taker fees).
 
 **Phase B — scalping brain**
@@ -364,8 +397,9 @@ build phase.
    12 s polling loop — sub‑second reaction for 1m scalping.
 5. **Multi‑timeframe confluence** — higher‑TF trend bias (30m/1h) gates lower‑TF
    (1m/5m) entries.
-6. **More indicators for scalping** — **VWAP** (+ anchored VWAP), **ATR**, **ADX**,
-   Stochastic, volume profile.
+6. 🟡 **More indicators for scalping** — **VWAP** ✅ (rolling; anchored VWAP still
+   TODO) and **ATR** ✅ are in and wired to signals/stops; **ADX**, Stochastic and
+   volume profile still pending.
 7. **Chart‑pattern & market‑structure detection** — candlesticks (engulfing,
    hammer, doji, pin‑bar), support/resistance, breakouts, and structure
    (higher‑highs/lows, break‑of‑structure).
@@ -379,8 +413,9 @@ build phase.
     (net of fees) before trusting the live gate.
 11. **Order reconciliation & restart resilience** — poll order status, handle
     partial/rejected fills, and re‑sync exchange positions with the DB on restart.
-12. **Overtrading & drawdown guards** — max daily trades, loss‑streak cooldown,
-    max‑drawdown kill‑switch, and per‑position **trailing stops**.
+12. 🟡 **Overtrading & drawdown guards** — per‑position **trailing stops** ✅ (config
+    `TRAIL_*`, ratchets up only); max daily trades, loss‑streak cooldown and a
+    max‑drawdown kill‑switch still pending.
 
 **Phase D — expand markets & strategies**
 13. **Multi‑strategy engine + selector** — switchable **scalping / swing /
@@ -395,10 +430,41 @@ build phase.
 > "stocks" would require a separate broker integration (e.g. Alpaca) outside this
 > Binance‑focused agent.
 
+**Phase E — learn from *why*, not just *whether***
+
+16. **Per‑trade loss attribution + targeted self‑correction.** Today's
+    `self_tune()` (§4.3) only reacts to the *aggregate* win‑rate with one global
+    knob (`net_threshold`) — it cannot say why any single trade lost, and it
+    cannot tell "the strategy is right but got unlucky" apart from "this exact
+    setup keeps failing." Planned: tag every closed trade in the `trades` table
+    (§7) with a **loss‑cause label** at exit time, built from data already
+    available at signal time — the dominant sub‑signal from `signals.py`'s factor
+    breakdown (§4.2), the volatility/ADX regime (once item 6 lands), and whether
+    the exit was a stop‑loss, a take‑profit, or a reversal. Then group losses by
+    cause and correct the *specific* thing responsible, instead of nudging the one
+    global threshold:
+    - losses clustering in a choppy/low‑ADX regime → add a regime filter, not a
+      threshold nudge;
+    - losses clustering on one sub‑signal (e.g. Bollinger mean‑reversion entries)
+      → downweight *that* sub‑signal, leave the others untouched;
+    - a stopped‑out‑then‑price‑reverses pattern repeating → widen stops (ties
+      into item 2's ATR stops) rather than trading less often.
+
+    This turns the tuner from "one dial, one direction" into "diagnose, then fix
+    the specific thing" — closer to how a human trader reviews a losing streak
+    instead of one blunt statistical average. **Not yet built — code lands in a
+    future session; this entry is the spec to build from.**
+
 ---
 
 *Compiled 2026‑08‑28; **revised 2026‑09‑14** (frontend now present & app verified
-to boot; signal/reset/multi‑symbol bug‑fixes; v2 roadmap added). Code references
-point at the repository as it stands in
+to boot; signal/reset/multi‑symbol bug‑fixes; v2 roadmap added); **revised
+2026‑09‑16** (item 16 — per‑trade loss attribution + targeted self‑correction —
+added to the roadmap, per the operator's question about whether T01 understands
+*why* a trade lost, not just *that* it lost); **revised 2026‑09‑18** (merged the
+Jules AI branches: fixed the `data/` gitignore that hid `backend/data/` source;
+shipped fees+expectancy #1, ATR stops #2, VWAP/ATR indicators #6, trailing stops
+#12, and a Binance→Kraken geo‑block fallback; added the first T01 test suite).
+Code references point at the repository as it stands in
 [`T01_Smart_Binance_Intelligence/`](T01_Smart_Binance_Intelligence/); external citations were
 verified against live sources on 2026‑08‑28. Nothing here is financial advice.*

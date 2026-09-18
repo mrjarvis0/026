@@ -4,8 +4,16 @@
 > This file describes what *is* â€” not what is planned. Planned work lives in the
 > roadmaps in `README.md`, `ROADMAP.md`, and `AGENTS.md`.
 
-- **Last updated:** 2026-09-06
+- **Last updated:** 2026-09-18
 - **Repo root:** `F:\026`
+- **T01 (Smart Binance Intelligence):** 2026-09-18 merged the reviewed Jules AI
+  branch work — paper fees + expectancy, ATR-adaptive stops + volatility sizing,
+  ATR/VWAP indicators + VWAP confluence, trailing stops, and a Binance→Kraken
+  geo-block fallback; first T01 test suite added (17 pass). Also fixed a
+  repo-health bug: the blanket `data/` `.gitignore` was hiding `T01/backend/data/`
+  source, so a fresh clone of `main` could not boot T01 — now committed.
+  **29 other Jules branches remain unmerged on origin** (A001/A002/A006/A007/T02)
+  awaiting their own review — see `BUILD_LOG.md` 2026-09-18.
 - **Phase:** Genesis Â· **Phase 1 (source inventory)** â€” documentation system
   established and hardened; **platform kernel still unbuilt, but A001+A002 agents migrated in from CIE-OS 2026-09-06;** Stack chosen (`docs/STACK.md`);
   execution charter gated (`ADR-0002`).

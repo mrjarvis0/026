@@ -2868,3 +2868,104 @@ by running the suite, not one or the other.
 
 Nothing blocking. Before committing: a final `git diff` skim across all 15
 files (cheap, and this session's own self-critique says to).
+
+---
+
+## Session 2026-09-18 — merge Jules AI branches into T01 + fix data/ gitignore
+
+### Goal for this session
+
+The operator connected **Jules AI** (Google's coding agent) to the GitHub repo
+and had it write a lot of code. Locally only `main` was visible, so the work was
+invisible until `git fetch --all` — which revealed **29 unmerged remote branches**
+(A001/A002/T01/T02/A006/A007). Operator's request: analyse them, merge the T01
+ones "in my own way" (rewriting to reconcile conflicts), keep safety, update docs,
+and delete only the branches whose work actually landed.
+
+### Audit findings (delta from last session)
+
+- **29 Jules branches on origin, none merged into `main`.** Naming: `jules.ai`
+  (empty), `jules/*`, and many `feat/*`, `fix/*`, `refactor/*`, `test-*` with long
+  numeric suffixes. Authored by `google-labs-jules[bot]`.
+- **Real bug (independent of Jules):** `.gitignore` line 55 `data/` (meant for the
+  runtime DB dir `T01/data/`) also matched the *source* package
+  `T01/backend/data/` (collector.py + database.py). Those are imported by
+  `bot.py`/`real_engine.py`, so **a fresh clone of `main` could not boot T01** —
+  the source was never committed, only present on the operator's disk. Jules
+  force-added its own copies onto branches, which is why its branches "had" them.
+- **Four T01 branches overlapped hard** — `feat/t01-fees-expectancy`,
+  `refactor-generate-signal`, `feature/t01-autonomous-predictions-and-reflection`,
+  `feature/t01-live-paper-trade` (+ `feat/t02-swarm` touching T01 too) all rewrite
+  the same core files (`engine.py`, `risk.py`, `signals.py`, `paper_engine.py`,
+  `indicators.py`) in incompatible ways. A straight merge of all was impossible.
+
+### What changed (two commits)
+
+1. **Gitignore fix** — un-ignore `T01/backend/data/*.py` while keeping the runtime
+   `trades.db` ignored; also ignore `*.db-wal`/`*.db-shm` (WAL sidecars). Committed
+   the three source files (`__init__.py`, `collector.py`, `database.py`).
+2. **T01 feature merge** (hand-reconciled, not `git merge`) — took the clean
+   implementation of each feature and dropped the buggy/duplicate ones:
+   - Paper **fees + expectancy** (config `PAPER_FEE_PCT`, correct round-trip
+     accounting; expectancy metric + UI tile) — from `feat/t01-fees-expectancy`.
+   - **ATR + VWAP** indicators; **ATR-adaptive stops/targets + volatility sizing**
+     via a single `_stop_distance` so sizing and the stop always agree; multipliers
+     are config knobs. Fixed-% fallback preserves old behaviour when ATR is absent.
+   - **VWAP confluence** sub-signal; `signals.py` refactored into per-factor helpers
+     (from `refactor-generate-signal`) **with the explanatory comments preserved**.
+   - **Trailing stops** via a pure `risk.maybe_trail_stop`, shared by both engines;
+     new `db.update_trade_stop_loss`.
+   - **Binance→Kraken (HTTP 451) fallback** folded into the *existing rich*
+     collector (kept retry/testnet/API-key handling) — NOT the thin Jules rewrite.
+   - First T01 tests: `tests/test_t01_merge.py` (17 cases).
+
+### Deliberately NOT merged (with reasons)
+
+- **Multi-scenario `decide()`** (reflection branch) — it sorts three
+  threshold-variant scenarios "by confidence," but confidence = `|net|/MAX` is
+  independent of the threshold, so all actionable scenarios tie and it silently
+  collapses to the most-aggressive threshold. Illusory; left out.
+- **Duplicate hardcoded `0.001` fee** in the reflection branch's paper_engine
+  (entry fee not in the PnL cost basis → inconsistent accounting). Kept the
+  config-driven, correct version instead.
+- **Sharpe/Profit-Factor `self_tune` rewrite** (t02-swarm) — untested change to the
+  live tuner on a trading bot; kept `main`'s tested accuracy-based tuner.
+- **`reflect_on_losses` loop** — a second learning loop nudging the *same*
+  `net_threshold` on the same close as `self_tune` (they stack). It is also the
+  "one global knob" approach that roadmap #16 explicitly criticises; not real
+  per-trade attribution. Left #16 as a planned spec.
+- **The thin 32-line collector rewrite** (live-paper-trade) — would have regressed
+  the rich collector (lost retry/backoff/testnet). Ported only its Kraken idea.
+
+### Verified by execution
+
+- `python -m compileall backend/` → clean.
+- `python -m pytest tests/ -q` → **17 passed**.
+- Import smoke test: every T01 backend module imports; config knobs load.
+- Integration run: open @100 (ATR stop 97, TP 106) → price 105 trails stop to
+  102.90 → pullback to 102.5 exits via the trailed stop at **+76.58** (fees
+  applied), instead of round-tripping to the original 97 stop. Confirmed working.
+- (Installed `pandas`/`numpy`/`ccxt` into the root `.venv` — already in T01's
+  `requirements.txt`, not new deps — so tests could run.)
+
+### Self-critique
+
+- **Rewrote a live trading engine.** Risk is contained: paper-by-default, the hard
+  accuracy gate is untouched, fees only make paper *more* conservative, and ATR/
+  trailing are config-gated with safe fixed-% fallbacks. Real-engine PnL was left
+  fee-free on purpose (the exchange charges real fees; simulating them would
+  double-count).
+- **ATR uses a simple rolling mean, not Wilder's smoothing**, and VWAP is a rolling
+  24-bar window, not session-anchored — both are the pragmatic approximations Jules
+  wrote; good enough for a signal nudge, flagged in §4.1/#6 as such.
+- **Branch deletion + push to origin deferred to operator confirmation** — deleting
+  shared remote branches is destructive; the list is staged for a final yes/no.
+
+### Next session should start at
+
+Push these two commits to `origin/main`, then (on operator confirm) delete the
+merged Jules branches: `feat/t01-fees-expectancy`, `refactor-generate-signal`,
+`feature/t01-autonomous-predictions-and-reflection`, `feature/t01-live-paper-trade`.
+Keep `feat/t02-swarm-intelligence` (it's the T02 agent, only partially T01) and all
+A001/A002/A006/A007 branches for their own review. Open idea for the operator:
+fold expectancy into the accuracy gate (win-rate ≠ edge).

@@ -6,7 +6,12 @@ A self-learning crypto trading agent with a live web dashboard. It works on **an
 - 🌐 Universal — trade/analyze any Binance spot pair (pick from dashboard)
 - 📊 Live web dashboard (candlestick chart, signals, P&L, accuracy meter)
 - 🧠 Self-learning strategy tuner (adjusts parameters from results)
-- 📝 Paper trading with full trade history & metrics (accuracy, Sharpe, drawdown, ROI)
+- 📝 Paper trading with full trade history & metrics (accuracy, expectancy, Sharpe, drawdown, ROI)
+- 💸 **Fee-aware paper PnL** — round-trip trading fees applied so simulated results are realistic
+- 🎯 **Volatility-adaptive (ATR) stops & targets** + risk-based position sizing that shrinks in choppy tape
+- 📈 **VWAP confluence** sub-signal on top of RSI/MACD/EMA/Bollinger/volume scoring
+- 🪜 **Trailing stops** — lock in profit as price runs, never loosen a stop
+- 🌍 **Geo-block resilient** — auto-falls back to public Kraken data when Binance returns HTTP 451
 - 🔒 Real trading locked behind the 70% accuracy gate
 - 🛑 Emergency STOP + daily loss-limit circuit breaker
 
@@ -62,13 +67,19 @@ frontend/          index.html, styles.css, app.js (canvas terminal)
 ## Roadmap (v2)
 
 The next build phase turns this spot paper-trader into a **scalping-first,
-multi-market auto-trader**. Full 15-item plan (scalping-first, foundation-first)
+multi-market auto-trader**. Full plan (scalping-first, foundation-first)
 lives in [`T01_Smart_Binance_Intelligence.agent.md`](../T01_Smart_Binance_Intelligence.agent.md) §11.
-Highlights:
 
-- **Fees + slippage model** and expectancy metrics (so scalping results are real)
-- **Adaptive ATR stops** + a dedicated **scalping profile** (1m/5m/30m, maker orders)
-- **Real-time WebSocket** data, **multi-timeframe** confluence, **VWAP/ATR/ADX**
-- **Chart-pattern & market-structure** detection + a **multi-symbol scanner**
-- **Exchange-native OCO/stop-limit**, a **backtester**, order reconciliation
+**✅ Recently shipped** (foundation for the scalping build):
+- **Fees + expectancy** — round-trip paper fees + expectancy metric (roadmap #1)
+- **Adaptive ATR stops/targets** + volatility-scaled position sizing (roadmap #2)
+- **VWAP + ATR indicators** and a VWAP confluence sub-signal (part of roadmap #6)
+- **Trailing stops** to protect open profit (part of roadmap #12)
+- **Kraken fallback** for public data when Binance is geo-blocked (HTTP 451)
+
+**Still planned:**
+- Dedicated **scalping profile** (1m/5m/30m, maker orders), **real-time WebSocket** data
+- **Multi-timeframe** confluence, **ADX/Stochastic**, **chart-pattern & market-structure** detection
+- **Multi-symbol scanner**, **exchange-native OCO/stop-limit**, a **backtester**, order reconciliation
 - **Multi-strategy** engine (scalping/swing/trend) and a **futures + shorting** module
+- **Loss root-cause diagnosis** — tag *why* each trade lost and correct that specific cause, instead of one global threshold nudge
