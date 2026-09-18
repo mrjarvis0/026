@@ -18,7 +18,7 @@
 | Layer | Series | Can it act on the world? | Trust (§6 of `AGENTS.md`) | Members today |
 |---|---|---|---|---|
 | **Intelligence** | `A0NN` | No — read-only, `NO_TRADE_EXECUTION`. Writes findings to the brain, never money, never orders. | 2 — scoped writes | A001, A002 *(A003–A006 reserved; A007 scaffolded)* |
-| **Execution** | `T0N` | Yes — but **gated** (ADR-0002): paper-trade proof required before real orders, real orders must pass the sentinel gate. | not yet assigned — see [§4](#4-open-item-t01-is-not-yet-onboarded) | T01 |
+| **Execution** | `T0N` | Yes — but **gated** (ADR-0002): paper-trade proof required before real orders, real orders must pass the sentinel gate. | not yet assigned — see [§4](#4-open-item-t01-is-not-yet-onboarded) | T01; T02 *(simulation only — never places an order, so by the one-line test below it is really intelligence‑flavoured; numbering is an open call, see §2)* |
 | **Platform** | actor | Runs the fleet itself — not a domain question-answerer. | 3 — human-adjacent | `orchestrator`, `sentinel`, `librarian`, `operator-io` |
 
 **The one-line test:** *does it ever touch money or place an order?*
@@ -38,7 +38,16 @@ read-only intelligence agent would make the name lie about
 |---|---|---|---|---|---|
 | `A001` | Blockchain Intelligence | Intelligence | On-chain: whales, flows, anomaly | substantial | ✅ `agent.yaml` + `config/agents/registry.yaml` |
 | `A002` | News Intelligence | Intelligence | Fake-news / rumor / market impact | substantial | ✅ `agent.yaml` + `config/agents/registry.yaml` |
-| `T01` | Smart Binance Intelligence | Execution | Binance spot trading — paper-trade now, real orders locked behind a 70%-accuracy gate | built (live FastAPI dashboard; paper trading with fee-aware PnL, ATR/trailing stops, VWAP confluence — see agent.md §8, updated 2026-09-18) | ❌ see [§4](#4-open-item-t01-is-not-yet-onboarded) |
+| `T01` | Smart Binance Intelligence | Execution | Binance spot trading — paper-trade now, real orders locked behind a 70%-accuracy gate | built (live FastAPI dashboard; paper trading with fee-aware PnL, ATR/trailing stops, VWAP confluence, loss reflection — see agent.md §8, updated 2026-09-18) | ❌ see [§4](#4-open-item-t01-is-not-yet-onboarded) |
+| `T02` | Swarm Trading Intelligence | Execution* | Market consensus: a 1000-bot agent-based swarm simulating how a market reacts to a trade event | built (swarm sim + SQLite store + CLI; 4 tests pass) | ✅ `agent.yaml` + `config/agents/registry.yaml` (sentinel PASS) |
+
+**\*T02's numbering is an open call.** By §1's one-line test — *does it ever place
+an order?* — T02 is **No** (`execution_enabled: false`, reports simulated reactions
+only), which makes it intelligence‑flavoured despite the `T` badge. It was merged
+2026-09-18 from the Jules branch `feat/t02-swarm-intelligence` under the name the
+branch gave it; renumbering it into the `A`-series (e.g. a Market/Consensus slot)
+is a decision left to the operator. Unlike T01, T02 **is** registered in the fleet
+contract and passes the sentinel scan.
 
 *(Reserved, not yet built: `A003` DeFi Flow, `A004` Sentiment, `A005` Market Data,
 `A006` Macro/Econ — `AGENTS.md` §3. `A007` Public-Record is scaffolded — has

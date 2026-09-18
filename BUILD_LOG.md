@@ -3055,3 +3055,69 @@ Commit d3b8cb3 is local only — push it to `origin/main` when ready. Optional:
 a small dashboard surface for `predictions` + the current reflection tuning, and
 the stretch #16 "stop-then-reverse" detector. The 27 remaining Jules branches
 (T02-swarm, A006, A007, ~24 A001/A002) are still unreviewed.
+
+---
+
+## Session 2026-09-18 (cont.) — merge Jules agent branches, part 1: T02 Swarm
+
+### Goal for this session
+
+Operator asked to bring in the three remaining "new agent" Jules branches one by
+one: T02 (swarm), A007 (full pipeline), A006 (scaffold). This entry covers **T02**.
+
+### What changed (T02 Swarm Trading Intelligence)
+
+Brought in only the new agent folder from `feat/t02-swarm-intelligence` (via
+`git checkout <branch> -- agents/T02.../`), NOT the branch's competing T01
+"institutional" rewrite (superseded by this session's own T01 reconciliation) and
+NOT its root `progress.md` scratch note. T02 is a working agent-based market
+simulator: 1000 heterogeneous bots (trend/mean-reversion/contrarian/noise/
+momentum/random) reacting to a trade event, SQLite store, a skill, and a CLI.
+
+Fixed three real bugs found while verifying:
+- **`store/database.py` leaked connections** — `with sqlite3.connect() as conn`
+  commits but never closes; on Windows that kept the .db locked so tests couldn't
+  delete it. Rewrote with `contextlib.closing` (+ `with conn` for the txn).
+- **`tests/test_swarm.py`** had the same unclosed-connection bug in its verify step
+  → wrapped in `closing()`.
+- **`cli/main.py`** — an argparse help string contained a bare `%`, which Python
+  3.14's stricter argparse rejects ("badly formed help string"); escaped to `%%`.
+
+Registered T02 in `config/agents/registry.yaml` (enabled, trust 1,
+runtime_verified) and added it to the `AGENTS.md` §3 fleet table + the
+`docs/manual/06-agents.md` tables.
+
+Sentinel fix (needed to register a T-series agent): `security/sentinel/fleet.py`'s
+fleet-table parser regex was hardcoded to `A\d+`, so it literally could not see
+`T`-series IDs — widened to `[AT]\d+`. Also fixed a **pre-existing** sentinel
+failure unrelated to this work: A007's `AGENTS.md` row name carried a
+`*(scaffold)*` prefix that didn't match its manifest name → removed the prefix
+(status stays in the Status column). Fleet verdict went FAIL→PASS.
+
+### Naming flag for the operator (not silently decided)
+
+T02 never places an order (`execution_enabled: false`, reports simulated reactions
+only). By `06-agents.md` §1's own one-line test — *does it ever place an order?* —
+that makes it **intelligence‑flavoured**, so the `T` (execution) badge is arguably
+wrong; it may belong in the `A`-series. Kept the branch's `T02` name and flagged
+the renumbering as an open operator call in AGENTS.md §3 and 06-agents.md §2.
+
+### Verified by execution
+
+- `pytest agents/T02_Swarm_Trading_Intelligence/tests/` → **4 passed**.
+- `python -m agents.T02_Swarm_Trading_Intelligence.cli.main --db <tmp> --change 0.03`
+  → runs end-to-end (1000 bots → Buy/Sell/Hold summary).
+- `python -m security.sentinel scan` → **fleet verdict PASS** (A001, A002, A007, T02).
+- `pytest security/sentinel/tests/test_fleet.py` → 2 passed (regex change safe).
+
+### Deliberately NOT merged
+
+- The branch's T01 core rewrite (Sharpe/PF self_tune, 2.0× ATR stop, short-side
+  trailing) — competes with this session's reconciled T01; its own `progress.md`
+  shows it was mid-flight. Skipped, with its two T01 test files.
+- `progress.md` (Jules planning scratch) — not committed to main.
+
+### Next session should start at
+
+Part 2: A007 full pipeline (`feat/build-a007-agent`), then part 3: A006 scaffold
+(`scaffold-a006-macroecon-agent`). T02's commit is local — push with the others.

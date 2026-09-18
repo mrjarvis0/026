@@ -104,7 +104,15 @@ An agent with no `evidence.detectors` and no tests **cannot leave trust level 1.
 | `A004` | *(reserved)* Sentiment    | planned   | Social/market sentiment fusion    |
 | `A005` | Market Data Intelligence  | planned   | Market OHLCV / quotes / orderbook across crypto, equities, FX |
 | `A006` | Macro / Econ Intelligence | planned   | Macro & economic series (rates, indicators, filings) |
-| `A007` | *(scaffold)* Public-Record Intelligence | scaffold | Government/insider records — Congress trades, insider filings, 13F, lobbying, patents, clinical trials, FDA, hearings |
+| `A007` | Public-Record Intelligence | scaffold | Government/insider records — Congress trades, insider filings, 13F, lobbying, patents, clinical trials, FDA, hearings |
+| `T02` | Swarm Trading Intelligence | partial | Market consensus: an agent-based swarm of 1000 heterogeneous bots simulating how a market reacts to a trade event |
+
+`T02` was merged on 2026-09-18 from the Jules branch `feat/t02-swarm-intelligence`
+— a working agent-based market-reaction simulator (1000 bots, 6 strategy types,
+SQLite store, CLI; 4 tests pass). It is a **simulation** agent: its manifest sets
+`execution_enabled: false` and it never places a trade, so despite the `T` prefix
+it behaves like an intelligence agent. Whether it should be renumbered into the
+`A`-series is an open call for the operator — see `docs/manual/06-agents.md` §2.
 
 `A005` and `A006` were promoted from proposals to `planned` fleet members on
 2026-09-06: roughly half the source registry (`sources/`) is assigned to them, so

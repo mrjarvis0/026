@@ -8,7 +8,8 @@ from typing import Any
 
 import yaml
 
-_ROW = re.compile(r"^\|\s*`(A\d+)`\s*\|\s*(.*?)\s*\|\s*(.*?)\s*\|")
+# A-series (intelligence) and T-series (execution/simulation) fleet IDs.
+_ROW = re.compile(r"^\|\s*`([AT]\d+)`\s*\|\s*(.*?)\s*\|\s*(.*?)\s*\|")
 
 
 @dataclass

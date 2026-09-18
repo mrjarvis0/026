@@ -19,6 +19,14 @@
   deleted; the #16 commit (d3b8cb3) is **local, not yet pushed**.
   **27 other Jules branches remain unmerged on origin** (A001/A002/A006/A007/T02)
   awaiting their own review — see `BUILD_LOG.md` 2026-09-18.
+- **T02 (Swarm Trading Intelligence):** 2026-09-18 merged from Jules branch
+  `feat/t02-swarm-intelligence` — a working agent-based market simulator (1000
+  bots, 6 strategies, SQLite, CLI; 4 tests pass). Fixed 3 bugs on the way in
+  (unclosed SQLite connections × 2, an argparse `%` help-string crash on py3.14).
+  Registered in the fleet + sentinel scan **PASS** (widened the sentinel fleet
+  regex to see `T`-series, and fixed a pre-existing A007 name-mismatch failure).
+  Open flag: T02 never trades (`execution_enabled: false`), so its `T` badge may be
+  wrong — possible A-series renumber, operator's call. Local commit, not yet pushed.
 - **Phase:** Genesis Â· **Phase 1 (source inventory)** â€” documentation system
   established and hardened; **platform kernel still unbuilt, but A001+A002 agents migrated in from CIE-OS 2026-09-06;** Stack chosen (`docs/STACK.md`);
   execution charter gated (`ADR-0002`).
