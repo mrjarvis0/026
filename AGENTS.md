@@ -105,7 +105,30 @@ An agent with no `evidence.detectors` and no tests **cannot leave trust level 1.
 | `A005` | Market Data Intelligence  | planned   | Market OHLCV / quotes / orderbook across crypto, equities, FX |
 | `A006` | Macro/Econ Intelligence | scaffold | Forex / global macro — economic releases, central banks, rates, yields, cross-asset reaction |
 | `A007` | Public-Record Intelligence | partial | Government/insider records — Congress trades, insider filings, 13F, lobbying, patents, clinical trials, FDA, hearings |
+| `A015` | Exchange Listing/Delisting Intelligence | partial | CEX listing/delisting/pair-status events — CCXT poll-diff across 17 exchanges, read-only |
+| `T01` | Smart Binance Intelligence | substantial | Crypto spot trading — TA strategy; paper-by-default, real order path triple-gated |
 | `T02` | Swarm Trading Intelligence | partial | Market consensus: an agent-based swarm of 1000 heterogeneous bots simulating how a market reacts to a trade event |
+
+`A015` (Exchange Listing/Delisting Intelligence) was built in a separate Hermes
+workspace, then copied into 026 and **rebuilt to fleet conventions** on 2026-09-21:
+package-safe imports, config-driven gating (evidence-backing + `fetchStatus` read
+from `config/exchanges.yaml`, not hard-coded), snapshot-aware detectors so
+NEW_LISTING / DELISTING / PAIR_CHANGE no longer double-count, a proper CLI
+(`doctor`/`demo`/`poll`) and a 17-case pytest suite. It is read-only
+(`execution_enabled: false`, deviation-only) and kernel-wired via
+`orchestrator/adapters/a015.py`. The 38 MB live market snapshot from the Hermes
+build was excluded as runtime state. Live poll reachability + text-feeds remain
+open (`status: partial`).
+
+`T01` was registered as a fleet member on 2026-09-18 — a working, standalone
+Binance spot-trading agent (FastAPI + SQLite dashboard; paper-trades live, 30 tests
+pass). It is the fleet's **first `execution_enabled: true` member**: a real order
+path (`backend/trading/real_engine.py`) exists but is triple-gated — `_guard()`
+raises `RealTradingLocked` unless accuracy ≥ 70 % over ≥ 50 paper trades **and** API
+keys are set **and** the operator explicitly enabled real mode. Paper is the default.
+Its execution is internal and self-gated; the shared bus denies every execution-kind
+action anyway until the money-gate exists (ADR-0002, `security/sentinel/gate.py`). It
+still runs as its own service — not yet kernel-wired (no shared brain / typed tools; SP-4).
 
 `T02` was merged on 2026-09-18 from the Jules branch `feat/t02-swarm-intelligence`
 — a working agent-based market-reaction simulator (1000 bots, 6 strategy types,

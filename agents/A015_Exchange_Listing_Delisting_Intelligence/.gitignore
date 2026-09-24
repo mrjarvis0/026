@@ -1,0 +1,12 @@
+# A015 runtime state — generated at run time, NOT source. Never commit.
+# (The 38 MB live Binance market snapshot from the Hermes build was deliberately
+#  excluded on copy; snapshots regenerate on first poll.)
+memory/symbol_snapshots/*.json
+memory/event_log/*
+!memory/**/.gitkeep
+reports/*
+!reports/.gitkeep
+
+# python bytecode
+__pycache__/
+*.pyc

@@ -1,0 +1,141 @@
+# Exchange configuration for A015 Exchange Listing/Delisting Intelligence.
+# Phase-based rollout (README §5). `evidence_backed` gates historical annotation
+# (README §3.4); `has_fetch_status` gates the STATUS_CHANGE detector (README §4.2).
+# Everything a detector needs to know about an exchange lives here, not in code.
+
+binance:
+  ccxt_id: binance
+  phase: 1
+  poll_interval_s: 30
+  has_native_text_feed: true      # @binance_api_announcements Telegram channel
+  has_fetch_status: true
+  evidence_backed: true
+
+bybit:
+  ccxt_id: bybit
+  phase: 1
+  poll_interval_s: 15             # needs live smoke-test (datacenter-IP-block risk)
+  has_native_text_feed: false
+  has_fetch_status: true
+  evidence_backed: true
+
+coinbase:
+  ccxt_id: coinbase
+  phase: 1
+  poll_interval_s: 30
+  has_native_text_feed: false     # no native announcement-text feed (§4.2)
+  has_fetch_status: false
+  evidence_backed: true
+
+okx:
+  ccxt_id: okx
+  phase: 2
+  poll_interval_s: 60
+  has_native_text_feed: false
+  has_fetch_status: true
+  evidence_backed: false
+
+kraken:
+  ccxt_id: kraken
+  phase: 2
+  poll_interval_s: 1000           # slowest rate limit in the group
+  has_native_text_feed: false
+  has_fetch_status: true
+  evidence_backed: false
+
+gate:
+  ccxt_id: gate
+  phase: 2
+  poll_interval_s: 30
+  has_native_text_feed: true      # official WebSocket announcement stream (§4.2)
+  has_fetch_status: false
+  evidence_backed: false
+
+bitget:
+  ccxt_id: bitget
+  phase: 2
+  poll_interval_s: 40
+  has_native_text_feed: false
+  has_fetch_status: false         # fetchStatus explicitly unsupported (§4.2)
+  evidence_backed: false
+
+mexc:
+  ccxt_id: mexc
+  phase: 2
+  poll_interval_s: 40
+  has_native_text_feed: false
+  has_fetch_status: true
+  evidence_backed: false
+
+kucoin:
+  ccxt_id: kucoin
+  phase: 2
+  poll_interval_s: 10             # fastest rate limit observed
+  has_native_text_feed: false
+  has_fetch_status: true
+  evidence_backed: false
+
+binanceus:
+  ccxt_id: binanceus
+  phase: 2
+  poll_interval_s: 40
+  has_native_text_feed: false
+  has_fetch_status: true
+  evidence_backed: false
+
+hashkey:
+  ccxt_id: hashkey
+  phase: 2
+  poll_interval_s: 80
+  has_native_text_feed: false
+  has_fetch_status: true
+  evidence_backed: false
+
+# Phase 3 exchanges (lower priority)
+bitstamp:
+  ccxt_id: bitstamp
+  phase: 3
+  poll_interval_s: 60
+  has_native_text_feed: false
+  has_fetch_status: false
+  evidence_backed: false
+
+gemini:
+  ccxt_id: gemini
+  phase: 3
+  poll_interval_s: 80
+  has_native_text_feed: false
+  has_fetch_status: false
+  evidence_backed: false
+
+lbank:
+  ccxt_id: lbank
+  phase: 3
+  poll_interval_s: 15
+  has_native_text_feed: false
+  has_fetch_status: false
+  evidence_backed: false
+
+bitvavo:
+  ccxt_id: bitvavo
+  phase: 3
+  poll_interval_s: 50
+  has_native_text_feed: false
+  has_fetch_status: false
+  evidence_backed: false
+
+bitso:
+  ccxt_id: bitso
+  phase: 3
+  poll_interval_s: 1500           # slowest rate limit in the group
+  has_native_text_feed: false
+  has_fetch_status: false
+  evidence_backed: false
+
+cryptocom:
+  ccxt_id: cryptocom
+  phase: 3
+  poll_interval_s: 15
+  has_native_text_feed: false     # fetchStatus explicitly unsupported (§4.2)
+  has_fetch_status: false
+  evidence_backed: false

@@ -1,0 +1,80 @@
+# 026 Fleet Manifest — the contract the orchestrator, sentinel, and brain read.
+# Spec: AGENTS.md §2. T01 is the fleet's FIRST execution agent (T-series): it
+# has a real, gated order path, unlike the read-only A-series. It runs as its own
+# standalone service; kernel wiring (bus / brain / typed tools) is later work (SP-4).
+# Evidence for every claim is cited in-line against agents/T01_.../ source.
+
+id: T01
+name: "Smart Binance Intelligence"
+version: 0.1.0                    # no AGENT_VERSION constant in source yet — provisional
+
+status: substantial              # boots + paper-trades live + 30 tests (tests/test_t01_*.py);
+                                 # standalone, not kernel-wired (SP-4) and not runtime-gated to the bus.
+
+role: >
+  Self-learning crypto spot-trading agent for any Binance USDT pair. Computes a
+  weighted net-momentum signal from classic TA (RSI/MACD/EMA/BB/ATR/ADX/VWAP),
+  paper-trades by default ($1,000 virtual), tracks its own accuracy, and unlocks
+  REAL trading only behind a hard gate. This is an execution agent, not deviation-
+  only: it is allowed to act — but every real order is triple-gated.
+
+model:
+  tier: none                     # deterministic pandas TA — no LLM in the trade loop
+  note: "rule-based signal engine; self-tuning is an interpretable feedback controller, not ML"
+
+memory:                          # standalone: own SQLite (backend/data/database.py), NOT brain-wired
+  reads:  []                     # wiring to shared brain namespaces = SP-4
+  writes: []
+
+tools: []                        # standalone service; not yet in the typed tool registry (SP-4).
+                                 # An empty surface means the bus denies-by-default until wired.
+
+trust:
+  level: 2                       # scoped writes to its own store; earns level 2 via evidence + tests
+  requires_approval:
+    - real_trading               # flip to real mode
+    - order.place                # any live order
+    - store.delete
+
+invariants:
+  execution_enabled: true        # PROOF: backend/trading/real_engine.py places real Binance orders,
+                                 # every call guarded by _guard() -> RealTradingLocked unless ALL of:
+                                 # (1) accuracy >= 70% over >= 50 paper trades, (2) API keys set,
+                                 # (3) operator explicitly enabled real mode. Paper is the default.
+                                 # NOTE: the shared bus (security/sentinel/gate.py) denies every
+                                 # execution-kind action regardless until the money-gate exists
+                                 # (ADR-0002) — T01's execution is internal + self-gated only.
+  reports_deviation_only: false  # unlike A-series: T01 DOES emit buy/sell and act (gated). Not advice.
+
+evidence:
+  # T01 uses measured trading metrics + a real-money accuracy gate rather than DET- IDs.
+  detectors:
+    - { id: signal_engine,    maturity: implemented, note: "weighted net-momentum score -> buy/sell/hold" }
+    - { id: self_tune,        maturity: implemented, note: "accuracy-driven net_threshold controller [1.0,3.0]" }
+    - { id: reflection,       maturity: implemented, note: "per-trade loss attribution + targeted correction (§4.4)" }
+    - { id: accuracy_gate,    maturity: implemented, note: "real trading locked until >=70% over >=50 trades" }
+    - { id: circuit_breaker,  maturity: implemented, note: "emergency STOP + daily loss-limit halt" }
+  measurement:                   # backend/trading/performance.py::compute_metrics()
+    accuracy: true
+    expectancy: true             # net of round-trip PAPER_FEE_PCT
+    sharpe: true
+    max_drawdown: true
+    profit_factor: true
+
+charter: |
+  - Capital safety first: paper-by-default, real money only after a proven track record.
+  - Real trading is triple-gated (accuracy gate AND keys AND explicit operator enable).
+  - Stops/targets are ATR-adaptive; a circuit breaker halts on daily loss / emergency stop.
+  - Paper PnL is net of fees; wallet resets are excluded from the accuracy gate.
+  - Not financial advice. Crypto trading carries real risk of loss.
+  - Stop and ask before enabling real mode or any action outside the declared surface.
+
+# --- provenance ---------------------------------------------------------------
+origin:
+  built_in: "026 (not migrated) — agents/T01_Smart_Binance_Intelligence"
+  registered_on: 2026-09-18
+  note: >
+    Working standalone agent (FastAPI + SQLite dashboard) declared as a fleet
+    member (T-series = execution, kept separate from any A-series ID). Full
+    profile: T01_Smart_Binance_Intelligence.agent.md. Kernel wiring
+    (bus/brain/tools/sentinel gate) deferred to SP-4.

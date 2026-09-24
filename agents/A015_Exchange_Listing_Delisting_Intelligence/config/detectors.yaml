@@ -1,0 +1,50 @@
+# Detector configuration for A015 Exchange Listing/Delisting Intelligence Agent
+# Controls which detectors are enabled and their settings
+
+# Master switch for the agent (can be turned off without changing other configs)
+agent_enabled: true
+
+# Detector-specific configurations
+new_listing:
+  enabled: true
+  # Confidence levels: high (evidence-backed), medium (needs validation), low (experimental)
+  # For Phase 1 exchanges: high; others: low until evidence accumulates
+  confidence_by_phase:
+    1: high   # Binance, Bybit, Coinbase
+    2: low    # OKX, Kraken, Gate, MEXC, KuCoin, Bitget, BinanceUS, HashKey
+    3: low    # Bitstamp, Gemini, LBank, Bitvavo, Bitso, Crypto.com
+  # Whether to use announcement-text feeds where available
+  use_text_feeds: true
+
+delisting:
+  enabled: true
+  confidence_by_phase:
+    1: high   # Binance, Bybit, Coinbase (for regulatory/low-liquidity patterns where evidence exists)
+    2: low
+    3: low
+  use_text_feeds: true
+  # Configurable window (in seconds) to consider a HALT/BREAK as delisting if no reversal
+  halt_to_delist_window_s: 300  # 5 minutes
+
+status_change:
+  enabled: true
+  # Only active for exchanges where fetchStatus=True (see exchanges.yaml)
+  # Confidence is always medium for this detector (it's a structural fact, not price impact)
+  confidence: medium
+
+pair_change:
+  enabled: true
+  confidence_by_phase:
+    1: low    # Only one documented case, so low confidence
+    2: low
+    3: low
+  # Note: This detector fires on already-listed assets gaining/losing pairs
+
+# Global settings for detectors
+detectors:
+  # Minimum time between reports for the same symbol/exchange to avoid spam (seconds)
+  debounce_period_s: 60
+  # Whether to require confirmation from both structured-diff and text-feed (if available) before reporting
+  require_dual_confirmation: false  # Set to true for higher confidence, but may miss early signals
+  # Default confidence if not overridden by phase
+  default_confidence: low

@@ -1,0 +1,64 @@
+# 026 Fleet Manifest — A015 Exchange Listing/Delisting Intelligence.
+# Spec: AGENTS.md §2. A-series, read-only. Built in the Hermes workspace, then
+# copied + rebuilt to 026 conventions and registered here. Full spec: README.md.
+
+id: A015
+name: "Exchange Listing/Delisting Intelligence"
+version: 0.1.0
+status: partial              # detectors + tests + CLI work offline; live poll + text-feeds not yet verified/built
+
+role: >
+  Detects exchange listing / delisting / trading-pair status-change events across
+  17 centralized exchanges via a unified CCXT poll-diff, and reports them as
+  canonical, timestamped facts with evidence-gated historical context — never a
+  buy/sell signal. Same epistemic posture as A001/A002.
+
+model:
+  tier: none                 # deterministic diff + rule-based detectors, no LLM
+  note: "CCXT fetch_markets() poll-diff; evidence gating is config-driven (config/exchanges.yaml)"
+
+memory:                      # target brain namespaces; wiring via orchestrator/adapters/a015.py
+  reads:  [global, entities, markets, projects.*]
+  writes: [markets, projects.*]
+
+tools:                       # read-only public market data + own store
+  - http.get
+  - brain.query
+  - brain.write
+  - store.read
+
+trust:
+  level: 1                   # scoped writes to its own namespace; read-only toward the outside world
+
+invariants:
+  execution_enabled: false   # PROOF: no order/sign/wallet primitive anywhere — only CCXT public fetch_markets().
+                             # Sentinel execution-scan enforces this (no banned primitives in live code).
+  reports_deviation_only: true   # events + historical context, never bullish/bearish/buy/sell
+
+evidence:
+  detectors:
+    - { id: NEW_LISTING,   maturity: implemented, note: "new base asset; evidence-gated (Binance/Bybit/Coinbase only)" }
+    - { id: DELISTING,     maturity: implemented, note: "base fully removed; reason-gated annotation" }
+    - { id: STATUS_CHANGE, maturity: implemented, note: "HALT/BREAK; only where has_fetch_status (8 exchanges)" }
+    - { id: PAIR_CHANGE,   maturity: implemented, note: "snapshot-aware; pair add/remove on an already-listed base" }
+    - { id: ANNOUNCED_LISTING, maturity: implemented, note: "earliest-detection: announced but not yet listed (OKX/Binance free announcement feeds); days_since_announcement + stale flag" }
+  coverage_required_for_absence: true   # pair-change needs snapshots; no snapshot -> no claim
+
+charter: |
+  - Facts, not advice. Report the event + historical context; never buy/sell.
+  - Evidence-gated: a quantified annotation only for Binance/Bybit/Coinbase; every other exchange is `insufficient sample`.
+  - Detection breadth (17 exchanges) is kept separate from evidence depth (3 exchanges).
+  - "Cannot be determined" outranks a guess (pair-change without snapshots -> no claim).
+  - Read-only: public CCXT market data only; no order / sign / wallet path exists.
+  - Stop and ask before any action outside the declared tools.
+
+# --- provenance ---------------------------------------------------------------
+origin:
+  built_in: "Hermes workspace (C:\\Users\\mr_jarvis\\hermes-agents)"
+  registered_on: 2026-09-21
+  note: >
+    Copied into 026 then rebuilt to fleet conventions: package-safe imports,
+    config-driven gating (evidence + fetchStatus from config, not hard-coded),
+    snapshot-aware detectors (NEW_LISTING/DELISTING/PAIR_CHANGE no longer
+    double-count), a proper CLI (doctor/demo/poll) and a pytest suite (17 tests).
+    The 38 MB live market snapshot from the Hermes build was excluded (runtime state).

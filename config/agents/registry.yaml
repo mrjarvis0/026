@@ -34,7 +34,7 @@ agents:
     status: substantial
     trust: 2
     enabled: true
-    kernel_wired: false          # SP-4 pending
+    kernel_wired: true           # SP-4: bus adapter + manifest-scoped brain view + sentinel gate, tested (orchestrator/adapters/a002.py); live kernel loop = Phase 4
     runtime_verified: true       # SP-5 done 2026-09-07 (tests pass on py3.14) — see BUILD_LOG
     origin: "CIE-OS migration 2026-09-06"
 
@@ -74,5 +74,32 @@ agents:
     runtime_verified: true        # 2026-09-18 — 4 swarm tests pass + CLI runs on py3.14
     origin: "Merged 2026-09-18 from Jules branch feat/t02-swarm-intelligence"
 
+  T01:
+    dir: agents/T01_Smart_Binance_Intelligence
+    manifest: agents/T01_Smart_Binance_Intelligence/agent.yaml
+    name: "Smart Binance Intelligence"
+    domain: "Crypto spot trading — TA strategy; paper-by-default, real gated"
+    status: substantial
+    trust: 2
+    enabled: true
+    kernel_wired: false           # SP-4 pending — standalone service, not bus/brain-wired
+    runtime_verified: true        # 2026-09-18 — 30 tests pass (tests/test_t01_merge.py + test_t01_reflection.py)
+    execution_agent: true         # FIRST execution_enabled member; real order path is internally triple-gated
+    origin: "Built in 026; registered 2026-09-18 as a T-series execution agent"
+
+  A015:
+    dir: agents/A015_Exchange_Listing_Delisting_Intelligence
+    manifest: agents/A015_Exchange_Listing_Delisting_Intelligence/agent.yaml
+    name: "Exchange Listing/Delisting Intelligence"
+    domain: "CEX listing/delisting/pair-status events — CCXT poll-diff across 17 exchanges"
+    status: partial
+    trust: 1
+    enabled: true
+    kernel_wired: true            # SP-4: bus adapter + manifest-scoped brain view + gate, tested (orchestrator/adapters/a015.py)
+    runtime_verified: true        # 2026-09-21 — 17 agent tests pass; cli doctor + demo OK
+    execution_agent: false
+    origin: "Built in Hermes; rebuilt + registered + kernel-wired in 026 2026-09-21 (38 MB runtime snapshot excluded)"
+
 # Reserved / planned fleet members (AGENTS.md §3) — not yet built:
 #   A003 DeFi Flow · A004 Sentiment · A005 Market Data
+#   (A003–A005, A008–A014, A016–A018 now have empty README/spec scaffolds under agents/, still unregistered)

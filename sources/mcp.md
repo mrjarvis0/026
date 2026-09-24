@@ -14,6 +14,11 @@ usually per-server (`TBV`), its provenance is the call itself (`server`, `tool`,
 | S119 | [LuxAlgo MCP](https://mcp.luxalgo.com/mcp) (hosted) | mixed (stock/crypto/forex/macro/alt-data) | `library_*` (850+ trading concepts + Pine source), `edge_*` (historical stats, N + CI), `trackers_*` (18 govt/public-record datasets), `propfirms_*` (Monte Carlo sim), `journal_*` (personal trade log, needs OAuth) | none for public tools; LuxAlgo OAuth for `journal_*` | TBV | `integrations/mcp_servers/` | `server`, `tool`, `call_id` | check | A007, A004, A005, A006, T01, librarian — split by tool family, see `docs/manual/06-agents.md` §6 | ⬜ |
 | S120 | LuxAlgo Whale Options (local-only MCP, self-hosted, separate from S119) | mixed (options flow — stocks/crypto/forex/futures/commodities) | 16 tools — real-time options prints (sweeps/blocks/splits), net GEX per strike/expiry; synthetic demo tape works without a feed key | none for demo; data-vendor key for a real feed | TBV | `integrations/mcp_servers/` | `server`, `tool`, `call_id` | check | A005 | ⬜ |
 
+| S131 | [Figma MCP](https://mcp.figma.com/mcp) | design tooling | Figma canvas → code: read frames/components, code-to-canvas, design tokens | Figma account/OAuth | TBV | `integrations/mcp_servers/` | `server`, `tool`, `call_id` | check | dashboard build (operator-io) | ⬜ |
+| S132 | [shadcn MCP](https://ui.shadcn.com/docs/mcp) | UI component gen | Pull/scaffold shadcn/ui components + blocks into the project from a prompt | none | TBV | `integrations/mcp_servers/` | `server`, `tool`, `call_id` | check | dashboard build (operator-io) | ⬜ |
+| S133 | [21st.dev MCP](https://21st.dev/mcp) | UI component gen | Generate/insert polished React UI components (21st.sh library) from a prompt | account | TBV | `integrations/mcp_servers/` | `server`, `tool`, `call_id` | check | dashboard build (operator-io) | ⬜ |
+| S134 | [TradingView MCP](https://www.tradingview.com/mcp/docs) | trading data/charts | TradingView charting + market data via MCP — feeds T01 trading tab | account | TBV | `integrations/mcp_servers/` | `server`, `tool`, `call_id` | check | T01, dashboard | ⬜ |
+
 **When adding an MCP server, record:** name, endpoint/command, auth method, the
 exact tools it exposes, rate/cost, which agent consumes it, and the provenance
 fields (`server`, `tool`, `call_id`) so every MCP-sourced record can be traced.

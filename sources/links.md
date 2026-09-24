@@ -25,3 +25,20 @@
 | Raw URL | Dropped | Notes |
 |---------|---------|-------|
 | — | — | — |
+
+## Dashboard reference repos (inspiration — not deps)
+
+> Repos we *study* for layout/UX patterns while building the 026 Intelligence Hub.
+> Not imported; the actual build stack is the S123–S134 rows in `infra.md` / `mcp.md`.
+> Dropped 2026-09-23.
+
+| Repo | What to borrow |
+|------|----------------|
+| [tradingagents-dashboard (QuocBaoLabs)](https://github.com/QuocBaoLabs/tradingagents-dashboard) | Dashboard for the S122 TradingAgents framework — direct layout reference for our agent tabs |
+| [FlowAI — agentic workflow builder](https://github.com/aiudalabs/flowAI) | Visual agent-workflow canvas — pattern for the Agent Network tab |
+| [shadcn AI Canvas/Node/Edge/Panel](https://www.shadcn.io/ai/canvas) | React-Flow + shadcn components purpose-built for AI-agent graphs |
+| [LangChain Agent Chat UI](https://github.com/langchain-ai/agent-chat-ui) | Chat + trace surface — pattern for operator-io chat/approvals |
+| [OpenTerminal](https://github.com/ErTasselli/OpenTerminal) · [OpenTerminalUI](https://github.com/laanito/OpenTerminalUI) | Trading-terminal layout density |
+| [shadcn-fintech](https://github.com/abderrahimghazali/shadcn-fintech) · [ShadcnVaults](https://github.com/Aldhanekaa/ShadcnVaults) | Fintech UI blocks on shadcn |
+| [threejs-dashboard](https://github.com/opencolin/threejs-dashboard) | 3D dashboard motion/scene reference for R3F work |
+| [Refine](https://github.com/refinedev/refine) | Data-driven React admin framework — evaluate only if CRUD/admin views grow |

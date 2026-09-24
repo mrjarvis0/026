@@ -69,9 +69,12 @@ an *access method* instead of a per-minute limit).
 > status. This is what answers *"where is S030?"* Keep it in sync when any row is
 > added or moved (the ID is the anchor).
 
-**Counts (2026-09-15):** 112 catalogued rows — **82** live APIs · **8** datasets ·
-**6** portals/links · **1** model · **13** infra · **2** MCP. Plus **1**
-dead (`S023`, tracked, no row) and **8** reserved/dropped IDs (gaps). Highest ID: `S121`.
+**Counts (2026-09-23):** 125 catalogued rows — **82** live APIs · **8** datasets ·
+**6** portals/links · **1** model · **22** infra · **6** MCP. Plus **1**
+dead (`S023`, tracked, no row) and **8** reserved/dropped IDs (gaps). Highest ID: `S134`.
+*(+13 dashboard build-stack rows 2026-09-23: S122 TradingAgents framework, S123–S130
+frontend libs in `infra.md`, S131–S134 design/data MCP in `mcp.md`. Best-pick-per-job;
+skipped duplicates noted in `infra.md`. Reference repos (not deps) in `links.md`.)*
 *(+67 blockchain sources for A001 added 2026-09-07 from the operator's
 `blockchain-data-sources-notes.md`; catalogued `⬜`/`TBV` — not yet web-verified. Skipped:
 embedded-wallet & tax tooling, see `infra.md`.)*
@@ -205,6 +208,19 @@ mapped to more than one access method.)*
 | S119 | LuxAlgo MCP (hosted) | mcp | mixed | FREE | A007/A004/A005/A006/T01/librarian | ⬜ |
 | S120 | LuxAlgo Whale Options (local MCP) | mcp | mixed | FREE | A005 | ⬜ |
 | S121 | LuxAlgo Broker SDK | infra | mixed | FREE | — (open question) | ⬜ |
+| S122 | TradingAgents (tauricresearch) | infra | mixed | FREE | A012 / T02 / orchestrator | ⬜ |
+| S123 | React Three Fiber (+Three.js) | infra | — (frontend) | FREE | dashboard | ⬜ |
+| S124 | React Flow / xyflow | infra | — (frontend) | FREE | dashboard | ⬜ |
+| S125 | TradingView Lightweight Charts | infra | — (frontend) | FREE | dashboard | ⬜ |
+| S126 | Apache ECharts | infra | — (frontend) | FREE | dashboard | ⬜ |
+| S127 | Tremor | infra | — (frontend) | FREE | dashboard | ⬜ |
+| S128 | shadcn/ui | infra | — (frontend) | FREE | dashboard | ⬜ |
+| S129 | Motion (framer-motion) | infra | — (frontend) | FREE | dashboard | ⬜ |
+| S130 | GSAP | infra | — (frontend) | FREE | dashboard | ⬜ |
+| S131 | Figma MCP | mcp | — (design) | FREE | dashboard | ⬜ |
+| S132 | shadcn MCP | mcp | — (design) | FREE | dashboard | ⬜ |
+| S133 | 21st.dev MCP | mcp | — (design) | FREE | dashboard | ⬜ |
+| S134 | TradingView MCP | mcp | crypto/stock | FREE | T01 / dashboard | ⬜ |
 
 **ID ledger.** IDs are assigned monotonically. The gaps `S018, S019, S030,
 S035–S039` are **reserved / dropped during research** — a candidate that merged,
