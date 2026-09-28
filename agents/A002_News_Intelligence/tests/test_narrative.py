@@ -23,6 +23,7 @@ from agents.A002_News_Intelligence.intelligence.claims import extract_claim, ext
 from agents.A002_News_Intelligence.intelligence.cluster import similarity, tokenize
 from agents.A002_News_Intelligence.intelligence.narrative import NarrativeEngine, compute_fomo, compute_status
 from agents.A002_News_Intelligence.intelligence.stance import classify_stance
+from agents.A002_News_Intelligence.models.ml_models import CATEGORIES
 
 PASS = 0
 FAIL = 0
@@ -137,6 +138,11 @@ def test_engine() -> None:
             check("persisted mentions", sum(r["mention_count"] for r in rows) == 6)
             check("persisted stance", all("stance_counts" in r and r["stance_counts"] for r in rows))
             check("persisted items", all(len(r["items"]) == r["mention_count"] for r in rows))
+
+            # category: the agent classifies every narrative and persists it (dashboard reads it)
+            check("every narrative categorized", all(n.category in CATEGORIES for n in narratives))
+            check("btc etf story -> etf category", btc_narratives and btc_narratives[0].category == "etf")
+            check("persisted category", {r["category"] for r in rows} == {n.category for n in narratives})
     asyncio.run(run())
     print()
 

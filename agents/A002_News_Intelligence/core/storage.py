@@ -137,6 +137,7 @@ class Storage:
         ("coordination_score", "coordination_score REAL NOT NULL DEFAULT 0"),
         ("manipulation", "manipulation TEXT NOT NULL DEFAULT '{}'"),
         ("evidence", "evidence TEXT NOT NULL DEFAULT '{}'"),
+        ("category", "category TEXT"),
     )
 
     _IMPACT_MIGRATIONS: tuple[tuple[str, str], ...] = (
@@ -279,8 +280,8 @@ class Storage:
                     (claim_text, status, first_seen, last_seen, mention_count,
                      source_count, platforms, stances, fomo_score, velocity,
                      entities, epistemic_status, confidence, coordination_score,
-                     manipulation, evidence, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     manipulation, evidence, category, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     data["claim_text"],
@@ -299,6 +300,7 @@ class Storage:
                     data.get("coordination_score", 0.0),
                     json.dumps(data.get("manipulation_flags", {})),
                     json.dumps(data.get("evidence", {})),
+                    data.get("category"),
                     data["created_at"],
                     data["updated_at"],
                 ),
@@ -317,7 +319,7 @@ class Storage:
                     mention_count = ?, source_count = ?, platforms = ?,
                     stances = ?, fomo_score = ?, velocity = ?, entities = ?,
                     epistemic_status = ?, confidence = ?, coordination_score = ?,
-                    manipulation = ?, evidence = ?, updated_at = ?
+                    manipulation = ?, evidence = ?, category = ?, updated_at = ?
                 WHERE id = ?
                 """,
                 (
@@ -337,6 +339,7 @@ class Storage:
                     data.get("coordination_score", 0.0),
                     json.dumps(data.get("manipulation_flags", {})),
                     json.dumps(data.get("evidence", {})),
+                    data.get("category"),
                     data["updated_at"],
                     narrative_id,
                 ),

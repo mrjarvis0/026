@@ -31,6 +31,7 @@ from agents.A002_News_Intelligence.core.models import NormalizedItem
 
 from .claims import extract_claim
 from .cluster import best_match, similarity, DEFAULT_WEIGHTS
+from .history import classify_category
 from .manipulation import coordination_score
 from .stance import classify_stance
 from .verification import verify_narrative
@@ -85,6 +86,7 @@ class Narrative(BaseModel):
     coordination_score: float = 0.0
     manipulation_flags: dict = Field(default_factory=dict)
     evidence: dict = Field(default_factory=dict)
+    category: str | None = None  # None = never classified (rows from before categories were stored)
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     items: list[NormalizedItem] = Field(default_factory=list)
@@ -213,6 +215,7 @@ def _narrative_from_row(row: dict) -> Narrative:
         coordination_score=row.get("coordination_score", 0.0),
         manipulation_flags=row.get("manipulation_flags", {}),
         evidence=row.get("evidence", {}),
+        category=row.get("category"),
         created_at=_parse_dt(row["created_at"]) or datetime.now(UTC),
         updated_at=_parse_dt(row["updated_at"]) or datetime.now(UTC),
         items=[_item_from_row(item) for item in row["items"]],
@@ -239,6 +242,7 @@ def _narrative_to_dict(narrative: Narrative) -> dict:
         "coordination_score": narrative.coordination_score,
         "manipulation_flags": narrative.manipulation_flags,
         "evidence": narrative.evidence,
+        "category": narrative.category,
         "created_at": narrative.created_at.isoformat(),
         "updated_at": narrative.updated_at.isoformat(),
     }
@@ -302,6 +306,7 @@ class NarrativeEngine:
             narrative.status = compute_status(narrative, now)
             narrative.epistemic_status, narrative.confidence, narrative.evidence = verify_narrative(narrative, use_ml=True)
             narrative.coordination_score, narrative.manipulation_flags = coordination_score(narrative)
+            narrative.category = classify_category(narrative.claim_text)
             if narrative.id is not None:
                 await storage.update_narrative(narrative.id, _narrative_to_dict(narrative))
         return narratives
