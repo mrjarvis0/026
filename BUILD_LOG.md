@@ -3280,3 +3280,549 @@ way is a good follow-up.
 empty `jules.ai`. The 21 merged source branches and the 2 skipped ones
 (`implement-options-iv-fetching`, `test-improvement-direction-of`) can be deleted
 from origin once the operator confirms. All Jules branches will then be resolved.
+
+---
+
+## Session 2026-09-27 — dashboard frontend rebuilt from zero · page 1: `026` (home)
+
+### Goal for this session
+
+Operator deleted the old basic Vite scaffold (untracked, never committed) and asked for
+the operator console to be rebuilt from zero, **page by page**, starting with the home
+page. Design brief agreed in chat: dark premium, 3D animation, scroll effects, 3D icons,
+pixel font, "agentic architecture" backdrop; 8 pages named in the project's own
+vocabulary (`026`, `correlation`, `news.intelligence`, `agents`, `brain`, `orchestrator`,
+`sentinel`, `trace`). UX rules taken from Anthropic's agent-building/tool-writing posts,
+Microsoft HAX and Google PAIR: no black boxes, human-readable names, maturity/confidence
+always visible, "cannot be determined" is a shown state.
+
+### What was built (`dashboard/frontend/`, all BUILD-NEW)
+
+- **Stack:** Next.js 16.3 (App Router, Turbopack) per `docs/STACK.md` (not Vite, which the
+  old scaffold used) · Tailwind v4 · three + @react-three/fiber · motion · yaml.
+- `lib/fleet.ts` — server-only loader: reads `config/agents/registry.yaml` + every
+  `agents/*/agent.yaml` **per request** (`force-dynamic`). Unregistered agent dirs show
+  as `planned`. Verified by execution against the real repo: 20 agents, 7 registered,
+  20 detectors, **0 validated**, 2 kernel-wired (A002, A015), 1 execution-enabled (T01),
+  6 distinct tools.
+- `app/page.tsx` + components — hero with a WebGL fleet constellation (orchestrator voxel
+  core, sentinel geodesic shell, registered agents inner ring, planned outer ring; **bus
+  pulses only on kernel-wired agents**, orange ring on T01 = execution-gated; hover a node
+  → real manifest card, orbits pause while inspecting), six laws with CSS-3D voxel icons,
+  sticky-scroll 8-stage pipeline (isometric stack), fleet snapshot (6 stat tiles + all 20
+  agents), correlation example (labelled "illustrative — not live data"), footer.
+- Design system in `app/globals.css`: build maturity = ordinal one-hue ramp (validated
+  with the dataviz ordinal check on the dark surface); status colors reserved for real
+  states with icon + label (e.g. "0 validated — none may alert until backtested").
+- `.claude/launch.json` (MINOR-FIX): old `hub-frontend` Vite config (port 5173) →
+  `dashboard` on port 3000. `public/fonts/FONTS.md` (MINOR-FIX): documents the current
+  Silkscreen fallback for Pixel Code.
+
+### Verified by execution
+
+- `tsc --noEmit` clean; `next build` clean (after fixing a Turbopack tracing warning —
+  `process.cwd()/../..` made the tracer pull the whole repo into the server bundle).
+- In the browser: hero renders, scene/text don't overlap at 1024 and 1280 px, node hover
+  shows the right agent (T02: "4 tools · 1 detector · trust 1"), no horizontal overflow at
+  375 px, all 20 fleet tiles + real stats render.
+- **Bug found by verification and fixed:** `.frame` was unlayered CSS, so its
+  `position: relative` / `border` silently beat Tailwind utilities — the hover card
+  rendered in page flow instead of top-right, planned tiles lost their dashed border.
+  Moved into `@layer components`.
+
+### Self-critique
+
+- **Untested visually:** the sticky-pipeline stage stepping and the scroll reveals — the
+  browser pane stopped drawing frames (`requestAnimationFrame` never fired), so motion's
+  scroll tracking could not be observed. Logic is standard `useScroll` → `floor(p × 8)`.
+- **Fragile:** the hero layout tuning (scene offset 0.27 × viewport width, ring radii)
+  was checked at 1024/1280 px only, not ultra-wide.
+- **Assumed:** stage descriptions in the pipeline paraphrase AGENTS.md / A001 docs; the
+  correlation card uses AGENTS.md §4's hypothetical `DET-EXPLOIT-02` (not a real A001
+  detector) — hence the "illustrative" label.
+- No tests for `lib/fleet.ts` beyond the one-off execution check.
+
+### Open questions for the operator
+
+1. Pixel Code font: download the OFL release into `public/fonts/` (needs your OK), or
+   keep Silkscreen?
+2. Should the dashboard ever be served beyond localhost? `lib/fleet.ts` reads repo files
+   directly — fine locally, but a hosted build needs the backend API instead.
+
+### Next session should start at
+
+Page 2 — `correlation` (the fleet network graph, full 3D). The loader in `lib/fleet.ts`
+and the `HeroScene` building blocks are reusable there. Nothing committed yet.
+
+**Addendum 2026-09-28:** open question 1 resolved — operator approved Pixel Code. Added
+`public/fonts/PixelCode.woff2` (v2.2 Regular, 26 KB, OFL-1.1, from
+github.com/qwerasd205/PixelCode) + `PixelCode-OFL.txt`; loaded via `next/font/local`;
+Silkscreen fallback removed. Verified: served HTML preloads PixelCode, no Silkscreen,
+`tsc` clean, hero renders in Pixel Code.
+
+---
+
+## Session 2026-09-28 — dashboard page 2: `narratives` + A002 topic categories
+
+### Goal for this session
+
+Operator renamed/re-scoped page 2: the planned `correlation` (fleet graph) and
+`news.intelligence` pages merge into **one news page, `narratives`**, categorising A002's
+news **both** by verdict (rumor/fake/real) and by topic (operator chose "both").
+
+### Audit findings (before building)
+
+- A002's live DB `a002.db` was **empty** (mtime 2026-09-15; BUILD_LOG 2026-09-07 had
+  recorded 447 items in it). The same 447 items / 107 entities / 234 narratives sat in the
+  legacy `a02.db` (2026-08-11). Neither file is git-tracked. Root cause not proven — likely
+  something re-created `a002.db` empty around the 2026-09-15 renumbering.
+- Topic category was **never persisted**: `classify_category()` only ran on demand in the
+  impact path (5 `impact_events` rows).
+
+### What changed
+
+- **A002 (MINOR-FIX, operator-approved):** `Narrative.category` (None = never classified);
+  the engine sets it with A002's own `classify_category()` each cycle;
+  `Storage` migrates a nullable `category` column and writes it on insert/update.
+  Regression checks added to `tests/test_narrative.py` (every narrative categorised,
+  BTC-ETF story → `etf`, category persisted).
+- **A002 data correction:** backed up the empty file as `a002.db.empty-backup-2026-09-28`,
+  copied `a02.db` → `a002.db` (legacy file untouched), migrated, backfilled 234 categories
+  with A002's classifier, then ran a live `scan` (144 fetched, 143 stored) → 590 items,
+  362 narratives, **0 uncategorised**.
+- **Dashboard (BUILD-NEW):** `/narratives` — `lib/narratives.ts` (read-only `node:sqlite`,
+  http(s)-only source URLs, 6 sources per claim), `lib/verdict.ts`, `NarrativeCity` (3D
+  towers: one per topic, one cube per narrative, stacked real→fake; hover = claim, click =
+  topic filter; tallest tower centred), `NarrativesView` (verdict scale grouped
+  real-leaning / rumor / fake-leaning with all 7 levels incl. zeros, topic chips, search,
+  sort, evidence drawer with source tier/outlet/stance). Header shows scan freshness
+  (warns > 24 h) and A002's detector maturity read live from its manifest.
+  Nav/Footer moved to `components/Nav.tsx` with a current-page state; nav is now
+  026 · narratives · agents · brain · orchestrator · sentinel · trace.
+  `@types/node` 20 → 24 (runtime is Node 24; needed for `node:sqlite` types).
+- **Palette:** verdict scale is diverging blue ↔ orange with a gray midpoint. Each side
+  passes the dataviz ordinal check on `#0c0e12`; neutral `#454a52` clears ΔE 15 against
+  both neighbours but is < 3:1, so it always ships with a label; "disputed" = same gray +
+  hatch texture.
+
+### Verified by execution
+
+- A002: test_narrative 33 → **36 pass**; pytest **55**; core 38, verification 45, impact
+  63, learning 35, phase6 31, phase7 13 — all 0 failed (unchanged).
+- Dashboard: `tsc` clean, `next build` clean. In the browser: 362 narratives render;
+  verdict filter (likely false → 4), topic filter (hack → 10, all hack stories), search
+  (`BTC` → 10), sort by coordination (49, 49, 40), evidence drawer, external links carry
+  `noopener`, 3D hover shows the real claim and a click filters that topic; 0 horizontal
+  overflow at 375 px; home page still renders with the new nav.
+
+### Self-critique
+
+- **Classifier quality is the weak link, and it is not validated:** 283 of 362 narratives
+  land in `general`; e.g. an "Inflationary effects of … war" story is `general`, not
+  `macro`, because the rule needs the exact word `inflation`. The page says the topic
+  comes from an unvalidated classifier, but the numbers should not be over-read.
+- **Architecture shortcut:** the dashboard reads A002's SQLite directly instead of going
+  through the bus / a backend API (STACK.md's BFF). Read-only and local, but it bypasses
+  the sentinel's read logging.
+- The `a002.db` data loss was repaired, not explained.
+- Scroll reveals still not observable in the pane (no rAF) — as on page 1.
+
+### Open questions for the operator
+
+1. Improve A002's topic classifier (e.g. word-stem rules, real labelled data) before
+   anyone trusts the topic split?
+2. Keep `a02.db` + `a002.db.empty-backup-2026-09-28`, or delete them now that `a002.db`
+   holds everything?
+3. Should the dashboard get a real backend API next, so reads go through the bus?
+
+### Next session should start at
+
+Page 3 — whichever the operator names next (`agents` is the natural one: full tools +
+detectors per agent, which `lib/fleet.ts` already loads). Nothing committed yet.
+
+---
+
+## Session 2026-09-28 (cont.) — dashboard page 3: `agents`
+
+### Goal
+
+Operator deferred deployment (open question: which host — "antidploy" not identified; a
+snapshot deploy was proposed because the pages read local files and A002's gitignored DB)
+and asked for the `agents` page, with an animation **controlled by the mouse**.
+
+### What was built (all BUILD-NEW unless noted)
+
+- `lib/fleet.ts` (MINOR-FIX, extended): full manifest contract per agent — role, version,
+  model tier/fallback/temperature/note, memory reads/writes, `requires_approval`,
+  invariants, charter lines, detectors with ceiling + note, registry origin, source path;
+  planned agents get their README meta line + first mission paragraph.
+- `components/AgentModel.tsx` — the selected agent as a 3D tower of its 8 pipeline layers;
+  tools orbit the *skills* layer, detectors the *intelligence* layer (hollow = implemented /
+  muted, solid = validated), base rings = trust level, orange ring = execution-gated.
+  Controls: drag to spin (flick inertia; window listeners so R3F hover/click still work),
+  `touch-action: pan-y` (vertical swipe scrolls the page, horizontal drag spins),
+  Ctrl/⌘ + wheel or trackpad pinch to zoom (plain wheel keeps scrolling and shows a hint),
+  − / + / reset buttons, double-click reset, idle auto-spin after 4 s, hover pauses the
+  orbit so the part stays under the cursor, assembly animation on every agent switch.
+- `components/AgentsView.tsx` — roster (vertical on desktop, horizontal strips on mobile),
+  stage, and the contract: facts (trust meaning per AGENTS.md §6, kernel-wired,
+  runtime-verified, invariants, model), tools (access derived from the tool verb — labelled
+  as derived), detectors (maturity with icon + label, ceiling, note), memory namespaces,
+  approvals, charter, provenance. Picking a part in 3D opens an in-stage fact card
+  ("See in contract ↓" scrolls on request); hovering a table row lights the part in 3D.
+  Selection lives in `?id=` (shareable; unknown ids fall back to the first agent).
+- `app/agents/page.tsx`; nav `agents` live; home fleet tiles and hero nodes now open
+  `/agents?id=…`.
+
+### Verified by execution
+
+`tsc` + `next build` clean (`/agents` dynamic). Browser: real mouse drag rotates, `+`
+zooms, reset returns; detector click → card "DET-EXCHANGE-01 · implemented — muted ·
+ceiling 0.60" with no page jump and the table row highlighted; roster switch updates URL
+and closes the card; T01 shows the execution ring, approvals `real_trading · order.place ·
+store.delete` and "no typed tools"; planned A011/A016 show their README spec; `?id=<script>`
+falls back safely; hero node click → `/agents?id=T02`.
+**Bug found and fixed:** the mobile roster strip widened the page to 1500 px (an implicit
+grid column sized to its 2752 px content) — fixed with `grid-cols-1` (`minmax(0,1fr)`);
+the selected agent is scrolled into the strip horizontally without moving the page.
+
+### Self-critique
+
+- Tool "access" (read/write/call) is inferred from the tool name's verb, not declared in
+  any manifest — labelled as derived, but it is an interpretation.
+- Ctrl+wheel zoom and pinch were not exercised with a real trackpad here; wheel zoom logic
+  is untested beyond code review. Idle spin and inertia were only seen, not measured.
+- The 3D pipeline tower shows all 8 layers for every registered agent — it does **not**
+  mean each agent has built all 8 layers (A001's own docs say several are empty).
+
+### Next session should start at
+
+Deployment decision (host + snapshot approach) or page 4 (`brain`, `orchestrator`,
+`sentinel`, `trace`) — operator's call. Nothing committed yet.
+
+---
+
+## Session 2026-09-28 (cont.) — dashboard page 4: `sentinel`
+
+### Audit (before building)
+
+- `security/sentinel` is real: `scan --json` runs 6 checks per registered agent
+  (manifest, trust, execution, secrets, registry, deviation) → PASS/HOLD/FAIL; the runtime
+  gate `check_action` returns allow/hold/deny and is called by `orchestrator/event_bus/bus.py`.
+- Current scan: **all 7 PASS**, but not all PASSes are evidence: T01's execution check is an
+  **exemption** ("execution_enabled=true; gate not asserted" — its order path is not
+  scanned), A006's execution check scanned 0 files (no code), and the deviation check
+  scanned **0 files for 6 of 7 agents** (their output code is not under the configured
+  `output_dirs`).
+- **There is no approval queue**: a held action is returned to the sender and traced in
+  memory (`gate_hold`); nothing persists it.
+
+### What was built (BUILD-NEW unless noted)
+
+- `lib/sentinel.ts` — runs the sentinel's own CLI (`execFile`, no shell, fixed args) with a
+  result cache and one-scan-at-a-time; reads the policy YAML; reads `EXECUTION_KINDS` from
+  `gate.py`; asks the real `check_action` via a stdin JSON call (manifest path resolved from
+  the registry server-side, never from the client).
+- Route handlers `app/sentinel/scan` (POST, no input) and `app/sentinel/gate` (POST; agent
+  must be registered, tool must match `^[a-z][a-z0-9_.]{0,63}$`, kind must be read/write or an
+  execution kind). Route handlers, not server actions, so an 8–40 s scan does not block
+  gate asks (Next dispatches server actions sequentially per client).
+- `components/SentinelView.tsx` — status strip, "Ask the gate" simulator with history, the
+  7 × 6 scan matrix (exempt / 0-file PASSes shown as **∅** with a warning line, expandable
+  per-agent evidence), policy cards, trust ladder (effective trust from the scan), and an
+  honest "approval queue: not built" panel.
+- `components/SentinelDome.tsx` — 3D dome: agents coloured by scan verdict inside a geodesic
+  shell (the gate), the bus at the centre; each gate answer animates a packet — allow crosses
+  the shell, hold parks and pulses on it, deny falls back.
+- `components/Spin.tsx` (REFACTOR) — the drag/zoom/reset controls extracted from
+  `AgentModel` so both 3D stages share one implementation; `AgentModel` now uses it.
+
+### Verified by execution
+
+- Gate endpoint vs the real gate: A002 `brain.write` → allow; `external.post` → hold; any
+  execution kind → deny; undeclared tool → deny; T01 `order.place`/`order` → deny (the bus
+  gate denies all orders — T01 trades through its own internal path); hostile inputs
+  (unregistered agent, `x; rm -rf /` as a tool, unknown kind) → 400.
+- UI: auto-scan on first visit renders the matrix and the ∅ warning ("1 exemption, 7 PASS
+  looked at 0 files"); simulator HOLD / DENY / ALLOW with reasons + history; a green packet
+  seen in flight; fresh-tab loads of `/sentinel` and `/agents` log **no console errors**
+  (earlier hydration warnings were test artifacts: an injected `scroll-behavior` style and a
+  hot edit). `tsc` + `next build` clean after silencing a second whole-repo tracing warning
+  (`execFile` `cwd`).
+
+### Self-critique
+
+- `passKind` decides "exempt" by matching the sentinel's summary text ("not asserted") — if
+  that wording changes, the marker silently disappears. A structured flag from the sentinel
+  would be better.
+- The dev server listens on all interfaces (Next prints a LAN URL), so anyone on the local
+  network can trigger a scan or a gate ask. Both are read-only and input-checked, but the
+  console should bind to localhost or require auth before it grows write actions.
+- Scan timing varies a lot (9 s from the CLI, 13–37 s under the dev server on F:).
+- Packet animation verified from one screenshot only (the pane rarely runs rAF).
+
+### Open questions for the operator
+
+1. Should the sentinel's deviation check be pointed at where output code actually lives
+   (6 agents scan 0 files today)? That is a security-module change — operator's call.
+2. Should T01's execution path get a real sentinel assertion instead of an exemption?
+3. Bind the dashboard to localhost (`next dev -H 127.0.0.1`) now?
+
+### Next session should start at
+
+Remaining pages (`brain`, `orchestrator`, `trace`) or deployment. Nothing committed yet.
+
+---
+
+## Session 2026-09-28 (cont.) — dashboard page 5: `trace`
+
+### Audit
+
+`orchestrator/event_bus/trace.py` keeps an **in-memory** `TraceLog` only — no file, no
+`logs/`, and no live kernel loop sends traffic. So there is no bus history to show. The
+only composition root is `bootstrap.wire.build_bus()` (A001 + A002 read-only adapters,
+real manifests, real sentinel gate); A015's kernel adapter is registered separately via
+`orchestrator.adapters.a015.register`. T01, T02, A006, A007 have no bus handler.
+
+### What was built (BUILD-NEW)
+
+- `dashboard/backend/trace_round.py` — first file in `dashboard/backend`: runs one round of
+  messages through `build_bus()` + A015's kernel adapter (no brain handle → nothing
+  written), returns every `Response` and the bus's own trace entries; big payloads truncated.
+- `lib/trace.ts` + `app/trace/run/route.ts` — validates each message against the registry
+  (agent registered, snake_case op, budget 0–100, action tool/kind against the gate's
+  kinds, ≤ 12 messages) and **rebuilds the bus payload server-side**: adapters read other
+  payload keys (A015 reads `event_log_dir` → arbitrary JSON reads), so a client payload never
+  reaches the bus. `run()` in `lib/sentinel.ts` is now shared and forces UTF-8 stdout.
+- `components/TraceView.tsx` — honest "no history, you are the traffic" note, a round
+  composer (to / type / op / optional declared action / exhausted budget), a one-click
+  sample round that takes one message down every path, and a trace log per round with a
+  per-message replay of the bus's own entries (`send → gate_hold`, `+ms`) and the raw
+  message/response JSON.
+- `components/BusFlight.tsx` — 3D replay (shared `Spin` controls): orchestrator → sentinel
+  gate ring → agent lanes; ok returns home, held parks at the gate, denied bounces, degraded
+  dies after the gate (budget), no_handler fizzles before the gate (bus order: handler check
+  first); click a lane to address that agent.
+- `lib/status.ts` (REFACTOR) — sentinel/gate/bus colour maps moved out of the 3D files, so
+  `SentinelView` and `TraceView` no longer pull three.js into their main bundle.
+
+### Verified by execution
+
+- Endpoint: sample round → ok ×3 (A001 detectors, A002 stats 590 items, A015 0 events),
+  held (external.post), denied (trade), no_handler (A007), degraded (budget 0), 14 trace
+  entries; a smuggled `payload.event_log_dir` was dropped (bus got `{intent, limit}` only);
+  unregistered agent / injected op / negative budget / unknown kind / empty / non-JSON → 400.
+- UI: sample round renders 7 rows with reasons + trace ids; row expand shows
+  `send → gate_hold`; composed round (A001 health → ok 3.4 s, T01 → no handler); 3D replay
+  seen with a green packet crossing the gate and a grey one fizzling. `tsc` + `next build`
+  clean.
+- **Found, not caused:** `tests/test_architecture.py` has 1 failure —
+  `orchestrator/adapters/a002.py -> agents` (committed in d36247d). 9 other architecture/bus
+  tests pass. Left for the operator (layering decision); flagged as a separate task.
+
+### Self-critique
+
+- `BUS_OPS` in `lib/trace.ts` mirrors the Python adapters by hand (UX only — adapters still
+  reject unknown ops), so it can drift.
+- The page runs real adapter code (A001's IntelligenceService, A002's `Storage.init()`
+  schema-ensure) — read-only by construction, but every round costs 1–4 s of Python.
+- Rounds live only in the browser tab; a real persisted trace needs the kernel loop (SP-4).
+
+### Next session should start at
+
+`brain` or `orchestrator` page, deployment, or the architecture-test fix. Nothing committed yet.
+
+---
+
+## Session 2026-09-28 (cont.) — dashboard page 6: `orchestrator`
+
+### Audit
+
+`orchestrator/core`, `router`, `scheduler`, `workflows`, `memory` hold **0 bytes** of code;
+only `event_bus/` (bus, message, trace) and `adapters/` (a002, a015) exist.
+`config/models/models.yaml` is **empty** — no tier→model routing — and there is no
+platform-level LLM client. A "chat with the orchestrator" cannot be honest today: there is
+no planner to answer, and adding one means an LLM + API key (a secrets boundary →
+operator decision, AGENTS.md §9).
+
+### What was built (BUILD-NEW)
+
+- `components/OrchestratorConsole.tsx` — a Pixel Code command console that routes by hand
+  over what exists: `<ID> <op>` → `/trace/run` (real bus), `gate <ID> <tool> <kind>` →
+  `/sentinel/gate`, `scan` → `/sentinel/scan`, `agents`, `<ID>` (its ops), `open <page>`,
+  `clear`, `help`; ↑/↓ history, Tab completion, a trailing `<GO>` accepted (the operator's
+  Bloomberg idea); payloads expandable.
+- `lib/orchestrator.ts` — measures `orchestrator/` per module (source files, bytes, test
+  files) and the model-routing file size, live from disk.
+- `components/OrchestratorCore.tsx` + `OrchestratorAnatomy.tsx` — 3D module anatomy on the
+  shared `Spin` controls: built modules solid and sized by code (log scale) with packets,
+  empty ones wireframe; click a module for its files.
+- `app/orchestrator/page.tsx` — capability table (plan / route / fuse / gate / budget /
+  trace / schedule, each with its evidence path), anatomy, model-tier requests vs the empty
+  routing file. Nav `orchestrator` live.
+
+### Verified by execution
+
+Page data: Plan not built, Route partial, Fuse not built, Gate + Budget built, Trace partial;
+modules `adapters` 3 files 7.9 KB, `event_bus` 4 files 6.4 KB, five empty; tiers
+reasoning-heavy × 5 (A001 A002 A006 A007 T02), no LLM × 2 (A015 T01). Console: help,
+agents, `A001` op list, `T01` → no handler, Tab (`A0` lists, `A01` → `A015`), unknown
+command, `A002 stats` → ok 692 ms, `gate A002 external.post write` → hold, `A007 health` →
+no_handler, `A001 detectors <GO>` → ok, ↑ history. 3D anatomy rendered; module drill-down
+lists `event_bus` files. `tsc` + `next build` clean.
+
+### Self-critique
+
+- The capability table's "built / partial" for gate, budget and trace is hand-judged from
+  code I read (with evidence paths), not measured.
+- Console `open` uses client navigation; `scan` from the console waits for the full scan.
+
+### Open question for the operator
+
+Should the orchestrator get a real planner (LLM-backed chat)? It needs a model choice,
+`config/models/models.yaml`, and an API key kept out of the repo — your call.
+
+### Next session should start at
+
+`brain` page (last one), deployment, or the architecture-test fix. Nothing committed yet.
+
+---
+
+## Session 2026-09-28 (cont.) — dashboard page 7: `brain` (all pages built)
+
+### Audit
+
+`brain/store.py` (sqlite3, versioned writes, logged reads) and `brain/access.py`
+(`AgentBrainView`, deny outside `memory.reads/writes`) are real and tested, but **no code
+outside tests constructs a persistent `Brain(<path>)`** — every brain is `:memory:`, so the
+shared brain holds **no records**. `brain/prompts/system.md` is empty. No librarian, no
+embeddings/RAG yet.
+
+### What was built (BUILD-NEW)
+
+- `dashboard/backend/brain_check.py` — runs `AgentBrainView` on a throwaway in-memory
+  `Brain()`: allowed writes are made twice (versions 1 → 2 + history), allowed reads show
+  the read log entry, violations return `NamespaceDenied`'s message.
+- `lib/brain.ts` — memory-contract map from the manifests (`projects.*` shown as
+  `projects/*`), a small scan of platform code for `Brain(<path>)` (persistence wired or
+  not), the system-prompt size; `app/brain/check/route.ts` validates agent (registry),
+  op, and namespace (`NAMESPACE_RE` mirrors `valid_namespace`); the manifest path comes
+  from the registry, never the request.
+- `components/BrainMap.tsx` — 3D contract: namespaces inner ring (sized by readers,
+  hollow when nobody writes them), agents outer ring; write edges carry packets agent →
+  namespace, read edges namespace → agent; click to focus. `components/BrainView.tsx` —
+  focus panel with derived insights, access matrix (hover-linked to the 3D), "Ask the
+  brain" checker. `app/brain/page.tsx` — adds the build-status table.
+- `components/Nav.tsx` (MINOR-FIX) — every page is live, so the disabled "soon" link
+  branch was deleted.
+
+### Verified by execution
+
+Checker vs real code: A002 write news → allowed (v1 → v2), write chain → denied, read
+entities → allowed + logged, write projects/x → allowed; A001 write global → denied; T01
+read global → denied; `../../etc` namespace, unknown op, unregistered agent → 400; a
+smuggled `manifest` path is ignored. UI: the three checks render with their explanations;
+the 3D map renders (global/entities hollow, T01 dark). `tsc` + `next build` clean after a
+third whole-repo tracing warning (`lib/brain.ts` dynamic `path.join`) was silenced.
+
+### Findings worth the operator's attention
+
+- **global and entities are read by 6 agents and written by none** (AGENTS.md gives them
+  to the librarian, which is not built) — they will stay empty.
+- **Only `projects/*` lets one agent's write reach another agent's read.** Every agent's own
+  namespace (chain, news, macro, public_record, markets, market) is read by nobody else, so
+  cross-agent correlation through the brain has no path today except project spaces.
+- **A first version of the insight panel was wrong** ("shared: none" — it ignored
+  namespaces every agent both reads and writes). Caught on review, fixed before hand-off.
+
+### Self-critique
+
+- The persistence check scans five platform directories for `Brain(<non-empty args>)`; a
+  brain built elsewhere (e.g. inside an agent) would be missed.
+- "Built / not built" for the librarian and embeddings is hand-stated with evidence.
+
+### Next session should start at
+
+Deployment (host + snapshot), the architecture-test fix (task chip raised), or commit the
+dashboard work. **Nothing is committed yet** — the whole dashboard is untracked.
+
+---
+
+## Session 2026-09-28 (cont.) — dashboard pages 8–9: `onchain` (A001) and `desk` (T01)
+
+### Goal
+
+Operator asked for two more pages, built one by one with full data integration: A001's
+blockchain data (named `onchain`) and T01 trading (named `desk`). Desk scope chosen by the
+operator: full paper control + live data + a real-mode switch; no manual order ticket
+(T01 has no manual order path — a new one would have to be the gate first, ADR-0002).
+
+### `onchain` (BUILD-NEW)
+
+- `dashboard/backend/onchain_snapshot.py` — A001's own IntelligenceService through the bus
+  adapter (health, coverage, flows, detectors, chains, metrics); `lib/onchain.ts` — cached
+  snapshot (60 s, single flight) + read-only `a001.db` queries (blocks, BigInt-exact values,
+  top transfers with labels, token activity, selective-capture gap).
+- `components/ChainHelix.tsx` (3D, shared Spin controls): the 82 stored blocks in order on a
+  helix, height = tx count, coloured by capture state; click a block for its largest
+  transfers. `OnchainView.tsx` — stage, block panel, exchange-flow butterfly chart,
+  Etherscan links only for validated hashes/addresses. `app/onchain/page.tsx` — stats,
+  coverage, flows, largest transfers, tokens, detectors (code vs manifest), chain registry.
+- **Wrong reading caught by checking the data:** "unfetched" blocks were first labelled
+  "header only". The data says otherwise — their 11,286 transactions are stored; only the
+  token-transfer logs are missing (0 token transfers). Labels and the flow caveat were
+  rewritten; the real flow gap is the 5 selective blocks (84 of 1,601 transactions kept).
+
+### `desk` (BUILD-NEW)
+
+- `lib/t01.ts` + `app/desk/t01/route.ts` — a server proxy to T01's FastAPI (T01 rejects
+  cross-origin browser POSTs and unknown Host headers). Reads and controls are an explicit
+  allowlist (no passthrough); symbol/timeframe validated; `real-enable` also requires the
+  typed phrase `ENABLE REAL MONEY` server-side. T01's own gate (accuracy ≥ 70 % over ≥ 50
+  paper trades + Binance credentials) still decides.
+- `components/CandleScape.tsx` (3D candles, volume, last-price line, paper-trade entry/exit
+  markers; up/down in blue/orange, labelled) and `DeskView.tsx` (5 s snapshot poll, 15 s
+  market poll, pauses when the tab is hidden): status strip, controls (symbol/timeframe,
+  start/stop, emergency stop/resume, paper reset with confirm), order book, paper
+  performance + equity curve, gate gauges, positions/trades (paper/real), signal factors,
+  bot activity, and the real-mode dialog. A "T01 not running" state shows the start command.
+- `.claude/launch.json` (MINOR-FIX) — added a `t01` entry; `tsconfig.json` target
+  ES2017 → ES2020 (BigInt literals).
+
+### Verified by execution
+
+- Onchain: A001 service answered all six ops; totals 1,197.4 ETH deposited / 1,002.6 ETH
+  withdrawn / net +194.8; coverage limitation shown verbatim; block click opens #25,723,789
+  with its top transfers; 3D rendered.
+- Desk (T01 started locally, paper only — **no Binance credentials anywhere, `real_enabled`
+  unset**): snapshot live (BTC/USDT 1m ~83.4k, HOLD), 120 candles, 12/12 book levels, 400
+  symbols; select → emergency-stop → resume → start → select back all worked and state was
+  restored; guards: real-enable without the phrase → 400, injected symbol / bad timeframe /
+  unknown op → 400; T01 stopped → 503 + start command in the UI. Real-mode dialog: button
+  stays disabled for empty / wrong-case / partial phrase; cancel leaves `real_enabled` false.
+  **Not tested on purpose:** submitting the phrase to T01 (enabling real money is the
+  operator's act, even when T01 would refuse).
+- All nine pages return 200 with their headings; `tsc` + `next build` clean.
+
+### Findings for the operator
+
+1. **A001 code vs contract:** its registry calls DET-WHALE/DORMANT/ANOMALY/EXCHANGE
+   `validated` (ceiling 1.0, may alert); `agent.yaml` says `implemented` (0.60); and
+   DET-EXPLOIT-02 is in the code but not in the manifest. One side is wrong — reconcile.
+2. **A001 wording bug:** `skills/exchange_flow/flow.py:224` reports "across 59 hour(s)" by
+   counting exchange-hour rows; the window is 16 minutes. The page builds its sentence from
+   structured fields instead; the agent code was not touched.
+3. **T01's real orders bypass the sentinel** — the desk says so in the gate panel and dialog.
+
+### Self-critique
+
+- T01's credentials state is not exposed by its API, so the gate panel can only say
+  "checked by T01 when you enable".
+- The desk polls; T01's WebSocket rejects the dashboard's origin, so updates lag by up to 5 s.
+- Candle markers place a trade on the candle whose interval contains its timestamp; trades
+  older than the 120-candle window are not drawn.
+
+### Next session should start at
+
+Commit the dashboard (all untracked), deployment, the architecture-test fix, or the A001
+reconciliation above — operator's call.

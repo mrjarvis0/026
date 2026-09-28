@@ -2,10 +2,16 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "hub-frontend",
+      "name": "dashboard",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["--prefix", "dashboard/frontend", "run", "dev"],
-      "port": 5173
+      "port": 3000
+    },
+    {
+      "name": "t01",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "uvicorn", "backend.main:app", "--app-dir", "agents/T01_Smart_Binance_Intelligence", "--host", "127.0.0.1", "--port", "8000"],
+      "port": 8000
     }
   ]
 }

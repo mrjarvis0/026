@@ -4,8 +4,47 @@
 > This file describes what *is* â€” not what is planned. Planned work lives in the
 > roadmaps in `README.md`, `ROADMAP.md`, and `AGENTS.md`.
 
-- **Last updated:** 2026-09-18
+- **Last updated:** 2026-09-28
 - **Repo root:** `F:\026`
+- **Dashboard (operator console):** `dashboard/frontend/` is a Next.js 16 app built
+  page by page. **Built: `/` (026 home), `/narratives`** (the one news page —
+  A002's narratives by topic × 7-step verdict, 3D "narrative city", filters, per-claim
+  evidence) **, `/agents`** (every agent's full manifest contract + a mouse-controlled
+  3D model: drag/flick to spin, Ctrl+scroll or pinch to zoom, click a part for its facts)
+  **and `/sentinel`** (runs the real `security.sentinel scan`, shows a 7 × 6 check matrix
+  that marks exempt / 0-file PASSes as ∅, and an "Ask the gate" simulator that calls the
+  real `gate.check_action` — animated in a 3D dome). The approval queue is shown as
+  **not built** (the bus only traces `gate_hold` in memory). **`/trace`**: the bus keeps
+  no persisted history, so the page sends operator-composed rounds through the **real**
+  bus (`bootstrap.build_bus` + A015 kernel adapter, read-only) via
+  `dashboard/backend/trace_round.py`, then shows the trace log, per-message replay and a
+  3D flight replay. **`/orchestrator`**: the orchestrator's planner/router/scheduler/
+  workflows/memory are empty (0 bytes) and `config/models/models.yaml` is empty, so the
+  page is an honest status + a working command console (`A001 detectors`, `gate …`,
+  `scan`, `open …`) over the real bus/gate/sentinel, a live 3D module anatomy and the
+  model tiers agents request. **`/brain`**: the brain store + access layer are built but
+  nothing runs a persistent `Brain(<path>)`, so it holds **no records**; the page shows
+  the manifest memory contract (3D map + access matrix), an "Ask the brain" checker over
+  the real `AgentBrainView` (throwaway in-memory brain) and the build status.
+  **`/onchain`** (A001): its own IntelligenceService (via the bus adapter) + read-only
+  `a001.db` — 82-block 3D chain coloured by capture state, coverage limits, exchange
+  flows, largest transfers, tokens, detectors (code vs manifest), chain registry.
+  **`/desk`** (T01): a server proxy to T01's FastAPI (allowlisted ops only) — live
+  status, candles (3D), order book, metrics, gate progress, trades, activity; paper
+  controls; a real-mode switch behind a typed confirmation, with T01's own accuracy +
+  credentials gate still deciding. **All 9 pages are built** (026 · narratives · agents ·
+  onchain · desk · brain · orchestrator · sentinel · trace). Not committed yet.
+- **Known red test (pre-existing, not from the dashboard work):**
+  `tests/test_architecture.py::test_orchestrator_does_not_import_agents_or_composition_root`
+  fails — `orchestrator/adapters/a002.py` imports `agents.*` (committed in d36247d). Nav plan (operator, 2026-09-28): 026 · narratives · agents · brain ·
+  orchestrator · sentinel · trace (old `correlation` + `news.intelligence` merged into
+  `narratives`). Read-only: reads the registry/manifests and A002's SQLite directly
+  (`node:sqlite`, readOnly); no backend API yet (`dashboard/backend/` empty).
+- **A002 (2026-09-28):** narratives now persist a topic `category` (A002's own
+  `classify_category`, rules + ML) — new `category` column, auto-migrated. Live DB
+  `a002.db` had been empty since 2026-09-15; restored from the legacy `a02.db`
+  (447 items), backfilled categories, then a fresh `scan` → 590 items / 362
+  narratives, 0 uncategorized.
 - **T01 (Smart Binance Intelligence):** 2026-09-18 merged the reviewed Jules AI
   branch work — paper fees + expectancy, ATR-adaptive stops + volatility sizing,
   ATR/VWAP/ADX indicators + VWAP confluence, trailing stops, and a Binance→Kraken

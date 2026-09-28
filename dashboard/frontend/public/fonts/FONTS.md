@@ -1,16 +1,14 @@
-# Custom font — drop file here
+# Fonts
 
-**Pixel Code** is the finalized signature font (brand, headings, agent IDs, data).
-The theme references it by `@font-face` in `src/index.css`. Drop the file here with
-this exact name and it activates automatically:
+**Pixel Code** is the signature font (brand, headings, agent IDs, eyebrows) — active.
 
-| Font | Role | Expected filename |
-|------|------|-------------------|
-| **Pixel Code** | brand + headings + data (`.font-display`, `--font-mono`) | `PixelCode.woff2` (or `.ttf`) |
+| Font | Role | File / source |
+|------|------|---------------|
+| **Pixel Code** v2.2 (Regular) | `font-pixel` | `PixelCode.woff2` — loaded by `next/font/local` in `app/layout.tsx` |
+| **Inter** | body / UI text and all data values | `next/font/google` |
+| **Instrument Serif** (italic) | accent words (`font-serif`) | `next/font/google` |
 
-Other fonts load from Google Fonts (no file needed):
-- **Inter** — body / UI text (readability)
-- **Instrument Serif** (italic) — elegant accent words (`.font-accent`)
-
-> Until `PixelCode.woff2` is here, headings fall back to a mono stack — nothing breaks.
-> Tip: convert .ttf → .woff2 for smaller/faster loads.
+Pixel Code © 2022 Qwerasd, SIL Open Font License 1.1 — licence text in
+`PixelCode-OFL.txt` (must stay next to the font). Source:
+github.com/qwerasd205/PixelCode, release v2.2 `woff2.zip`. Only the Regular weight
+is shipped; add other weights from that release only if a design needs them.
