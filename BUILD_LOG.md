@@ -4036,3 +4036,71 @@ operator: full paper control + live data + a real-mode switch; no manual order t
 
 Commit the dashboard (all untracked), deployment, the architecture-test fix, or the A001
 reconciliation above — operator's call.
+
+---
+
+## 2026-10-27 · T03 post-merge integration: $009-scalper dry-run, T01 bridge wiring, backtest results, testnet key docs
+
+**Session goal:** complete the 4 items listed as pending after the T03 merge (e4190ca).
+
+### What was done
+
+#### 1 · T01 bridge wiring (T01 ← T03 consensus soft-veto) — DONE
+- `agents/T01_Smart_Binance_Intelligence/backend/config.py` — added `T03_ENABLED`, `T03_SYMBOL`, `T03_TIMEFRAME` knobs (MINOR-FIX)
+- `agents/T01_Smart_Binance_Intelligence/backend/strategy/engine.py` — added `_t03_root()`, `_t03_consensus()` helpers; modified `decide()` with T03 soft-veto: if T03 direction is opposite AND strength ≥ 0.75, signal is overridden to hold; otherwise T03 note appended to `details`; fails silently if T03 unavailable (MINOR-FIX)
+- `agents/T01_Smart_Binance_Intelligence/.env.example` — added T03 integration block (MINOR-FIX)
+- No T01 compile-time dependency on T03 — dynamic `sys.path` insert at runtime
+
+#### 2 · Backtest results — all 8 strategies against BTC/USDT 1d 2023-01-01 → 2026-10-27
+
+| Strategy       | Win rate | Total return | CAGR  | Sharpe | Max DD | Trades |
+| -------------- | -------: | -----------: | ----: | -----: | -----: | -----: |
+| $001-dennis    | 35.7%    | -33.6%       | -10.1%| -0.06  | -59.3% | 42     |
+| $002-donchian  | 47.4%    | +53.4%       | +11.8%|  0.49  | -43.9% | 19     |
+| $003-darvas    | 45.0%    | +83.9%       | +17.3%|  0.68  | -37.2% | 20     |
+| $004-williams  | 37.8%    | +50.1%       | +11.2%|  0.47  | -56.8% | 156    |
+| $005-seykota   | 43.8%    | +142.9%      | +26.1%|  0.87  | -34.4% | 16     |
+| $006-raschke   | 54.7%    | +8.2%        |  +2.1%|  0.21  | -51.6% | 53     |
+| $007-oneil     | 50.0%    | +147.4%      | +26.7%|  0.98  | -26.6% | 14     |
+| $008-tudorjones| 30.8%    | +77.7%       | +16.2%|  0.62  | -40.0% | 13     |
+| buy & hold BTC |   —      | +384%        |       |  1.12  |        |        |
+
+Best strategies by Sharpe: $007-oneil (0.98) > $005-seykota (0.87) > $003-darvas (0.68)
+Best by win rate: $006-raschke (54.7%) — lowest total return, high DD
+**$001-dennis only loser** — negative return, will be soft-vetoed by T03 consensus when long majority = SHORT
+
+#### 3 · $009-scalper dry-run — IN PROGRESS
+- First run: downloads ~193k 5m bars + 4 MTF layers from Binance (one-time cache build)
+- 5m cache (20 MB) written; 1m/15m/1h download still in progress in background
+- Second run onwards: fast (cached)
+
+#### 4 · Futures Testnet keys — documented (see below)
+
+### Futures Testnet key setup (for operator)
+
+1. Go to https://testnet.binancefuture.com → log in with Binance account
+2. Create API key (no withdrawal permission needed; only futures testnet access)
+3. Copy key + secret into `agents/T03_Strategy_Intelligence_Hub/.env`:
+   ```
+   BINANCE_FUTURES_TESTNET_API_KEY=<your_testnet_key>
+   BINANCE_FUTURES_TESTNET_API_SECRET=<your_testnet_secret>
+   ```
+4. Run `python scripts/run_scalper.py '$009-scalper'` (dry-run, no flags) → should show "simulated(no keys)" → "futures_testnet" after keys are set
+5. To transmit a paper order: `python scripts/run_scalper.py '$009-scalper' --arm --confirm I-CONFIRM-PAPER-ORDER`
+
+### Self-critique
+
+- Win rates are all below 55% on daily BTC; all below buy-and-hold Sharpe. These are raw strategy baselines — not tuned, no walk-forward, not ensemble-filtered. The T03 scanner consensus is a voting layer, not a standalone signal.
+- $001-dennis should be audited or disabled — negative CAGR across a strong bull market is a signal quality problem.
+- $009-scalper first run requires a multi-minute one-time download. Subsequent runs use cache.
+
+### Open questions for operator
+
+1. Do you want to disable/remove $001-dennis given negative performance? It pulls down T03 consensus.
+2. Should backtest use `backtesting` engine instead of `vectorized` for more realistic fills?
+3. Futures Testnet keys — have you set these up? $009-scalper will show mode=`simulated(no keys)` until you do.
+
+### Next session should start at
+
+Verify scalper dry-run output once background download completes (check logs/scalper_009-scalper.log).
+Optionally: disable $001-dennis or re-tune its parameters.

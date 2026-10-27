@@ -19,7 +19,20 @@
   architecture). 3 bugs fixed en route (sys.path registry bug, bar-dropping normalize()
   bug, market-order price bug in both broker files). Registered in `config/agents/registry.yaml`
   (T03, partial, trust=2, execution_agent=true, testnet-only). **Not yet kernel-wired.**
-  `tests/test_t03_foundation.py` present but not yet run end-to-end (requires deps).
+  `tests/test_t03_foundation.py` — 40/40 green (verified 2026-10-27).
+- **T03 integration with T01 (2026-10-27):** T01's `decide()` now uses T03 consensus
+  as a soft veto: if T03's 8-strategy majority opposes T01's signal with strength ≥ 0.75,
+  the signal is overridden to hold. Config knobs: `T03_ENABLED`, `T03_SYMBOL`,
+  `T03_TIMEFRAME` in T01 `.env` / `config.py`. Fails silently when T03 unavailable.
+- **T03 backtest results (BTC/USDT 1d, 2023-01-01→2026-10-27):** best by Sharpe:
+  $007-oneil (0.98, +147%, 26.6% max DD), $005-seykota (0.87, +143%, 34.4% max DD),
+  $003-darvas (0.68, +84%, 37.2% max DD). $001-dennis is the only loser (-34%, Sharpe -0.06)
+  — candidate for disabling. All strategies underperform buy-and-hold BTC (Sharpe 1.12, +384%).
+- **$009-scalper dry-run:** first run downloads ~193k 5m bars + MTF layers from Binance
+  (one-time cache; 5m file 20 MB cached). Background download in progress 2026-10-27.
+  Subsequent runs are fast. Futures Testnet keys needed in T03 `.env` to activate broker
+  (see BUILD_LOG.md 2026-10-27 for setup steps); without keys, scalper runs in
+  `simulated(no keys)` paper mode.
 - **Live supervisor (2026-09-29):** `live/supervisor.py` keeps the dashboard fresh —
   A001 ingest every 30 min, A002 scan every 2 hours, a step-by-step refresh on
   every launch, and event-driven double rescans (A002's new `events` detector finds

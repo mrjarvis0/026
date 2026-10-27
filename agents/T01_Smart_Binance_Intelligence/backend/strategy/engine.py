@@ -1,9 +1,50 @@
 """Decision engine with a lightweight self-learning parameter tuner."""
 import json
+import sys
+from pathlib import Path
 
 from backend.analysis import indicators, signals
 from backend.data import database as db
 from backend.trading import performance
+from backend import config as _cfg
+
+# ---------------------------------------------------------------------------
+# T03 Strategy Intelligence Hub — optional consensus overlay
+# ---------------------------------------------------------------------------
+
+def _t03_root() -> Path | None:
+    """Locate T03 sibling directory using the fleet layout (agents/ siblings)."""
+    t01_root = Path(__file__).resolve().parent.parent.parent
+    candidate = t01_root.parent / "T03_Strategy_Intelligence_Hub"
+    return candidate if candidate.is_dir() else None
+
+
+def _t03_consensus() -> tuple[int, float]:
+    """Return (net_direction, strength) from T03's 8 strategy agents.
+
+    net_direction: +1 (majority LONG), -1 (majority SHORT), 0 (neutral/chop)
+    strength: fraction of strategies agreeing (0.0–1.0)
+    Returns (0, 0.0) silently on any failure.
+    """
+    if not _cfg.T03_ENABLED:
+        return 0, 0.0
+    try:
+        t03 = _t03_root()
+        if t03 is None:
+            return 0, 0.0
+        t03_str = str(t03)
+        if t03_str not in sys.path:
+            sys.path.insert(0, t03_str)
+        from bridge import scan_consensus  # noqa: PLC0415
+        c = scan_consensus(_cfg.T03_SYMBOL, timeframe=_cfg.T03_TIMEFRAME, use_cache=True)
+        total_active = c["long"] + c["short"]
+        if total_active == 0:
+            return 0, 0.0
+        strength = max(c["long"], c["short"]) / max(total_active, 1)
+        direction = 1 if c["bias"] == "LONG" else (-1 if c["bias"] == "SHORT" else 0)
+        return direction, round(strength, 3)
+    except Exception:
+        return 0, 0.0
 
 
 DEFAULT_PARAMS = {
@@ -58,9 +99,40 @@ def save_params(params: dict, source: str = "manual", reason: str = "") -> None:
 
 
 def decide(ohlcv: list[list]) -> signals.Signal:
-    """Analyze candles and return a trade signal using current tuned params."""
+    """Analyze candles and return a trade signal using current tuned params.
+
+    T03 soft veto: if T03's 8-strategy consensus strongly disagrees with T01's
+    signal (opposite direction, strength >= 0.75), the signal is held. T03 is
+    optional — fails silently when unavailable.
+    """
     df = indicators.compute_all(ohlcv)
-    return signals.generate_signal(df, load_params())
+    sig = signals.generate_signal(df, load_params())
+
+    # T03 consensus overlay (soft veto, never modifies confidence upward)
+    if sig.action in ("buy", "sell") and _cfg.T03_ENABLED:
+        t1_dir = 1 if sig.action == "buy" else -1
+        t3_dir, t3_str = _t03_consensus()
+        if t3_dir != 0 and t3_dir != t1_dir and t3_str >= 0.75:
+            # Strong disagreement → hold
+            details = {**(sig.details or {}), "t03_veto": True,
+                       "t03_direction": t3_dir, "t03_strength": t3_str}
+            return signals.Signal(
+                action="hold",
+                confidence=0.0,
+                reason=f"T03 veto: {sig.action} blocked (T03 strength={t3_str:.2f})",
+                price=sig.price,
+                details=details,
+            )
+        elif t3_dir != 0:
+            # Note agreement or mild disagreement in details only
+            details = {**(sig.details or {}), "t03_direction": t3_dir,
+                       "t03_strength": t3_str, "t03_agrees": t3_dir == t1_dir}
+            return signals.Signal(
+                action=sig.action, confidence=sig.confidence,
+                reason=sig.reason, price=sig.price, details=details,
+            )
+
+    return sig
 
 
 def predict_scenarios(df) -> dict:

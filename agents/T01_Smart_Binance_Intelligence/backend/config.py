@@ -88,6 +88,14 @@ PORT = _get_int("PORT", 8000)
 # Leave empty to restrict to localhost only (secure default).
 TRUSTED_HOSTS = [h.strip() for h in os.getenv("TRUSTED_HOSTS", "").split(",") if h.strip()]
 
+# --- T03 Strategy Intelligence Hub integration ---
+# Set T03_ENABLED=true in .env to activate T03 consensus as a soft veto in decide().
+# T03_PATH: absolute path to T03 root (auto-detected when empty: assumes fleet layout
+# agents/T01_… and agents/T03_… are siblings under the same 026 root).
+T03_ENABLED = _get_bool("T03_ENABLED", True)
+T03_SYMBOL = os.getenv("T03_SYMBOL", "BTC/USDT")
+T03_TIMEFRAME = os.getenv("T03_TIMEFRAME", "1h")
+
 # --- Paths ---
 DATA_DIR = BASE_DIR / "data"
 LOGS_DIR = BASE_DIR / "logs"
