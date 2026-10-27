@@ -20,7 +20,7 @@ from backend import config
 from backend.analysis import risk
 from backend.data import collector, database as db
 from backend.safety import circuit_breaker
-from backend.trading import performance
+from backend.trading import fees, performance
 
 MODE = "real"
 
@@ -161,8 +161,10 @@ class RealEngine:
         order = collector.get_exchange().create_order(position["symbol"], "market", "sell", qty)
         fill_price = float(order.get("average") or order.get("price") or price)
         entry = position["entry_price"]
-        pnl = (fill_price - entry) * qty
-        pnl_pct = (fill_price - entry) / entry * 100.0 if entry else 0.0
+        # The exchange really charges both legs on the account, so the recorded
+        # PnL subtracts the same round-trip fee paper uses (REAL_FEE_PCT) — both
+        # modes then report net-of-fee numbers and stay comparable (F2).
+        pnl, pnl_pct = fees.round_trip_pnl(entry, fill_price, qty, config.REAL_FEE_PCT)
         db.close_trade(position["id"], fill_price, pnl, pnl_pct, reason)
         return {
             "id": position["id"], "symbol": position["symbol"],

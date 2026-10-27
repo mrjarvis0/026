@@ -43,6 +43,16 @@ CREATE TABLE IF NOT EXISTS state (
     value TEXT
 );
 
+-- F3: every strategy-param change is journaled here (who changed what, when, why),
+-- so a tuned threshold is provenance, not magic — per 026's evidence standard.
+CREATE TABLE IF NOT EXISTS param_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts TEXT NOT NULL,
+    source TEXT NOT NULL,             -- 'self_tune' | 'reflection' | 'manual'
+    reason TEXT NOT NULL DEFAULT '',  -- human-readable why, e.g. 'accuracy 62% -> net_threshold 1.05'
+    params TEXT NOT NULL              -- full params JSON snapshot AFTER the change
+);
+
 -- Hot paths: get_open_trades / get_closed_trades filter by (mode, status);
 -- daily_pnl filters closed rows by date. Without these, is_real_trading_unlocked
 -- scanned the whole table on every /api/status.
@@ -191,6 +201,30 @@ def get_equity_curve(mode: str, limit: int = 500) -> list[dict]:
             (mode, limit),
         ).fetchall()
         return [dict(r) for r in reversed(rows)]
+
+
+# ---------------- Param-change audit trail (F3) ----------------
+
+def insert_param_history(source: str, reason: str, params_json: str) -> int:
+    """Journal one strategy-param change. `params_json` is the full snapshot
+    AFTER the change. Returns the row id."""
+    with get_conn() as conn:
+        cur = conn.execute(
+            "INSERT INTO param_history (ts, source, reason, params) VALUES (?,?,?,?)",
+            (_now(), source, reason, params_json),
+        )
+        return cur.lastrowid
+
+
+def get_param_history(limit: int = 100) -> list[dict]:
+    """Newest-first audit rows: when, who (source), why, and the full snapshot."""
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT ts, source, reason, params FROM param_history "
+            "ORDER BY id DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+        return [dict(r) for r in rows]
 
 
 # ---------------- Key/value state ----------------

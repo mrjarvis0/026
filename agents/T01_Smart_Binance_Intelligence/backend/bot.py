@@ -22,6 +22,11 @@ _TF_MS = {
 }
 
 
+# F4: how many failed cycles in a row before the bot auto-pauses itself, and how
+# old a completed cycle may be before the feed counts as stale (seconds).
+MAX_CONSECUTIVE_ERRORS = 5
+STALE_FEED_SECONDS = 60.0
+
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -41,6 +46,11 @@ class TradingBot:
         self.last_ticker: dict | None = None
         self.activity: deque = deque(maxlen=120)   # live terminal feed
         self._subscribers: set[asyncio.Queue] = set()
+        # F4: liveness telemetry — when the last cycle completed, and how many
+        # cycles in a row have raised. N consecutive failures auto-pause the bot
+        # (purana/stale feed par trade nahi) instead of trading blind.
+        self.last_cycle_ts: str | None = None
+        self.consecutive_errors: int = 0
 
     # ---------- pub/sub for websocket ----------
     def subscribe(self) -> asyncio.Queue:
@@ -82,6 +92,33 @@ class TradingBot:
         db.set_state("bot_running", "false")
         self.log("warn", "Engine STOPPED")
 
+    # ---------- F4: liveness ----------
+    def feed_fresh(self) -> tuple[bool, float | None]:
+        """(fresh, age_seconds). A bot that never completed a cycle has no
+        telemetry yet — fresh only when explicitly running is False (idle, not
+        stale). A RUNNING bot with an old/no cycle is stale: do not trust its
+        last price or signal."""
+        if self.last_cycle_ts is None:
+            return (not self.running), None
+        try:
+            age = (datetime.now(timezone.utc)
+                   - datetime.fromisoformat(self.last_cycle_ts)).total_seconds()
+        except ValueError:
+            return False, None
+        return age <= STALE_FEED_SECONDS, round(age, 1)
+
+    def _note_cycle_ok(self):
+        self.last_cycle_ts = _now_iso()
+        self.consecutive_errors = 0
+
+    def _note_cycle_error(self):
+        self.consecutive_errors += 1
+        if self.consecutive_errors >= MAX_CONSECUTIVE_ERRORS and self.running:
+            self.stop()
+            self.log("error",
+                     f"feed stale ({self.consecutive_errors} failed cycles) — "
+                     f"auto-paused, resume manually after checking connectivity")
+
     # ---------- decision data ----------
     def _closed_bars(self, ohlcv: list) -> list:
         """Drop the still-forming last candle so signals act on CLOSED bars only.
@@ -122,9 +159,12 @@ class TradingBot:
             try:
                 if self.running:
                     await self._cycle()
+                    self._note_cycle_ok()
             except Exception as exc:  # keep the loop alive on transient errors
+                self._note_cycle_error()
                 self.log("error", f"cycle error: {exc}")
-                await self._broadcast({"type": "error", "message": str(exc)})
+                await self._broadcast({"type": "error", "message": str(exc),
+                                       "consecutive_errors": self.consecutive_errors})
             await asyncio.sleep(self.interval)
 
     async def _cycle(self):

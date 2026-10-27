@@ -1,0 +1,21 @@
+# `{{AGENT_NAME}}`
+
+Algorithmic version of **{{OWNER}}**'s strategy — *{{STRATEGY}}* — on **{{MARKET}}**.
+
+- Spec (cited rules): [`{{AGENT_NAME}}.agent.md`]({{AGENT_NAME}}.agent.md)
+- Signal logic: [`strategy.py`](strategy.py)
+- Config: [`config.yaml`](config.yaml)
+- Results: `results/` (`REVIEW.md` after review)
+
+## Run (from the hub root)
+
+```bash
+python scripts/backtest.py '{{AGENT_NAME}}'
+python scripts/train.py    '{{AGENT_NAME}}'
+python scripts/review.py   '{{AGENT_NAME}}'
+```
+
+## Status
+
+Scaffolded {{DATE}}. Replace the placeholder logic in `strategy.py` with {{OWNER}}'s real, cited
+rules before trusting any result.

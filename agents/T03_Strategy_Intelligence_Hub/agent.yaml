@@ -1,0 +1,66 @@
+id: T03
+name: "Strategy Intelligence Hub"
+version: 0.1.0
+status: partial            # scaffold | partial | substantial | complete
+
+role: >
+  Manages a fleet of 8–9 strategy agents ($001–$009), runs multi-strategy
+  scanner consensus, backtests all strategies on demand, exposes a bridge for
+  T01 to consume strategy signals and win-rate metrics, and runs the futures
+  scalper pipeline ($009-scalper: MTF + scanner + candle predictor + sentiment).
+  Reports deviation only for intelligence agents. The scalper ($009) submits
+  orders to Binance Futures Testnet only — execution is gated, paper by default.
+
+model:
+  tier: balanced             # strategy scanning + backtesting is compute-moderate
+  fallback: fast
+  temperature: 0.1
+
+memory:
+  reads:  [global, entities]
+  writes: []                 # T03 writes no shared brain state — self-contained
+
+tools:
+  - store.read
+
+trust:
+  level: 2                   # scoped writes — futures testnet only, paper-gated
+  requires_approval:
+    - external.post           # any real broker submission
+    - store.delete
+
+invariants:
+  execution_enabled: true    # $009-scalper CAN submit orders — but ONLY to Binance Futures Testnet
+  testnet_only: true         # set_sandbox_mode(True) hard-coded in broker; no live keys supported
+  paper_by_default: true     # armed=False by default; --arm + HUMAN_CONFIRM_TOKEN required
+  reports_deviation_only: false  # $009 takes action — not pure intelligence
+
+evidence:
+  detectors: []              # no alerting detectors; $009 trades, it does not alert
+  coverage_required_for_absence: false
+
+charter: |
+  - Never fabricate a signal. Every trade decision cites its evidence (scanner + MTF + predictor + sentiment).
+  - "Cannot be determined" → stand aside. MTF chop → stand aside, no exceptions.
+  - RiskEngine circuit breakers are non-negotiable: daily-loss halt, DD halt, equity floor.
+  - Testnet only. No live API keys in this agent's scope. Constitution R-B.4.
+  - Bridge data flows T03 → T01 only; never import T01 code from T03.
+  - Stop and ask before any action outside declared tools or outside Binance Futures Testnet.
+
+components:
+  scanner: true              # core/scan.py — consensus across all $agents
+  backtest: true             # core/backtest/ — vectorized + backtesting.py runner
+  mtf: true                  # core/futures/mtf.py — multi-timeframe EMA/ADX/RSI
+  predictor: true            # core/futures/predict.py — calibrated LogReg candle predictor
+  fuser: true                # core/futures/fuse.py — Constitution §4 fusion (min confidence)
+  scalper: true              # core/futures/scalper.py — 24/7 futures execution loop
+  sentiment: true            # core/research/sentiment.py — F&G + CoinGecko
+  t01_bridge: true           # bridge/t01_bridge.py — T01 can call T03 scan + backtest
+  risk_engine: true          # core/live/risk.py — 1% risk/trade, leverage cap, halts
+
+open_items:
+  - No live broker keys configured (intentional; testnet-only)
+  - $009-scalper backtest not yet run (first dry-run pending)
+  - T01 bridge not yet wired into T01's decision loop (next step for T01 operator)
+  - No kernel wiring (bus/brain/sentinel) — standalone service like T01
+  - tests/test_t03_foundation.py present but not yet run end-to-end

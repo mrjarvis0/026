@@ -4,8 +4,29 @@
 > This file describes what *is* â€” not what is planned. Planned work lives in the
 > roadmaps in `README.md`, `ROADMAP.md`, and `AGENTS.md`.
 
-- **Last updated:** 2026-09-28
+- **Last updated:** 2026-10-27
 - **Repo root:** `F:\026`
+- **T03 (Strategy Intelligence Hub) — merged 2026-10-27:** Brought in from
+  `F:\my-agents\$trategy-master` (source preserved). 8 strategy agents ($001–$008,
+  `reviewed`) + 6 new components built on top: MTF analyzer (`core/futures/mtf.py`),
+  next-candle predictor (`core/futures/predict.py`), signal fuser
+  (`core/futures/fuse.py`), futures scalper loop (`core/futures/scalper.py`),
+  Binance USD-M Futures Testnet broker (`core/paper/binance_futures_testnet.py`),
+  sentiment adapter (`core/research/sentiment.py`). Also: `$009-scalper` agent config
+  (`agents/$009-scalper/`), `scripts/run_scalper.py` (CLI entry point, dry-run by default),
+  T01 bridge (`bridge/t01_bridge.py` — T01 can call T03 for scan consensus + win-rate
+  backtests), 18-case test suite (`tests/test_t03_foundation.py` — behavior, regression,
+  architecture). 3 bugs fixed en route (sys.path registry bug, bar-dropping normalize()
+  bug, market-order price bug in both broker files). Registered in `config/agents/registry.yaml`
+  (T03, partial, trust=2, execution_agent=true, testnet-only). **Not yet kernel-wired.**
+  `tests/test_t03_foundation.py` present but not yet run end-to-end (requires deps).
+- **Live supervisor (2026-09-29):** `live/supervisor.py` keeps the dashboard fresh —
+  A001 ingest every 30 min, A002 scan every 2 hours, a step-by-step refresh on
+  every launch, and event-driven double rescans (A002's new `events` detector finds
+  upcoming scheduled events; both agents fire twice, 5 min apart, at each). Local
+  launchers: `start-026.vbs` (dashboard+T01), `start-live.vbs` (supervisor, for the
+  Windows startup folder), `stop-026.bat`. A001 live loop runs **no-token, 60
+  blocks/cycle** (free-key ceiling); flows refresh only on a manual token ingest.
 - **Dashboard (operator console):** `dashboard/frontend/` is a Next.js 16 app built
   page by page. **Built: `/` (026 home), `/narratives`** (the one news page —
   A002's narratives by topic × 7-step verdict, 3D "narrative city", filters, per-claim
@@ -58,6 +79,17 @@
   deleted; the #16 commit (d3b8cb3) is **local, not yet pushed**.
   **27 other Jules branches remain unmerged on origin** (A001/A002/A006/A007/T02)
   awaiting their own review — see `BUILD_LOG.md` 2026-09-18.
+- **T01 F-track (foundation fixes F1–F4), built this session:** `F1` `.env.example`
+  synced with every `config.py` knob (15 missing keys added); `F2` shared fee math
+  (`backend/trading/fees.py`, BUILD-NEW) — real fills now record **net-of-fee** PnL
+  via new `REAL_FEE_PCT` knob, same formula as paper; `F3` `param_history` audit table
+  + `save_params(source, reason)` journaling (self_tune/reflection reasons included),
+  `GET /api/params/history`; `F4` bot heartbeat (`last_cycle_ts`,
+  `consecutive_errors`), `GET /api/health`, N=5 failed cycles → **auto-pause**.
+  Touched: `config.py`, `.env.example`, `paper_engine.py`, `real_engine.py`,
+  `database.py`, `strategy/engine.py`, `strategy/reflection.py`, `bot.py`, `main.py`
+  (all MINOR-FIX except fees.py + test file BUILD-NEW). T01 suite now **43 cases,
+  all green** (30 old + 13 new in `tests/test_t01_foundation.py`).
 - **A001 / A002 (2026-09-18):** merged 21 of the 24 remaining Jules branches — 8
   A001 code-health refactors (A001 suite still 1846 pass / 1 skip = behavior
   preserved), 6 A002 features (Deribit options-IV, Google Fact Check, translation

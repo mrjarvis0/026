@@ -1,0 +1,30 @@
+# Config for $004-williams (Larry Williams — Volatility Breakout)
+
+market: crypto
+symbols: BTC/USDT
+timeframe: "1d"
+
+data:
+  start: "2019-01-01"
+  end: null            # null => today
+
+backtest:
+  starting_cash: 10000
+  commission: 0.001    # 0.1% per side (short-term system => costs matter)
+
+# Strategy parameters (override WilliamsStrategy.params)
+# NOTE: set from walk-forward (out-of-sample). The naive default (k=0.5, hold=1, shorts)
+# lost ~93% on BTC — 933 trades chewed up by commission + whipsaw. Long-only, k=0.3,
+# hold_days=3 was the most robust OOS combination.
+params:
+  k: 0.3               # breakout = Open + k * prior-day range
+  hold_days: 3
+  allow_short: false
+
+# Walk-forward search grid
+param_grid:
+  k: [0.3, 0.5, 0.8, 1.0]
+  hold_days: [1, 2, 3]
+  allow_short: [true, false]
+
+optimize_metric: sharpe

@@ -1,0 +1,32 @@
+# Config for $007-oneil (William O'Neil — CANSLIM technical subset)
+
+market: crypto
+symbols: BTC/USDT
+timeframe: "1d"
+
+data:
+  start: "2019-01-01"
+  end: null            # null => today
+
+backtest:
+  starting_cash: 10000
+  commission: 0.001    # 0.1% per side
+
+# Strategy parameters (override OneilStrategy.params)
+# NOTE: base_period/market_ma set from walk-forward (out-of-sample) — faster 20-day
+# breakout + 100-day market filter was the most robust OOS combination.
+params:
+  base_period: 20      # N: new-high breakout lookback
+  market_ma: 100       # M: market/trend filter
+  exit_ma: 50          # trend-break exit
+  stop_pct: 0.08       # O'Neil 7-8% loss-cutting rule
+  vol_confirm: true    # S: above-average breakout volume
+  vol_period: 50
+
+# Walk-forward search grid (stop_pct & exit_ma kept fixed as O'Neil "rules")
+param_grid:
+  base_period: [20, 50, 100]
+  market_ma: [100, 200]
+  vol_confirm: [true, false]
+
+optimize_metric: sharpe

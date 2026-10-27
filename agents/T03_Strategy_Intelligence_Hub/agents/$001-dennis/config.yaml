@@ -1,0 +1,27 @@
+# Config for $001-dennis (Richard Dennis — Turtle Trading)
+
+market: crypto
+symbols: BTC/USDT
+timeframe: "1d"
+
+data:
+  start: "2019-01-01"
+  end: null            # null => today
+
+backtest:
+  starting_cash: 10000
+  commission: 0.001    # 0.1% per side
+
+# Strategy parameters (override DennisStrategy.params)
+params:
+  entry_donchian: 20
+  exit_donchian: 10
+  allow_short: true
+
+# Walk-forward search grid (System 1 vs System 2 windows)
+param_grid:
+  entry_donchian: [20, 55]
+  exit_donchian: [10, 20]
+  allow_short: [true, false]
+
+optimize_metric: sharpe

@@ -1,0 +1,30 @@
+# Config for $006-raschke (Linda Raschke — Turtle Soup false-breakout reversal)
+
+market: crypto
+symbols: BTC/USDT
+timeframe: "1d"
+
+data:
+  start: "2019-01-01"
+  end: null            # null => today
+
+backtest:
+  starting_cash: 10000
+  commission: 0.001    # 0.1% per side (short-term => costs matter)
+
+# Strategy parameters (override RaschkeStrategy.params)
+# NOTE: from walk-forward. The default (fade + shorts) lost ~95% on BTC — mean-reversion
+# fights strong trends, and BTC 2019-2026 trended hard. Even the best OOS config below is
+# only marginally positive; this strategy needs a choppy/range market or a different symbol.
+params:
+  lookback: 10
+  hold_days: 5
+  allow_short: false
+
+# Walk-forward search grid
+param_grid:
+  lookback: [10, 20, 55]
+  hold_days: [1, 3, 5]
+  allow_short: [true, false]
+
+optimize_metric: sharpe

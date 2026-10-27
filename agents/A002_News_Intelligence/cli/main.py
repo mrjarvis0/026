@@ -61,6 +61,53 @@ def doctor() -> int:
     return 0
 
 
+def events(hours: int = 48, horizon_days: int = 14) -> int:
+    """Print upcoming scheduled events found in recent news items, as JSON.
+
+    Best-effort watch list (see intelligence.events): scans items from the last
+    `hours` for explicit future times within `horizon_days`.
+    """
+
+    import json
+    import sqlite3
+    from datetime import UTC, datetime, timedelta
+
+    from agents.A002_News_Intelligence.config import paths
+    from agents.A002_News_Intelligence.intelligence.events import extract_events
+
+    since = (datetime.now(UTC) - timedelta(hours=hours)).isoformat()
+    db = sqlite3.connect(paths.DATABASE_FILE)
+    db.row_factory = sqlite3.Row
+    try:
+        rows = db.execute(
+            "SELECT i.id, i.title, i.content, i.source, i.fetched_at,"
+            " (SELECT group_concat(e.symbol) FROM entities e WHERE e.item_id = i.id) AS symbols"
+            " FROM items i WHERE i.fetched_at >= ? ORDER BY i.fetched_at DESC LIMIT 2000",
+            (since,),
+        ).fetchall()
+    except sqlite3.OperationalError as exc:
+        print(json.dumps({"error": str(exc), "events": []}))
+        return 1
+    finally:
+        db.close()
+
+    found = []
+    for r in rows:
+        syms = [s for s in (r["symbols"] or "").split(",") if s]
+        for ev in extract_events(r["title"] or "", r["content"] or "", symbols=syms,
+                                 source=r["source"] or "", horizon_days=horizon_days):
+            found.append({
+                "when": ev.when.isoformat(),
+                "matched": ev.matched,
+                "claim": ev.claim,
+                "source": ev.source,
+                "symbols": ev.symbols,
+            })
+    found.sort(key=lambda e: e["when"])
+    print(json.dumps({"count": len(found), "scanned_items": len(rows), "events": found}, ensure_ascii=False))
+    return 0
+
+
 def scan() -> int:
     """Run one ingestion cycle: fetch -> normalize -> dedup -> entities -> store -> narratives."""
 
@@ -462,6 +509,9 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("doctor", help="Validate the foundation setup")
     sub.add_parser("scan", help="Run one ingestion cycle")
+    events_parser = sub.add_parser("events", help="Upcoming scheduled events found in recent news (JSON)")
+    events_parser.add_argument("--hours", type=int, default=48, help="Look back this many hours of items")
+    events_parser.add_argument("--horizon-days", type=int, default=14, help="Only events within this many days")
     sub.add_parser("narratives", help="Show active narratives ranked by FOMO")
     impact_parser = sub.add_parser("impact", help="Predict market impact for a narrative")
     impact_parser.add_argument("narrative_id", type=int, help="Narrative id from `narratives`")
@@ -478,6 +528,8 @@ def main(argv: list[str] | None = None) -> int:
         return doctor()
     if args.command == "scan":
         return scan()
+    if args.command == "events":
+        return events(args.hours, args.horizon_days)
     if args.command == "narratives":
         return narratives()
     if args.command == "impact":

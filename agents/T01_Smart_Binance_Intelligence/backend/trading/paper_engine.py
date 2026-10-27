@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from backend import config
 from backend.analysis import risk
 from backend.data import database as db
+from backend.trading import fees
 
 MODE = "paper"
 
@@ -64,7 +65,7 @@ class PaperEngine:
                                  atr=atr, stop_mult=stop_mult)
         # Entry cost includes the taker fee, so the wallet is debited what a real
         # fill would actually cost. The affordability check uses that same figure.
-        cost = qty * price * (1 + config.PAPER_FEE_PCT)
+        cost = fees.entry_cost(qty, price, config.PAPER_FEE_PCT)
         if qty <= 0 or cost > self.balance:
             return None
 
@@ -96,12 +97,9 @@ class PaperEngine:
         entry = position["entry_price"]
         # Both legs bear the fee: proceeds are net of the exit fee, and the entry
         # cost basis includes the entry fee — so PnL is the true round-trip result.
-        proceeds = (qty * price) * (1 - config.PAPER_FEE_PCT)
-        cost = (qty * entry) * (1 + config.PAPER_FEE_PCT)
-        pnl = proceeds - cost
-        pnl_pct = (pnl / cost * 100.0) if cost else 0.0
+        pnl, pnl_pct = fees.round_trip_pnl(entry, price, qty, config.PAPER_FEE_PCT)
 
-        self.balance += proceeds
+        self.balance += fees.exit_proceeds(qty, price, config.PAPER_FEE_PCT)
         self._save_balance()
 
         db.close_trade(position["id"], price, pnl, pnl_pct, reason)

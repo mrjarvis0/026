@@ -1,0 +1,32 @@
+# Secrets (Constitution R-A.9 / R-C.6)
+.env
+*.key
+*.pem
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env.local
+
+# Cached market data & runtime logs (regenerable)
+data/*
+!data/.gitkeep
+logs/*
+!logs/.gitkeep
+
+# Per-agent generated results (heavy / regenerable) — keep REVIEW.md
+agents/*/results/backtest/*
+agents/*/results/training/*
+!agents/*/results/REVIEW.md
+!**/.gitkeep
+
+# Plots / artifacts
+*.png
+!docs/**/*.png
+
+# OS
+.DS_Store
+Thumbs.db

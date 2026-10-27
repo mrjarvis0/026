@@ -37,9 +37,12 @@ BINANCE_TESTNET = _get_bool("BINANCE_TESTNET", True)
 # --- Paper trading ---
 PAPER_START_BALANCE = _get_float("PAPER_START_BALANCE", 1000.0)
 # Round-trip trading fee applied to paper fills so simulated PnL is net-of-fee
-# (0.001 = 0.10 %, Binance spot taker default). Real fills are charged by the
-# exchange itself, so this is a paper-only realism knob.
+# (0.001 = 0.10 %, Binance spot taker default).
 PAPER_FEE_PCT = _get_float("PAPER_FEE_PCT", 0.001)
+# Fee used when recording REAL fills. The exchange charges the real account on
+# both legs, so the DB-recorded PnL subtracts the same round-trip fee — set this
+# to your actual VIP/maker tier so paper and real metrics stay comparable (F2).
+REAL_FEE_PCT = _get_float("REAL_FEE_PCT", 0.001)
 
 # --- Accuracy gate ---
 ACCURACY_UNLOCK_THRESHOLD = _get_float("ACCURACY_UNLOCK_THRESHOLD", 70.0)

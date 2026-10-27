@@ -101,3 +101,5 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
+# 026 live supervisor runtime state (log already covered by *.log)
+live/state.json

@@ -1,3 +1,153 @@
+## Session — T03 Strategy Intelligence Hub merge (2026-10-27)
+
+Goal: merge `F:\my-agents\$trategy-master` into 026 as T03, review + fix bugs,
+build all SCALPER.md components, add T01 bridge, fleet conventions.
+
+### Source
+`F:\my-agents\$trategy-master` (robocopy → `agents/T03_Strategy_Intelligence_Hub/`;
+source preserved, no data erased).
+
+### Bugs fixed
+- **REG-01 sys.path** (`core/registry.py`): `load_strategy()` now inserts `HUB_ROOT`
+  into `sys.path` before importlib execution, so strategy files' `from core.strategy_base
+  import StrategySpec` works from any caller (T01 bridge, test runner). `MINOR-FIX`
+- **REG-02 bar-dropping** (`core/live/engine.py`): replaced
+  `data[data.index < now.normalize()]` with `data.iloc[:-1]` — the old form dropped
+  ALL intraday bars on today's date for sub-daily timeframes. `MINOR-FIX`
+- **REG-03 market order price** (`core/paper/binance_testnet.py`,
+  `core/paper/binance_futures_testnet.py`): `submit_order()` now skips the `price=`
+  kwarg for market orders (Binance rejects market orders with a price argument). `MINOR-FIX`
+
+### New files (BUILD-NEW)
+- `core/paper/binance_futures_testnet.py` — Binance USD-M Futures Testnet broker;
+  `set_sandbox_mode(True)` hard-coded; same market-order price fix applied.
+- `core/futures/__init__.py`, `core/futures/mtf.py` — multi-timeframe EMA/ADX/RSI/ATR
+  analyzer; chop = alignment=0 OR adx_mean < 20.
+- `core/futures/predict.py` — calibrated LogReg candle predictor (sklearn +
+  CalibratedClassifierCV); heuristic fallback; only active if OOS accuracy ≥ 52%.
+- `core/futures/fuse.py` — signal fuser; Constitution §4: min-confidence floor (never
+  average); conflicts recorded not resolved; Gate1=chop, Gate2=scanner, Gate3=predict edge.
+- `core/futures/scalper.py` — 24/7 futures execution loop; dry-run by default;
+  `armed=False`; `HUMAN_CONFIRM_TOKEN` required to transmit.
+- `core/research/sentiment.py` — F&G + CoinGecko sentiment adapters; 1-hour cache;
+  graceful degradation.
+- `agents/$009-scalper/$009-scalper.agent.md`, `config.yaml`, `README.md` — the
+  synthetic futures scalper agent spec and config.
+- `AGENTS_INDEX.md` — updated: $009 row added, next-serial=10.
+- `scripts/run_scalper.py` — CLI entry point for the futures scalper; `--arm`,
+  `--confirm`, `--loop`, `--interval`; dry-run by default; logs to `logs/scalper_*.log`.
+- `bridge/__init__.py`, `bridge/t01_bridge.py` — T01 bridge: `scan_consensus()`,
+  `backtest_all()`, `best_strategies()`. T01 can use these to check T03 strategy
+  win rates without knowing T03 internals.
+- `tests/test_t03_foundation.py` — 18-case AGENTS.md §10 suite: 8 behavior tests,
+  5 regression tests (REG-01–04), 5 architecture tests (ARCH-01–05). Not yet run
+  end-to-end (depends on installed packages).
+- `agent.yaml` — T03 manifest (AGENTS.md §2 format): id=T03, trust=2,
+  execution_enabled=true (testnet-only), paper_by_default=true.
+- `.env.example` — added `BINANCE_FUTURES_TESTNET_API_KEY/SECRET` block.
+
+### Registry / fleet records updated
+- `config/agents/registry.yaml` — T03 registered (partial, trust=2,
+  execution_agent=true, kernel_wired=false, runtime_verified=false).
+- `PROJECT_STATE.md` — T03 bullet added, last-updated bumped to 2026-10-27.
+
+### Self-critique
+- **Fragile:** `tests/test_t03_foundation.py` not run end-to-end; sklearn, ccxt,
+  pandas must be installed. Tests are well-structured but unverified green.
+- **Assumed:** `core/backtest/runner.py::run_backtest` signature inferred from source
+  inspection — if its params differ from what the bridge assumes the backtest call will
+  fail at runtime.
+- **Untested:** `$009-scalper` full pipeline (MTF → predictor → fuser → risk → broker)
+  not dry-run yet; predictor training on real Binance data untested.
+- **T01 bridge not wired:** bridge exists in T03; T01 has not been modified to call it.
+  Operator must add the T03 path to T01's sys.path and call `bridge.scan_consensus()`
+  from T01's decision loop.
+
+### Open questions for operator
+1. **T01 bridge wiring** — Where in T01's `decide()` loop should the T03 consensus
+   signal be consumed? As an additional factor in the existing multi-signal score, or as
+   a pre-filter gate?
+2. **Kernel wiring** — T03 is standalone like T01. Bus/brain wiring is SP-4; should it
+   be the next step or after T01's wiring?
+3. **$009-scalper first run** — Ready for a dry-run (`python scripts/run_scalper.py`)?
+   Needs ccxt + pandas + sklearn. Predictor will train on first run.
+
+### Next session start
+Run `python tests/test_t03_foundation.py` from T03 root to verify the suite. Then wire
+T01 bridge into T01's `decide()` in `backend/strategy/engine.py`.
+
+---
+
+## Session — T01 F-track (foundation fixes F1–F4)
+
+Goal: the four small, safe foundation chunks the operator picked — env sync, fee
+parity, param audit trail, health + stale-data guard. Verified by execution
+(T01 suite 30 → 43, all green).
+
+### Touched files
+- `.env.example` (MINOR-FIX) — 15 missing knobs added: PAPER_FEE_PCT,
+  REAL_FEE_PCT (new), ATR block, TRAIL block, ADX/REFLECT block, TRUSTED_HOSTS.
+- `backend/config.py` (MINOR-FIX) — new `REAL_FEE_PCT` knob (default 0.001);
+  PAPER_FEE_PCT comment corrected (no longer "paper-only").
+- `backend/trading/fees.py` (BUILD-NEW) — `entry_cost / exit_proceeds /
+  round_trip_pnl`: the one shared round-trip formula.
+- `backend/trading/paper_engine.py` (MINOR-FIX) — open/close use `fees.*`;
+  math identical to before, single source now.
+- `backend/trading/real_engine.py` (MINOR-FIX) — `close_trade` records
+  **net-of-fee** PnL via `fees.round_trip_pnl(..., REAL_FEE_PCT)` instead of the
+  old gross `(fill-entry)*qty`. **Behaviour change (recorded PnL only):** real
+  trades now show ~2×fee lower PnL — honest, and comparable with paper metrics
+  that feed the 70%-accuracy gate.
+- `backend/data/database.py` (MINOR-FIX) — new `param_history` table +
+  `insert_param_history / get_param_history`.
+- `backend/strategy/engine.py` (MINOR-FIX) — `save_params(params, source,
+  reason)` journals only on real change; `_describe_change` fallback;
+  `self_tune` passes its accuracy reason.
+- `backend/strategy/reflection.py` (MINOR-FIX) — correction passes its
+  loss-rate reason.
+- `backend/bot.py` (MINOR-FIX) — `last_cycle_ts`, `consecutive_errors`,
+  `feed_fresh()`, `_note_cycle_ok/_note_cycle_error`; loop tracks both; N=5
+  consecutive failures → `stop()` (auto-pause) + error log + broadcast carries
+  the count.
+- `backend/main.py` (MINOR-FIX) — `GET /api/health` (liveness + freshness +
+  gate) and `GET /api/params/history` (audit trail).
+- `tests/test_t01_foundation.py` (BUILD-NEW) — 13 tests: env-sync (incl. a
+  regex that fails if a future knob is added to config.py without documenting
+  it), fee-helper math, paper-net-PnL, real-net-PnL (fake exchange + unguarded),
+  self_tune/reflection journal rows, no-row-on-noop, feed fresh/stale/age,
+  auto-pause on Nth error, /api/health + /api/params/history shape.
+
+### Verified by execution
+- `python -m pytest tests/ -q` in `agents/T01_Smart_Binance_Intelligence`:
+  **43 passed** (30 pre-existing untouched + 13 new). One fix during the run:
+  the health test hit the host-allowlist (403) — TestClient now uses
+  `base_url=http://127.0.0.1:8000`, no app code changed for it.
+
+### Self-critique
+- `REAL_FEE_PCT` defaults to the taker 0.001; the operator must set their real
+  VIP/BNB tier (that is the B6 checklist item) or real recorded PnL stays
+  slightly pessimistic/optimistic vs the account.
+- `param_history` grows unbounded (one row per tuning event — small, but no
+  retention policy yet; a trim belongs in the #15 housekeeping chunk).
+- Auto-pause `stop()`s the bot but does not raise an alert anywhere (no
+  Telegram/email yet — that is #15/N1); the operator only sees it in the
+  activity feed + health endpoint.
+- `feed_fresh()` when `running=True` but idle-before-first-cycle reads stale —
+  honest (no data yet), but the desk should render "warming up", not "stale".
+
+### Open questions for the operator
+1. `REAL_FEE_PCT` — your actual Binance fee tier (VIP? BNB discount on/off)?
+2. Next track after F: D (data pipe), E1 (backtester), S (scalping)? My vote: E1,
+   so self-tune stops learning only from live paper trades.
+3. Futures (#14) stays scope-out until spot edge proves — agreed?
+
+### Next session should start at
+E1 backtester (`backend/backtest/` + vision-zip importer), or commit this F-track
+work — operator's call.
+
+---
+
+
 # BUILD_LOG.md â€” 026 Intelligence Engine OS
 
 > Append-only history. **Never overwritten.** Current snapshot lives in
@@ -3745,6 +3895,66 @@ third whole-repo tracing warning (`lib/brain.ts` dynamic `path.join`) was silenc
 
 Deployment (host + snapshot), the architecture-test fix (task chip raised), or commit the
 dashboard work. **Nothing is committed yet** — the whole dashboard is untracked.
+
+---
+
+## Session 2026-09-29 — live data supervisor + A002 event detection
+
+### Goal (operator)
+
+Make the dashboard live: A001 rescan every 30 min, A002 every 2 hours; detect
+upcoming scheduled events in the news and, at each event time, rescan **both**
+agents twice 5 min apart; no need for the PC to stay on — on every power-on it
+should start the rescans step by step. Also gave the operator local launchers
+(`start-026.vbs` dashboard+T01, `start-live.vbs` supervisor, `stop-026.bat`).
+
+### What was built
+
+- **A002 event extraction (BUILD-NEW):** `intelligence/events.py` — best-effort
+  parser that returns a future scheduled event only when an explicit date/time
+  (ISO, "Month DD", "DD Month", weekday, "at 2pm/14:00") resolves inside a
+  14-day horizon **and** a scheduling keyword sits in the same sentence. Uses
+  `dateutil` (already installed). `tests/test_events.py` — 10 checks (ISO, month
+  name, weekday→next occurrence, past/beyond-horizon/vague rejected). New CLI
+  `events` command prints upcoming events as JSON from recent items.
+  Real data: 590 items → 2 real upcoming events (a CPI report; one loose weekday
+  match — the stated ceiling). A002 pytest still 55 passed; doctor OK.
+- **Supervisor (BUILD-NEW):** `live/supervisor.py` — runs the agents' own CLIs on
+  schedule (A001 `cli.main ingest` from its own dir to satisfy its bare
+  `interfaces`/`cli` imports; A002 `scan`), fires both twice per detected event,
+  persists `live/state.json`, logs to `live/supervisor.log`, survives any error in
+  the loop, and does a step-by-step refresh at launch. `live/test_supervisor.py` —
+  10 checks (`_due`, event fires both agents, 5-min second run, missed-event skip).
+- **Launchers:** `start-live.vbs` (hidden), `stop-026.bat` extended to also stop
+  the supervisor by command line; `live/README.md` documents startup-folder
+  auto-run and tuning. `.gitignore` gains `live/state.json`.
+
+### Verified by execution
+
+Ran the supervisor for real (twice): A002 scan exit 0 (live news, events
+watch-listed), A001 ingest exit 0. Both test suites green.
+
+### Tuning decision + honest ceiling
+
+A001 token ingest is ~600 logs/block and far too slow on a free Alchemy key —
+50 blocks+tokens did not finish in 3.5 min. Set the live loop to **60 blocks,
+no tokens** (~100 s, finishes): keeps blocks/transactions/chain fresh, but
+**exchange-flow (token) data refreshes only on a manual token ingest**, and A001
+still lags Ethereum's head on a free key. Both are tunable constants at the top of
+`supervisor.py`. Told the operator plainly.
+
+### Self-critique
+
+- Event extraction is heuristic (weekday matches like "announced on Thursday" can
+  push a past reference to next Thursday). Fine for a watch list, not truth.
+- The supervisor is a single local process; if a run hangs past its subprocess
+  timeout it is killed, but a wedged agent could still delay a cycle.
+- A001 head-lag on a free RPC key is a real limitation, not yet solved.
+
+### Next session should start at
+
+Commit + push this (touches A002 agent code + adds `live/`), then deployment or
+the A001 detector reconciliation. Not committed yet.
 
 ---
 

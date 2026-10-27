@@ -1,0 +1,28 @@
+# Config for $003-darvas (Nicolas Darvas — Box Theory breakout)
+
+market: crypto
+symbols: BTC/USDT
+timeframe: "1d"
+
+data:
+  start: "2019-01-01"
+  end: null            # null => today
+
+backtest:
+  starting_cash: 10000
+  commission: 0.001    # 0.1% per side
+
+# Strategy parameters (override DarvasStrategy.params)
+params:
+  box_period: 20       # box ceiling breakout window
+  stop_period: 10      # trailing stop (box floor) window
+  vol_confirm: true    # Darvas required strong breakout volume
+  vol_period: 20
+
+# Walk-forward search grid
+param_grid:
+  box_period: [20, 40, 55]
+  stop_period: [10, 20]
+  vol_confirm: [true, false]
+
+optimize_metric: sharpe

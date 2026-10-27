@@ -1,0 +1,10 @@
+# Research layer deps (scripts/research.py). Install only if you use the research pipeline:
+#   pip install -r requirements-research.txt
+
+requests==2.32.3               # web fetch, Wikipedia, Tavily/Brave search (already common)
+youtube-transcript-api==0.6.2  # YouTube captions -> text (no API key)
+anthropic==0.39.0              # automated dossier drafting (research.py --auto); needs ANTHROPIC_API_KEY
+
+# Optional, better article extraction (fetch.py auto-uses them if present):
+# trafilatura==1.12.2
+# beautifulsoup4==4.12.3

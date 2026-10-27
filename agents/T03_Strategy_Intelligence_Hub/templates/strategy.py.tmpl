@@ -1,0 +1,34 @@
+"""Strategy for {{AGENT_NAME}} ({{OWNER}}).
+
+Implements the signal contract in core/strategy_base.py. Replace the placeholder
+moving-average-crossover logic below with {{OWNER}}'s actual, cited rules.
+"""
+from __future__ import annotations
+
+import pandas as pd
+
+from core.strategy_base import StrategySpec
+
+
+class {{CLASS_NAME}}(StrategySpec):
+    name = "{{STRATEGY}}"
+
+    # Default parameters (override in config.yaml -> params, or during training)
+    params = {
+        "fast": 20,
+        "slow": 100,
+    }
+
+    def generate_signals(self, data: pd.DataFrame) -> pd.DataFrame:
+        data = self.validate_ohlcv(data)
+        out = self.blank_signals(data)
+
+        fast = int(self.params["fast"])
+        slow = int(self.params["slow"])
+        close = data["Close"]
+        sma_fast = close.rolling(fast, min_periods=fast).mean()
+        sma_slow = close.rolling(slow, min_periods=slow).mean()
+
+        # long when fast SMA is above slow SMA, flat otherwise (placeholder)
+        out["position"] = (sma_fast > sma_slow).astype(float)
+        return out

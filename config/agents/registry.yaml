@@ -100,6 +100,19 @@ agents:
     execution_agent: false
     origin: "Built in Hermes; rebuilt + registered + kernel-wired in 026 2026-09-21 (38 MB runtime snapshot excluded)"
 
+  T03:
+    dir: agents/T03_Strategy_Intelligence_Hub
+    manifest: agents/T03_Strategy_Intelligence_Hub/agent.yaml
+    name: "Strategy Intelligence Hub"
+    domain: "Multi-strategy hub: scanner consensus, backtest/win-rate, MTF + candle predictor + sentiment scalper ($009-scalper), T01 bridge"
+    status: partial
+    trust: 2
+    enabled: true
+    kernel_wired: false           # standalone service — no bus/brain wiring yet
+    runtime_verified: false       # tests/test_t03_foundation.py present; not yet run end-to-end
+    execution_agent: true         # $009-scalper submits orders to Binance Futures Testnet; testnet-only, paper by default
+    origin: "Merged from F:\\my-agents\\$trategy-master 2026-10-27; 3 bugs fixed; 6 new components (MTF, predictor, fuser, scalper, sentiment, futures-testnet-broker), T01 bridge, 18-case test suite"
+
 # Reserved / planned fleet members (AGENTS.md §3) — not yet built:
 #   A003 DeFi Flow · A004 Sentiment · A005 Market Data
 #   (A003–A005, A008–A014, A016–A018 now have empty README/spec scaffolds under agents/, still unregistered)

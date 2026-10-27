@@ -1,0 +1,7 @@
+[mcp_servers.fetch]
+command = "uvx"
+args = ["mcp-server-fetch"]
+
+[mcp_servers.time]
+command = "uvx"
+args = ["mcp-server-time"]

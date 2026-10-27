@@ -1,0 +1,40 @@
+# `{{AGENT_NAME}}` — {{OWNER}} strategy
+
+- **Serial:** {{SERIAL}}
+- **Owner (trader):** {{OWNER}}
+- **Market:** {{MARKET}}
+- **Strategy:** {{STRATEGY}}
+- **Created:** {{DATE}}
+- **Binding law:** inherits [`../../AGENT_CONSTITUTION.md`](../../../AGENT_CONSTITUTION.md) and the hub spec.
+
+## 1. The trader & the strategy (RESEARCH — cite real sources)
+
+> Fill this in from **real, documented** sources (books, papers, interviews). Every rule below must
+> carry a citation. No invented rules (Constitution R-E.3).
+
+- Who is {{OWNER}} and what are they known for?
+- What is the exact, mechanical rule set?  `[SOURCE]`
+- Entry rules: …  `[SOURCE]`
+- Exit rules: …  `[SOURCE]`
+- Position sizing / risk: …  `[SOURCE]`
+
+## 2. How it maps to signals
+
+Describe how the rules become a `position` in {-1, 0, +1} per bar (the contract in
+`core/strategy_base.py`). Note any assumptions or simplifications.
+
+## 3. Parameters
+
+| Param | Meaning | Default | Search range (for training) |
+|---|---|---|---|
+| … | … | … | … |
+
+## 4. Backtest & review
+
+- Config: [`config.yaml`](config.yaml)
+- Implementation: [`strategy.py`](strategy.py)
+- Latest review: [`results/REVIEW.md`](results/REVIEW.md) (after running `scripts/review.py`)
+
+## 5. Sources
+
+- `[SOURCE]` …

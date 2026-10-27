@@ -1,0 +1,29 @@
+# Config for $008-tudorjones (Paul Tudor Jones — 200-day MA rule)
+
+market: crypto
+symbols: BTC/USDT
+timeframe: "1d"
+
+data:
+  start: "2019-01-01"
+  end: null            # null => today
+
+backtest:
+  starting_cash: 10000
+  commission: 0.001    # 0.1% per side
+
+# Strategy parameters (override TudorjonesStrategy.params)
+# NOTE: from walk-forward. PTJ's literal 200-day suits slower equity/futures markets;
+# on faster-moving crypto a 100-day MA + 3-day confirmation was more robust OOS.
+params:
+  ma_period: 100       # PTJ's rule is 200; crypto tempo favored 100 (walk-forward)
+  allow_short: false   # "get out" to cash below the MA
+  confirm_days: 3
+
+# Walk-forward search grid
+param_grid:
+  ma_period: [100, 150, 200]
+  allow_short: [true, false]
+  confirm_days: [1, 3]
+
+optimize_metric: sharpe

@@ -1,0 +1,26 @@
+# Config for {{AGENT_NAME}} ({{OWNER}})
+# Separated from code (Constitution R-C.3). Edit symbols/params here, not in strategy.py.
+
+market: {{MARKET}}          # crypto | forex | stocks
+symbols: {{SYMBOLS}}        # e.g. crypto: BTC/USDT  |  forex: EURUSD  |  stocks: AAPL
+timeframe: "{{TIMEFRAME}}"  # 1d, 4h, 1h, ...
+
+data:
+  start: "2020-01-01"
+  end: null                 # null => today
+
+backtest:
+  starting_cash: 10000
+  commission: 0.001         # 0.1% per side
+
+# Strategy parameters (override the class defaults in strategy.py)
+params:
+  fast: 20
+  slow: 100
+
+# Parameter search grid used by scripts/train.py (walk-forward)
+param_grid:
+  fast: [10, 20, 30]
+  slow: [50, 100, 200]
+
+optimize_metric: sharpe     # sharpe | sortino | calmar | total_return

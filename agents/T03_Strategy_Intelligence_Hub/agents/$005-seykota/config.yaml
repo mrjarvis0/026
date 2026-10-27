@@ -1,0 +1,36 @@
+# Config for $005-seykota (Ed Seykota — EMA trend-following)
+
+market: crypto
+symbols: BTC/USDT
+timeframe: "1d"
+
+data:
+  start: "2019-01-01"
+  end: null            # null => today
+
+backtest:
+  starting_cash: 10000
+  commission: 0.001    # 0.1% per side
+
+# Strategy parameters (override SeykotaStrategy.params)
+# NOTE: set from walk-forward (out-of-sample) — fast=10/slow=50 long-only had the best
+# OOS Sharpe of any agent so far. Shorting BTC hurt OOS (same pattern as $001-$004).
+params:
+  fast: 10             # fast EMA span
+  slow: 50             # slow EMA span
+  allow_short: false
+
+# Walk-forward search grid
+param_grid:
+  fast: [10, 20, 50]
+  slow: [50, 100, 200]
+  allow_short: [true, false]
+
+optimize_metric: sharpe
+
+# Live paper-trading limits (scripts/run_live.py) — testnet only, guardrails
+live:
+  size_frac: 0.99          # deploy 99% of equity when long
+  min_order_usdt: 10       # skip dust orders below Binance min notional
+  max_order_usdt: 15000    # safety ceiling — must sit ABOVE your normal full-deploy size
+  max_trades_per_day: 3

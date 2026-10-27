@@ -60,7 +60,7 @@ backend/
   data/            collector (ccxt), database (SQLite)
   analysis/        indicators, signals, risk
   strategy/        decision engine + self-learning tuner
-  trading/         paper_engine, real_engine (locked), performance
+  trading/         paper_engine, real_engine (locked), performance, fees (shared round-trip math, F2)
   safety/          circuit_breaker (emergency stop, loss limits)
 frontend/          index.html, styles.css, app.js (canvas terminal)
   landing/         index.html (product landing page at /)
@@ -86,3 +86,9 @@ lives in [`T01_Smart_Binance_Intelligence.agent.md`](../T01_Smart_Binance_Intell
 - **Multi-timeframe** confluence, **Stochastic / volume-profile**, **chart-pattern & market-structure** detection
 - **Multi-symbol scanner**, **exchange-native OCO/stop-limit**, a **backtester**, order reconciliation
 - **Multi-strategy** engine (scalping/swing/trend) and a **futures + shorting** module
+
+**Foundation track (F1–F4) — shipped:**
+- **F1** — `.env.example` synced with every `config.py` knob (ATR/trailing/ADX/reflection/REAL_FEE/TRUSTED_HOSTS were missing)
+- **F2** — shared fee math (`backend/trading/fees.py`); real fills now record **net-of-fee** PnL via `REAL_FEE_PCT`, same formula as paper
+- **F3** — `param_history` audit table + `save_params(source, reason)` logging; `GET /api/params/history` surfaces every tuned change
+- **F4** — bot heartbeat (`last_cycle_ts`, `consecutive_errors`); `GET /api/health`; N failed cycles in a row **auto-pause** the bot instead of trading on a stale feed

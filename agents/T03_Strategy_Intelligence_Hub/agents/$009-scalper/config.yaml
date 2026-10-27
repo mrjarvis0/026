@@ -1,0 +1,45 @@
+# Config for $009-scalper (Futures Scalper — BTC/USDT)
+
+market: crypto
+symbol: BTC/USDT
+timeframe: "5m"
+
+# Multi-timeframe analysis windows (must include `timeframe` above or smaller)
+mtf_timeframes: ["1m", "5m", "15m", "1h"]
+
+data:
+  start: "2024-01-01"   # short history fine for intraday indicators
+  end: null             # null → today
+
+# Futures scalper settings
+scalper:
+  leverage: 5                  # cross-margin leverage on Binance Futures Testnet
+  risk_per_trade_pct: 0.01     # 1% of equity risked per trade
+  min_oos_accuracy: 0.52       # don't use predictor below this OOS accuracy
+
+# Risk limits (capital-preservation enforcer — RiskEngine in core/live/risk.py)
+risk:
+  max_leverage: 5.0
+  daily_loss_limit_pct: 0.05   # halt for the day at -5%
+  max_drawdown_pct: 0.25       # halt entirely at -25% from peak
+  equity_floor: 0.0            # absolute floor in USDT (0 = disabled)
+  max_trades_per_day: 50
+
+# Signal fusion weights and thresholds (passed to SignalFuser)
+fuse:
+  weights:
+    scanner: 0.35
+    mtf: 0.40
+    predict: 0.20
+    sentiment: 0.05
+  thresholds:
+    min_confidence: 0.55
+    min_scanner_strength: 0.50
+    min_p_up_edge: 0.02
+    min_oos_accuracy: 0.52
+    require_mtf_aligned: true   # chop → stand aside (non-negotiable)
+
+# Backtest settings (used for predictor training baseline)
+backtest:
+  starting_cash: 10000
+  commission: 0.0004           # Binance Futures taker 0.04% per side

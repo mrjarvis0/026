@@ -91,6 +91,34 @@ def status():
     }
 
 
+@app.get("/api/params/history")
+def params_history(limit: int = Query(100, ge=1, le=MAX_LIMIT)):
+    """F3: audit trail of every strategy-param change — when, who, why, snapshot."""
+    return {"history": db.get_param_history(limit)}
+
+
+@app.get("/api/health")
+def health():
+    """F4: liveness + feed-freshness probe. `stale: true` means the running bot
+    has not completed a data cycle recently — callers should treat prices and
+    signals as outdated until it recovers."""
+    allowed, msg = circuit_breaker.trading_allowed("paper")
+    fresh, age = bot.feed_fresh()
+    return {
+        "ok": True,
+        "running": bot.running,
+        "symbol": bot.symbol,
+        "timeframe": bot.timeframe,
+        "last_cycle_ts": bot.last_cycle_ts,
+        "cycle_age_seconds": age,
+        "feed_stale": not fresh,
+        "consecutive_errors": bot.consecutive_errors,
+        "trading_allowed": allowed,
+        "halt_reason": None if allowed else msg,
+        "real_unlocked": performance.is_real_trading_unlocked(),
+    }
+
+
 @app.get("/api/symbols")
 def symbols(quote: str = Query("USDT", max_length=10)):
     try:

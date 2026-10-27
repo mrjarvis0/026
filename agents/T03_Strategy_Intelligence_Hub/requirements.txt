@@ -1,0 +1,22 @@
+# $trategy-master — shared dependencies (pinned; Constitution R-C.7)
+# Python 3.11+
+
+# --- core: data handling & config ---
+pandas==2.2.2
+numpy==1.26.4
+PyYAML==6.0.2
+python-dotenv==1.0.1
+
+# --- market data ---
+ccxt==4.3.77            # unified crypto exchange API (Binance OHLCV, public)
+yfinance==0.2.40        # free history for stocks & FX pairs
+
+# --- backtesting & reporting ---
+matplotlib==3.9.0       # equity-curve plots for REVIEW.md
+backtesting==0.3.3      # optional richer engine (--engine backtesting)
+# vectorbt==0.26.2      # optional fast vectorized sweeps (heavier install; uncomment if needed)
+
+# --- paper trading (optional; only install what you use) ---
+# python-binance==1.0.19  # Binance Spot/Futures Testnet (crypto paper)
+# oandapyV20==0.7.2       # OANDA v20 practice (forex paper)
+# alpaca-py==0.21.1       # Alpaca paper trading (stocks)

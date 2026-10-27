@@ -1,0 +1,27 @@
+# Config for $002-donchian (Richard Donchian — Donchian channel breakout)
+
+market: crypto
+symbols: BTC/USDT
+timeframe: "1d"
+
+data:
+  start: "2019-01-01"
+  end: null            # null => today
+
+backtest:
+  starting_cash: 10000
+  commission: 0.001    # 0.1% per side
+
+# Strategy parameters (override DonchianStrategy.params)
+# NOTE: allow_short set to false per walk-forward (out-of-sample) result — shorting BTC
+# hurt OOS Sharpe; long-only channel=20 was the most robust across folds.
+params:
+  channel: 20          # classic 4-week rule
+  allow_short: false
+
+# Walk-forward search grid
+param_grid:
+  channel: [10, 20, 40, 55]
+  allow_short: [true, false]
+
+optimize_metric: sharpe

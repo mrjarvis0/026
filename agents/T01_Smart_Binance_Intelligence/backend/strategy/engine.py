@@ -35,9 +35,26 @@ def load_params() -> dict:
     return dict(DEFAULT_PARAMS)
 
 
-def save_params(params: dict) -> None:
+def _describe_change(old: dict, new: dict) -> str:
+    """One-line diff of two param snapshots, e.g. 'net_threshold 1.0->1.1, adx_min 0->5'."""
+    parts = []
+    for k in DEFAULT_PARAMS:
+        o, n = old.get(k), new.get(k)
+        if o != n:
+            parts.append(f"{k} {o}->{n}")
+    return ", ".join(parts) or "params updated"
+
+
+def save_params(params: dict, source: str = "manual", reason: str = "") -> None:
+    """Persist tuned params, and journal the change in param_history (F3) — but
+    only when the snapshot actually differs, so read-only reloads make no noise."""
+    old = load_params()
     save = {k: params[k] for k in DEFAULT_PARAMS if k in params}
     db.set_state("strategy_params", json.dumps(save))
+    new = load_params()
+    if new != old:
+        db.insert_param_history(source, reason or _describe_change(old, new),
+                                json.dumps(new))
 
 
 def decide(ohlcv: list[list]) -> signals.Signal:
@@ -91,6 +108,7 @@ def self_tune() -> dict:
     db.set_state("tune_last_trades", str(total))
 
     acc = metrics["accuracy"]
+    before = params["net_threshold"]
     if acc < 50:
         params["net_threshold"] = min(3.0, params["net_threshold"] + 0.1)
     elif acc < 65:
@@ -98,5 +116,7 @@ def self_tune() -> dict:
     elif acc > 75:
         params["net_threshold"] = max(1.0, params["net_threshold"] - 0.05)
 
-    save_params(params)
+    save_params(params, source="self_tune",
+                reason=(f"accuracy {acc:.1f}% over {total} paper trades: "
+                        f"net_threshold {before:.2f}->{params['net_threshold']:.2f}"))
     return params

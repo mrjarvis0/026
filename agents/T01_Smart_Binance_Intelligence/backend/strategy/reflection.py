@@ -88,7 +88,9 @@ def diagnose_and_correct(mode: str = "paper") -> list[str]:
             changes.append(f"atr_stop_mult->{new}")
 
     if changes:
-        engine.save_params(params)
+        engine.save_params(params, source="reflection",
+                           reason=(f"loss_rate {d['loss_rate'] * 100:.0f}% "
+                                   f"({n} losses) -> {', '.join(changes)}"))
         log.info("reflection: recent loss_rate %.0f%% (%d losses) -> %s",
                  d["loss_rate"] * 100, n, ", ".join(changes))
     return changes
