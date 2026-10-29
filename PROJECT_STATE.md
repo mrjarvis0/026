@@ -16,8 +16,10 @@
   detector, parked-event retry `bootstrap.consume --retry-parked`). Tests: platform 229 pass / 0 fail; A002 68,
   A007 11, A015 49, T01 53, T03 27, A001 ingestion/cli/db/pipeline 249. **Slice 2 (T01 pause flags) is design only**
   (`docs/superpowers/specs/2026-10-29-slice2-t01-pause-flags-design.md`), awaiting operator approval.
-  Open for the operator: T03 scalper after a risk halt keeps its open position (no flatten) and now sizes up to the
-  leverage cap without placing a stop; A001 stored history has 46 missing heights (`contiguous: false`) - a backfill
+  **T03 scalper exits (operator-approved 2026-10-29, testnet only, still armed + confirm phrase):** a risk halt now
+  flattens the open position with a reduce-only market order, and every entry/resize gets a reduce-only
+  STOP_MARKET one ATR away (the distance the size was risked on); if the stop cannot be placed the position is
+  closed. Not run against the live testnet (needs keys / the 190k-bar download). Open: A001 stored history has 46 missing heights (`contiguous: false`) - a backfill
   would repair them.
 - **Fleet teams (2026-10-28, ADR-0006, docs only)** - the fleet is divided into four teams:
   **A** Intelligence Team (collectors), **R** Analysis Bureau (analysts; reserved R01-R05 = today's

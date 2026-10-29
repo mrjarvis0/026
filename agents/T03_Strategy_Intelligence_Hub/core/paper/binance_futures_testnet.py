@@ -211,3 +211,28 @@ def close_position(
         note="close-position",
     )
     return submit_order(client, order, confirm_token, reduce_only=True)
+
+
+def cancel_open_orders(client: Any, symbol: str, confirm_token: str | None = None) -> None:
+    """Cancel every open order (e.g. a stale protective stop) for ``symbol`` on the Futures Testnet."""
+    require_confirmation(confirm_token)
+    client.cancel_all_orders(symbol)
+
+
+def submit_stop(
+    client: Any,
+    symbol: str,
+    side: str,
+    qty: float,
+    stop_price: float,
+    confirm_token: str | None = None,
+) -> dict:
+    """Place a reduce-only STOP_MARKET protecting an open position (cannot open the other side)."""
+    require_confirmation(confirm_token)
+    return client.create_order(
+        symbol=symbol,
+        type="STOP_MARKET",
+        side=side,
+        amount=qty,
+        params={"type": "future", "stopPrice": stop_price, "reduceOnly": True},
+    )

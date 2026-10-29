@@ -4458,3 +4458,21 @@ regression (#9); naive `record_health` time (#10); shared `state.json.tmp` (#11)
 - The first A002 scan after the recovery change may re-cluster old orphan items from the last window.
 - Next: operator decisions on #4/#5, Slice 2 approval, Phase 2/3 design (orchestrator planner/router, entity ledger,
   fusion, execution gate).
+
+
+---
+
+## 2026-10-29 (cont.) · T03 scalper: flatten on risk halt + protective stop (operator: "Haan, flatten + stop")
+
+Review items #4/#5 (T03 kept its open position after a risk halt; size reached the leverage cap with no stop) were
+trading decisions, so they waited for the operator, who approved both. **Testnet only**; every transmission still
+needs `armed` + the human-confirm phrase (`submit_order` / `submit_stop` / `cancel_open_orders` all call
+`require_confirmation`).
+- **Flatten:** when `can_trade` is False and a position is open, the step builds a reduce-only market order that
+  closes it (bypassing `stand_aside`); new exposure stays blocked. Flipping the sign is not a flatten.
+- **Stop:** after any order, stale orders are cancelled and a reduce-only STOP_MARKET is placed one ATR away
+  (the distance `size_units` risks 1% on). If the stop is rejected the position is closed (`STOP FAILED ... flattened`).
+- Tests (12, pure + fake broker): `tests/test_scalper_exits.py`. T03: 39 pass, foundation 40/40.
+- **Untested:** the real testnet (no keys here) and `step()` end to end (190k-bar download). First armed run should be
+  watched: exchange rounding/min-notional of the stop, and `cancel_all_orders` also cancels any non-stop order.
+- Ruling: cancel is "all open orders for the symbol" (the scalper owns the symbol on that account).

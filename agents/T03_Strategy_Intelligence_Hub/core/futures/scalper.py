@@ -77,6 +77,30 @@ def size_units(risk: RiskEngine, equity: float, price: float, atr: float) -> flo
     return risk.position_size(equity, price, stop_distance / price)
 
 
+_MIN_QTY = 0.001
+
+
+def flatten_order(units: float, price: float, qty_fn=None) -> dict | None:
+    """A reduce-only market order that closes the whole position (a risk halt must never freeze an open
+    position: RiskEngine says exits are always allowed). None if there is nothing to close."""
+    qty = qty_fn(abs(units)) if qty_fn else round(abs(units), 3)
+    if qty <= _MIN_QTY:
+        return None
+    return {"side": "sell" if units > 0 else "buy", "qty": qty, "notional": round(qty * price, 2),
+            "reduce_only": True}
+
+
+def stop_order(units: float, price: float, atr: float) -> dict | None:
+    """Protective stop one ATR from ``price`` — the same distance ``size_units`` sized the risk on, so the
+    "risk_per_trade" premise holds. None for a flat target."""
+    if units == 0:
+        return None
+    distance = atr if atr > 0 else price * 0.01
+    long = units > 0
+    return {"side": "sell" if long else "buy", "qty": round(abs(units), 3),
+            "stop_price": round(price - distance if long else price + distance, 2)}
+
+
 # ---------------------------------------------------------------------------
 # Scalper decision record
 # ---------------------------------------------------------------------------
@@ -247,6 +271,29 @@ class FuturesScalper:
             sim_equity = float(cfg_bt.get("starting_cash", 10_000))
             return sim_equity, 0.0, "simulated(no keys)"
 
+    def _sync_stop(self, target_units: float, price: float, atr: float, confirm: str | None, notes: list) -> None:
+        """After an order went out: drop stale orders and (unless flat) place a fresh protective stop. If the
+        stop cannot be placed the position is closed rather than left unprotected."""
+        from ..paper import binance_futures_testnet as fut
+        try:
+            fut.cancel_open_orders(self._broker, self.symbol, confirm)
+        except Exception as exc:
+            notes.append(f"cancel of old orders failed: {exc}")
+        stop = stop_order(target_units, price, atr)
+        if stop is None:
+            return
+        stop["qty"] = fut.round_qty(self._broker, self.symbol, stop["qty"])
+        try:
+            fut.submit_stop(self._broker, self.symbol, stop["side"], stop["qty"], stop["stop_price"], confirm)
+            notes.append(f"protective stop {stop['side']} {stop['qty']} @ {stop['stop_price']}")
+        except Exception as exc:
+            try:
+                fut.close_position(self._broker, self.symbol, confirm)
+                outcome = "position flattened"
+            except Exception as close_exc:
+                outcome = f"FLATTEN ALSO FAILED: {close_exc}"
+            notes.append(f"STOP FAILED: {exc}; {outcome}")
+
     def step(
         self,
         armed: bool = False,
@@ -316,6 +363,7 @@ class FuturesScalper:
         target_units = 0.0
         order: dict | None = None
         delta = 0.0
+        atr = 0.0
 
         if not fused.stand_aside and can_trade and fused.direction != 0:
             atr = float((closed["High"] - closed["Low"]).ewm(span=14, adjust=False).mean().iloc[-1])
@@ -333,6 +381,19 @@ class FuturesScalper:
                     qty = round(abs(delta), 3)
                 order = {"side": side, "qty": qty, "notional": round(qty * close_price, 2)}
 
+        # A risk halt blocks NEW exposure, never the exit: flatten whatever is open (reduce-only).
+        flattening = False
+        if not can_trade and current_units != 0:
+            try:
+                from ..paper import binance_futures_testnet as fut
+                qty_fn = (lambda q: fut.round_qty(self._broker, self.symbol, q)) if self._broker else None
+            except Exception:
+                qty_fn = None
+            order = flatten_order(current_units, close_price, qty_fn)
+            if order is not None:
+                flattening, target_units, delta = True, 0.0, -current_units
+                notes.append("risk halt: flattening the open position (reduce-only)")
+
         dec = ScalperDecision(
             symbol=self.symbol, bar_ts=bar_ts, fused=fused,
             price=close_price, equity=equity,
@@ -342,7 +403,7 @@ class FuturesScalper:
             order=order, armed=armed, notes=notes,
         )
 
-        if order is None or fused.stand_aside:
+        if order is None or (fused.stand_aside and not flattening):
             return dec
 
         if not armed:
@@ -360,12 +421,19 @@ class FuturesScalper:
                     side=order["side"], qty=order["qty"],
                 ),
                 confirm_token=confirm,
+                reduce_only=bool(order.get("reduce_only")),
             )
             dec.placed = True
             notes.append(f"futures testnet order id={resp.get('id','?')} status={resp.get('status','?')}")
         except Exception as exc:
             notes.append(f"ORDER FAILED: {exc}")
             return dec
+
+        # The order is out: whatever happens to the stop, record the bar so it is never acted on twice.
+        try:
+            self._sync_stop(0.0 if flattening else target_units, close_price, atr, confirm, notes)
+        except Exception as exc:
+            notes.append(f"STOP SYNC ERROR: {exc}")
 
         # Update state
         state["last_bar"] = bar_ts
