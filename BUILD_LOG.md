@@ -4104,3 +4104,324 @@ Best by win rate: $006-raschke (54.7%) — lowest total return, high DD
 
 Verify scalper dry-run output once background download completes (check logs/scalper_009-scalper.log).
 Optionally: disable $001-dennis or re-tune its parameters.
+
+
+---
+
+## 2026-10-28 · Orchestration audit + Phase 0 hardening
+
+### Goal
+Audit only the orchestration, agent-to-agent connectivity and pipelines (report:
+`docs/architecture/orchestration-network-audit-2026-10-28.md`), then fix the cheap, high-impact
+defects ("Phase 0") test-first, one step at a time. No new architecture yet (Phase 1+).
+
+### Corrections to earlier records (AGENTS.md section 11, rule 7: when wrong, say so)
+- **2026-10-27 / commit 5d5cb61 "T03 consensus wired into T01 decide()" was wrong.** `decide()` had no
+  caller; the live loop called `generate_signal` directly, so the veto never ran. Now live (below).
+- **The audit's "usd budget is never spent" overstated it.** The bus already enforces usd; the
+  handler that incurs a cost spends it (`message.budget.spend(usd=...)`). No handler costs money
+  yet, so it is not a bug today. Pinned by a test, not changed.
+- **"Supervisor died on 10-20" was imprecise.** It is launched by hand / at login, so being off is
+  normal. The real gap was no signal that it was not running. Added `--status` + heartbeat.
+- `registry.yaml` `kernel_wired` was wrong for A001 (false, but wired) and A015 (true, but only the
+  dashboard registered it). Both now true and actually wired in `bootstrap/wire.py`.
+
+### Changes (tags per AGENTS.md section 9)
+- **MINOR-FIX** `orchestrator/event_bus/{bus,message}.py`: non-read message types must declare an
+  action (deny-by-default); handler payload with `error` => failed Response; duplicate `register`
+  raises; optional `timeout_s` (daemon-thread based); status `timeout`.
+- **REFACTOR** adapters moved `orchestrator/adapters/` -> `bootstrap/adapters/` (a001, a002, a015);
+  one payload key `intent` (legacy `op` still read); A002's two handlers merged (intents:
+  narratives, sources, settings, stats). Fixes the red `test_architecture` (orchestrator imported
+  `agents.*`). `bootstrap/wire.py` registers A001, A002, A015 with a 60 s handler timeout;
+  `dashboard/backend/trace_round.py` no longer hand-registers A015.
+- **MINOR-FIX** T01: `engine.apply_t03_veto` (BUY entries only; exits are never vetoed; asks T03
+  about the traded symbol) called from `TradingBot._decide` with a 20 s cap; `decide()` removed.
+  **`RealEngine.enabled` is now a property reading the DB flag** => dashboard enable/disable reaches
+  the running bot. (Funds boundary: disable now takes effect immediately; enable no longer needs a
+  restart. `_guard`, the accuracy gate and credential checks are untouched.)
+- **REFACTOR** `live/supervisor.py`: `run()` returns success; `tick()`; backoff + jitter retry;
+  OS lock (single instance); atomic state + corrupt-state set-aside; heartbeat + `--status`.
+  `.gitignore` covers the new runtime files.
+- **MINOR-FIX** A015: baseline on first poll, failed fetch reported (`ok`/`error`), shrink guard
+  (<50% of previous), spot-only tracking, atomic snapshot write + corrupt-safe load, new
+  `core/event_log.py` (**BUILD-NEW**) written *before* the snapshot advances, stable `event_id`s,
+  `cli poll` exits 1 on failure.
+- **MINOR-FIX** A002: RFC-822 `pubDate` parsing, secret redaction in connector errors, bounded
+  retry with jitter in `http_get_sync`, WAL on `a002.db`.
+- **MINOR-FIX** A007: natural-key ids (reruns no longer duplicate), `known_at` on detector output,
+  live fetch raises `NotImplementedError` instead of returning `[]`.
+- **data correction** AGENTS.md section 3 (T03 row), `registry.yaml`, T03 `agent.yaml` open item,
+  `docs/manual/02-structure.md` (event_bus row), `live/README.md`, `PROJECT_STATE.md`.
+
+### Verified by execution
+Each fix started with a failing test (watched RED, then GREEN). Final per-suite results: platform
+(orchestrator, bootstrap, brain, security, architecture, live) 97 pass / 2 fail; A002 64 (+ 7 script
+suites green); A007 11; A015 37; T01 53; T03 18. Dashboard `trace_round.py` run end to end through
+the real bus. The 2 failures are pre-existing (see open question 1).
+
+### Self-critique
+- **Fragile:** bus timeout leaves a timed-out handler running in its daemon thread (Python cannot
+  kill it). The supervisor lock is tested on Windows only. A015's 50% shrink guard is a heuristic.
+  A007's natural key collapses two genuinely identical lines. The `error` key convention means a
+  handler must never use `error` for a non-failure.
+- **Assumed:** spot-only is the right scope for A015 (derivative listings are no longer reported);
+  a single-operator SQLite setup does not need a heavier transport yet.
+- **Untested:** no live A015 poll (snapshots on disk are old and mixed-type; the first poll will
+  re-baseline against spot only); no real network flake against A002's retry; the T03 veto only
+  against a stubbed consensus; the supervisor loop was not started.
+- **Not done (found by the audit, outside Phase 0):** T03 scalper `RiskEngine` is inert (fresh each
+  step, wrong arg types), T03 cache key freezes intraday bars, A002 dedup drops copies instead of
+  linking them and has a post-store clustering gap, `fetch_x_sync` passes `raw_json` to a model
+  without that field, A002 `core/resilience.py` is still unused (a 12-line retry was enough),
+  adapters still run DDL/`migrate` on a "read" path, A001 checkpoint can run ahead of the store.
+
+### Open questions for the operator
+1. **T03 sentinel FAIL (secrets boundary):** `HUMAN_CONFIRM_TOKEN` (`T03/core/paper/__init__.py:15`)
+   trips the secrets regex; it is a public phrase, not a credential. Rename it (touches the
+   order-transmission scripts) or whitelist it in `security/policies/sentinel.yaml`? Until then the
+   fleet verdict is FAIL and 2 sentinel tests are red.
+2. **T03 veto is on by default** (`T03_ENABLED=true`): it will now block T01 BUY entries when T03's
+   SHORT majority is >= 0.75. Keep default-on, or opt-in?
+3. **Real-mode enable now applies live** (no restart). That matches the documented intent; confirm.
+4. **Start the supervisor?** It was not started (uses RPC quota and network).
+5. Phase 1+ decisions from the audit: money gate (ADR-0002), LLM planner vs deterministic
+   playbooks, bus transport (SQLite recommended).
+
+### Next session should start at
+Phase 1: the event envelope + SQLite outbox/subscription design (audit section 4), as a design
+review before code. Or answer the open questions above first.
+
+
+---
+
+## 2026-10-28 (cont.) · Phase 1 design review — durable event bus (design only, nothing built)
+
+### Goal
+Design the event envelope + SQLite outbox that the audit proposed, as a reviewable document before
+any code. Artifacts: `docs/superpowers/specs/2026-10-28-phase1-event-bus-design.md` (BUILD-NEW),
+`docs/adr/ADR-0005-sqlite-event-bus.md` (BUILD-NEW; ADR index updated; ADR-0003 status line annotated).
+
+### Decisions (operator, 2026-10-28)
+1. Bus transport = SQLite WAL (supersedes ADR-0003's Redis line for the bus only).
+2. A015 polled by the supervisor: binance, bybit, coinbase, okx, every 15 minutes.
+3. Slice 2: T01 may consume A015 events at the `implemented` bar, pause-only — its read path and exact
+   semantics get a separate design review (funds boundary) before any code.
+4. Retention 90 days with a JSONL archive.
+
+### Recon facts used
+Redis is not installed here (no `redis-server`, no `redis` package) and needs Memurai/WSL2 on Windows
+(redis.io); SQLite WAL = one writer, readers don't block, same-host only, WAL can grow with overlapping
+readers (sqlite.org/wal.html); manifest check tolerates extra keys, so `produces/consumes` are additive.
+
+### Self-critique
+Design gaps found and fixed while reviewing as the builder: A015's `event_log` reports lacked the
+snapshot digest/window the envelope needs (now an A015 change in the plan); no authority for
+`system.*` types (platform source `SYS`); consumer retries would burn through attempts in one
+supervisor tick (now `next_at` backoff); a baseline poll must not count as coverage. Everything is
+untested — it is a design. No code or config changed in this entry.
+
+### Next session should start at
+Operator approves (or edits) the design document; then `superpowers:writing-plans` produces the
+Slice 1 implementation plan.
+
+
+---
+
+## 2026-10-28 (cont.) · Phase 1 built — durable event bus, Slice 1 + 1b (plan: docs/superpowers/plans/2026-10-28-phase1-event-bus-slice1.md)
+
+### Goal
+Implement the approved design: A015's facts travel through a durable, evidence-labelled SQLite bus to a
+persistent brain, with coverage tracking, a persisted bus trace and an approval queue. Test-first,
+10 plan tasks executed inline; Slice 2 (T01 pause flag) and Slice 3 (A002 relay) deliberately not built.
+
+### Changes (tags)
+- **BUILD-NEW** `orchestrator/event_bus/envelope.py` (validator: evidence standard, maturity, UTC
+  timestamps, producer authorization, size cap), `store.py` (`EventStore`: events, consume/park/backoff,
+  source_health, relay_state, prune, trace, approvals), `config/events/*.yaml` (5 schemas),
+  `config/bus.json`.
+- **BUILD-NEW** `bootstrap/relays/a015.py`, `bootstrap/relay.py` (relay + health monitor),
+  `bootstrap/consumers/librarian.py`, `bootstrap/consume.py`, `bootstrap/bus_stats.py`;
+  `bootstrap/wire.py` gains `build_store`, `build_brain`, `load_bus_config`, `build_bus(store=...)`.
+- **BUILD-NEW** `security/sentinel/checks/contracts.py` (+ wired in `sentinel.py`); A015 `agent.yaml`
+  declares `produces`.
+- **MINOR-FIX** A015: `core/poll_status.py`, enriched `event_log` reports (digest, window, markets),
+  `--exchange`; `bus.py`/`trace.py`: `on_hold` hook, trace `sink`.
+- **MINOR-FIX** `live/supervisor.py`: `a015` job (15 min) and `bus` job (5 min).
+- **data correction** tests/test_architecture.py now covers every agent + bus-module imports;
+  A015 tests auto-isolated from real `memory/`; the old supervisor script test no longer writes the real
+  `live/supervisor.log`; manual, README, PROJECT_STATE, spec status.
+
+### Verified by execution
+Every task started RED, then GREEN. Final: platform (orchestrator, bootstrap, brain, security, tests,
+live) 194 pass / 2 fail (the known T03 secret false-positive); A015 45, A002 64, A007 11, T01 53, T03 18;
+`live/test_supervisor.py` 10. End-to-end test `tests/integration/test_event_bus_e2e.py`: fake exchange ->
+`cli poll` -> relay -> bus.db -> librarian -> brain.db, rerun/replay duplicate nothing, stale monitor
+fires once. Mutation check: counting a failed poll as `ok` fails 2 tests. Offline smoke of the three CLIs
+against a temp database. **Not run:** a real A015 poll, the supervisor, or anything against the real
+`data/` (no `data/bus` exists yet).
+
+### Rulings
+- No worktree, no commits (tree holds uncommitted work; operator has not asked).
+- `build_store` lands in Task 5 (plan listed `wire.py` under Task 6) - avoids a forward dependency.
+- `contracts` check carries its own tiny schema loader: `security` may not import `orchestrator`.
+- `BUS_EVERY_MIN` = 5, not 1: relay+consume are two subprocesses per run and A015 only produces every 15 min.
+- A bad/torn event file advances the relay mark (recorded as rejected) - a poison file must never stall it.
+- Final review was a self-review (see below): the harness advises against spawning agents unprompted.
+
+### Self-critique
+- **Fragile:** one SQLite writer lock shared by relay, consumer, supervisor-launched CLIs (fine at tens of
+  events/day); `EventStore()` on a brand-new DB raises `sqlite3.OperationalError`, not `StoreBusy`, if
+  another process holds the write lock during schema creation; a timed-out bus handler keeps running in
+  its daemon thread.
+- **Assumed:** the supervisor's Python is the one that has `ccxt` (checked: 4.5.76 in the default
+  interpreter); `data/` is on a local disk (not a synced folder).
+- **Untested:** all live behaviour. The first real A015 poll compares against ~5-week-old snapshots, so it
+  can publish a burst of events (each states its window); concurrency was tested with two processes on
+  Windows, not under load.
+- **Deferred minors:** `prune()` exists and is tested but nothing schedules it, so `retention_days` is
+  config only; the dashboard `SentinelView` hard-codes 6 checks and does not show `contracts`; no
+  dashboard page yet for events/approvals; the old `live/supervisor.log` still contains fake test lines
+  written by earlier runs of the old script test.
+
+### Open questions for the operator
+1. Start the supervisor now? It will poll 4 exchanges every 15 min (network only, no keys) and start the
+   bus. The first poll may publish a large burst for the gap since the snapshots were taken.
+2. T03 secret false-positive (unchanged): rename `HUMAN_CONFIRM_TOKEN` or whitelist it? Fleet verdict is
+   FAIL until then.
+3. Slice 2 (T01 pause flag): needs its own design review (read path into T01, semantics, gate action).
+4. Schedule `prune` weekly (90-day retention with archive)?
+
+### Next session should start at
+Answer the questions above; then either Slice 2's design review (T01), Slice 3 (A002 relay needs a natural
+key for narratives first), or the dashboard pages for events/approvals.
+
+
+---
+
+## 2026-10-28 (cont.) · First live run of the event bus — what it found, and the fixes
+
+The operator started the supervisor. The first real cycle (A002 -> A001 -> A015 poll -> relay -> consume)
+exposed defects that no test had, all of them mine or inherited, all fixed test-first and the supervisor
+restarted on the fixed code. I stopped the supervisor for the repair (killing only the processes I had
+started, never `stop-026.bat`).
+
+### What the live run showed -> what was wrong -> the fix
+- **Relay timed out at 900 s having published 2285 events (~400 ms each).** `EventStore` opened and closed a
+  SQLite connection per call; in WAL mode closing the last connection checkpoints and fsyncs, which is
+  cheap on the C: SSD my tests used and ~400 ms on the F: drive. -> one long-lived connection per store
+  (lock-guarded) + `publish_many` (one transaction per event-log file). Measured on F:: single publish
+  ~390 ms -> 1 ms; 2500 events in 0.21 s. A 15-minute relay is now 1.5 s.
+- **Health was recorded after the events**, so a long backlog left every source "never seen". -> health
+  first.
+- **The librarian delivered only 50 events per run** (2235 left pending). -> `run_once` drains batches until
+  no progress (a failing handler still cannot spin the loop). Also found: a consumer that never advanced
+  was invisible in `stats()`; `consume` now registers it up front.
+- **Persistent brain was ~80 ms/write** (rollback journal + full fsync). -> WAL + synchronous=NORMAL for
+  file-backed brains.
+- **A015 detector bug (inherited from the Hermes build):** `detect_status_change` fired whenever the NEW status
+  was BREAK, even if it already was (BREAK -> BREAK): 2191 of binance's 2210 STATUS_CHANGE reports were
+  noise; only 19 were real TRADING -> BREAK transitions. -> detector requires a real transition; the relay
+  also refuses non-transitions (so replays of the old log stay clean). `bus.db`/`brain.db` (created that
+  hour by the buggy run, replayable from A015's log) were deleted and rebuilt: 452 events, 451 brain
+  records, only the 19 real status changes.
+- **bybit is unreachable from this network** (`NetworkError` on api.bybit.com): it correctly shows STALE.
+  But one failing exchange made the whole A015 job "fail" and back off. -> `cli poll --partial-ok` (exit 0 if
+  at least one exchange succeeded; each exchange's health stays in `poll_status.json`); the supervisor uses it.
+- The relay printed every rejected line (2191). -> prints 5 + a count.
+
+### Verified
+Platform 206 pass / 2 known T03-secret fails; A015 49, A002 64, A007 11, T01 53, T03 18. On real data the
+replay took 1.5 s (relay) + 6.7 s (consume for 2592 events before the rebuild).
+
+### Self-critique / still open
+- bybit (and any other unreachable exchange) will show STALE until it is reachable or removed from
+  `config/bus.json`; that is correct behavior, not a bug — the operator decides whether to drop it.
+- The first-poll burst was real data: okx 404, coinbase 24, binance 37 changes over the 5-week gap.
+- `prune` still unscheduled. T03 secret false-positive still open.
+- Lesson recorded: my tests ran on the C: SSD in a temp dir; the real store lives on F:. A speed
+  assumption was untested on the real disk.
+
+
+---
+
+## 2026-10-28 (cont.) · Fleet teams - four-team structure, gap register, research (docs only; ADR-0006)
+
+### Goal
+The operator asked to divide the fleet into teams, with research, and to be told what is missing before
+the docs were written: A-series = collect information from the internet; T-series = use that information
+well; a new X-series = look after the agents (self-improvement, pipeline, orchestration, communication,
+handoffs, rules design, failure handling, ...). Decided with the operator in plan mode: analysts
+(A009/A010/A012/A013/A014) become a **fourth team** (series `R`); platform actors stay as they are (X =
+stewards); T02/T03 stay in the Trading Desk; self-improvement runs in a "low-risk auto" lane. **No code,
+registry, manifest or folder was changed.**
+
+### Changes (tags)
+- **BUILD-NEW** `docs/teams/` - `README.md` (constitution, 4-question classification, roster of all 21
+  agents), `01-intelligence-team.md`, `02-analysis-bureau.md`, `03-trading-desk.md`,
+  `04-control-tower.md` (X01-X07 proposed), `05-handoffs-and-contracts.md`, `06-gap-register.md` (41
+  gaps, each with file:line evidence and a verified-today mark), `07-research.md` (sources with
+  confidence). `docs/adr/ADR-0006-fleet-teams.md` (status **proposed**).
+- **MINOR-FIX** `AGENTS.md` (new §3a "Teams" after the fleet table - no `[AT]` ID rows added, so the
+  sentinel's table parser is untouched), `docs/manual/06-agents.md` (banner; T01 row and §4 corrected -
+  they still said T01 had no `agent.yaml`/registry row), `docs/manual/{README,02-structure,07-glossary}.md`,
+  `docs/adr/README.md`, `PROJECT_STATE.md`.
+- **data correction** line endings of the touched docs normalised to CRLF (repo convention).
+
+### Verified by execution
+- `python -m security.sentinel scan`: identical before and after (fleet FAIL only from the known T03
+  secrets false-positive; A001, A002, A006, A007, A015, T01, T02 PASS).
+- `python -m pytest security/sentinel tests -q`: 49 pass / 2 fail before and after (the same two known
+  T03-secret tests).
+- One-off script (scratchpad): 158 relative links / heading anchors in the new and edited docs, 0 broken;
+  all 21 agent folders appear exactly once in the `docs/teams/README.md` roster (A 13, R 5, T 3).
+- Gap evidence re-checked today by grep/read: T03 `scalper.py:267,275` vs `risk.py:70`; sentinel
+  `execution.py:9-10`; supervisor jobs/`_due`; `prune` has no caller; no `subscribe`/kill-switch/
+  circuit-breaker/fusion in platform code; dashboard has 9 pages and no approvals/events page; `.py`
+  counts per agent; 0-file platform directories.
+
+### Findings worth the operator's attention
+- **A005 Market Data (README-only) is the critical path** for R01-R05 and part of the Desk (audit "intended
+  feeds"); building any R agent first would only run on synthetic data.
+- **A->T hard-stop is blocked by the maturity gate:** A015's relay stamps every content event with
+  `detector.maturity` from the manifest (`bootstrap/relays/a015.py:79`), all five detectors are
+  `implemented`, and consumers default to `min_maturity="validated"` (the librarian opts down to
+  `implemented` as a recorder). A "delisting -> pause T01" consumer would skip those events. A source-stale
+  pause (`system.source.stale`, a platform event) is not blocked. I first wrote the opposite (that A015
+  events were plain facts) and corrected it in `05-handoffs-and-contracts.md` after reading the relay.
+- T03's scalper breakers cannot trip as written (G-T-01); T01/T03 execution is invisible to the sentinel's
+  execution scan (G-T-02); T01's `self_tune` already adjusts a trading parameter on its own (G-T-10).
+
+### Rulings
+- Docs only. Renaming A009->R01 ... A014->R05, widening `security/sentinel/fleet.py:12` to `[ATRX]`, a
+  `team:` registry field and any X agent are separate go-aheads.
+- Series letter `R`, team names, 2-digit R/X IDs, "deterministic-first" X agents and Hinglish for
+  `docs/teams/` (English for the ADR and the manual edits) are my defaults - provisional.
+- Did not spawn subagents (the harness advises against it unprompted); explored inline.
+- No commit (operator has not asked; the tree already holds other uncommitted work).
+
+### Self-critique
+- **Fragile:** the gap register is from reading code, not running it; "0 files" counts and line numbers are
+  today's. Five rows (A-06, T-05, T-09, X-11, X-15) are only from the audit/PROJECT_STATE or unverified.
+- **Assumed:** that the collector/analyst split matches the operator's intent (they chose a fourth team);
+  that Team Topologies (a human-team framework) and Erlang supervision transfer to LLM agents - an analogy,
+  not measured here; that seven X roles are the right size for a solo operator (hence the build order and
+  the "minimal viable = X05 + X07" note).
+- **Untested:** the A->R->T ownership/latency model on any live flow; nothing in the new docs has run.
+- **Source limits:** the Team Topologies book, AWS BP01/BP02, Erlang "let it crash" text and the official
+  OpenAI Agents SDK docs were not read; several sources are secondary (see `docs/teams/07-research.md`).
+
+### Open questions for the operator
+1. Letter `R` and the names Intelligence Team / Analysis Bureau / Trading Desk / Control Tower - OK?
+2. Freed A-IDs (A009, A010, A012-A014): leave empty, or reuse later (A011 was reused)?
+3. T-series trust: adopt an orthogonal `execution_tier: none|paper|testnet|real-gated`? (trust/funds boundary)
+4. T01 `self_tune`: grandfather it, or move it into the propose-only lane later?
+5. A->T hard-stop: validate A015's detectors by backtest, or declare exchange-metadata status transitions
+   plain facts (loosens a gate)?
+6. X build order (X05 Medic + X07 Registrar first) and whether seven X roles is too many.
+7. Docs language for `docs/teams/` (Hinglish now) - keep, or English?
+
+### Next session should start at
+Operator reviews `docs/teams/README.md` and answers the questions above (flip ADR-0006 to accepted); then,
+on separate go-aheads: (a) the R rename + sentinel `_ROW` widening + `team:` field, (b) A005 Market Data
+(critical path), (c) X05/X07 first slices, (d) the T03 `RiskEngine` fix (G-T-01, test-first).

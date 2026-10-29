@@ -103,3 +103,6 @@ __pycache__/
 .mypy_cache/
 # 026 live supervisor runtime state (log already covered by *.log)
 live/state.json
+live/state.json.tmp
+live/state.json.corrupt-*
+live/supervisor.lock

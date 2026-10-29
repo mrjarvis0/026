@@ -8,5 +8,8 @@ from security.sentinel.gate import Decision
 from .message import Budget, Message, Response
 from .trace import TraceLog
 from .bus import MessageBus, AgentHandler
+from .envelope import EnvelopeError
+from .store import EventStore, StoreBusy
 
-__all__ = ["Budget", "Message", "Response", "TraceLog", "MessageBus", "AgentHandler", "Decision"]
+__all__ = ["Budget", "Message", "Response", "TraceLog", "MessageBus", "AgentHandler", "Decision",
+           "EnvelopeError", "EventStore", "StoreBusy"]

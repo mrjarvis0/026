@@ -59,11 +59,35 @@ def test_orchestrator_does_not_import_agents_or_composition_root():
 
 
 def test_agents_do_not_import_kernel_or_composition_root():
+    # Every agent, not just A001/A002: agents stay bus-unaware (relays in bootstrap publish for them).
     forbidden = {"orchestrator", "bootstrap", "brain"}  # names no agent defines internally
     offenders: list[str] = []
-    for agent in ("A001_Blockchain_Intelligence", "A002_News_Intelligence"):
-        offenders += _offenders(ROOT / "agents" / agent, forbidden)
+    for agent in sorted(p for p in (ROOT / "agents").iterdir() if p.is_dir()):
+        offenders += _offenders(agent, forbidden)
     assert not offenders, offenders
+
+
+def test_event_store_and_envelope_use_only_stdlib_and_yaml():
+    # The durable bus must stay dependency-free (ADR-0005): no agent, no brain, no third party but yaml.
+    import sys
+    allowed = set(sys.stdlib_module_names) | {"yaml"}
+    offenders = sorted({
+        f"{f.relative_to(ROOT)} -> {mod}"
+        for name in ("envelope.py", "store.py")
+        for f, mod in _imported_top_levels_of_file(ROOT / "orchestrator" / "event_bus" / name)
+        if mod not in allowed
+    })
+    assert not offenders, offenders
+
+
+def _imported_top_levels_of_file(path: pathlib.Path):
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                yield path, alias.name.split(".")[0]
+        elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
+            yield path, node.module.split(".")[0]
 
 
 def test_brain_does_not_import_up_or_into_the_fleet():

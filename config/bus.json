@@ -1,0 +1,6 @@
+{
+  "a015_exchanges": ["binance", "bybit", "coinbase", "okx"],
+  "a015_every_min": 15,
+  "stale_factor": 2,
+  "retention_days": 90
+}

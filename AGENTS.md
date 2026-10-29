@@ -108,6 +108,7 @@ An agent with no `evidence.detectors` and no tests **cannot leave trust level 1.
 | `A015` | Exchange Listing/Delisting Intelligence | partial | CEX listing/delisting/pair-status events — CCXT poll-diff across 17 exchanges, read-only |
 | `T01` | Smart Binance Intelligence | substantial | Crypto spot trading — TA strategy; paper-by-default, real order path triple-gated |
 | `T02` | Swarm Trading Intelligence | partial | Market consensus: an agent-based swarm of 1000 heterogeneous bots simulating how a market reacts to a trade event |
+| `T03` | Strategy Intelligence Hub | partial | Multi-strategy hub: 8-strategy scanner consensus, backtests, MTF + candle predictor, testnet futures scalper; soft-vetoes T01 entries |
 
 `A015` (Exchange Listing/Delisting Intelligence) was built in a separate Hermes
 workspace, then copied into 026 and **rebuilt to fleet conventions** on 2026-09-21:
@@ -116,7 +117,7 @@ from `config/exchanges.yaml`, not hard-coded), snapshot-aware detectors so
 NEW_LISTING / DELISTING / PAIR_CHANGE no longer double-count, a proper CLI
 (`doctor`/`demo`/`poll`) and a 17-case pytest suite. It is read-only
 (`execution_enabled: false`, deviation-only) and kernel-wired via
-`orchestrator/adapters/a015.py`. The 38 MB live market snapshot from the Hermes
+`bootstrap/adapters/a015.py`. The 38 MB live market snapshot from the Hermes
 build was excluded as runtime state. Live poll reachability + text-feeds remain
 open (`status: partial`).
 
@@ -174,6 +175,26 @@ Platform actors (not domain agents â€” they run the fleet):
 | `operator-io`  | `dashboard/`    |   3   | The human interface: chat, approvals, traces     |
 
 ---
+
+### 3a. Teams (2026-10-28 - proposed, see ADR-0006)
+
+The fleet is organised into four teams. Full design: `docs/teams/README.md`;
+decision: `docs/adr/ADR-0006-fleet-teams.md`. Documentation only - no registry,
+manifest, code or folder has changed.
+
+| Team | Series | Role |
+| ---- | ------ | ---- |
+| Intelligence Team | A | collects raw facts from external sources; read-only, deviation-only |
+| Analysis Bureau | R (reserved: R01-R05 = today's A009, A010, A012, A013, A014 scaffolds) | derives conclusions from other agents' output; read-only, advisory |
+| Trading Desk | T | consumes A and R, decides and acts; every order through the sentinel gate |
+| Control Tower | X (reserved: X01-X07 proposed) | stewards the platform and the fleet: orchestration design, pipeline, communication and handoff, rules, failure handling, self-improvement, registry |
+
+Classify by four ordered questions, not by name: money or an order -> T; raw
+external source -> A; derives from other agents, read-only -> R; runs or monitors
+other agents -> X. The platform actors above are machinery and are unchanged; X
+agents are their stewards - they never replace the orchestrator and never bypass
+the sentinel. Note: the sentinel's fleet-table parser (`security/sentinel/fleet.py`)
+reads only `A`/`T` rows and must be widened before an `R` or `X` agent is registered.
 
 ## 4. Cross-agent correlation â€” 026's core power
 
@@ -529,4 +550,4 @@ python agents/A002_News_Intelligence/tests/test_phase7.py     # Phase 7 (13 asse
 - **No binary FAKE/REAL output** â€” epistemic status + confidence + impact range + uncertainty
 - **FOMO â‰  Truth â‰  Coordination** â€” three separate scores
 - Source-level dedup mandatory: 10 articles copying 1 tweet = 1 underlying source, not 10 confirmations
-- Python 3.14, pydantic 2.13; async-first I/O
+- Python 3.14, pydantic 2.13; async-first I/O

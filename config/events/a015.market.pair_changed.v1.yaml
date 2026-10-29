@@ -1,0 +1,6 @@
+type: a015.market.pair_changed
+schema_version: 1
+platform: false
+data:
+  required: {exchange: str, symbol: str, base_asset: str, quote_asset: str}
+  optional: {pair_added: any, pair_removed: any, historical_context: str, median_effect_pct: number}

@@ -37,6 +37,35 @@ every login, and stops when the PC is off — exactly as intended.
 
 Stop everything (dashboard, T01, supervisor) with `stop-026.bat`.
 
+## Event-bus jobs (Phase 1, 2026-10-28)
+
+Two more jobs run on the same tick, reusing the retry/backoff/lock below. Config: `config/bus.json`.
+
+- **A015 poll** every `a015_every_min` (15) minutes for the configured exchanges
+  (`binance, bybit, coinbase, okx`) — one `fetch_markets` call each, network only, no API keys.
+  Writes `memory/event_log/` and `memory/poll_status.json`.
+- **Bus cycle** every 5 minutes: `python -m bootstrap.relay --once` (A015 facts -> `data/bus/bus.db`,
+  source health, stale-source events) then `python -m bootstrap.consume --once` (-> persistent brain).
+- Check it: `python -m bootstrap.bus_stats` (exit 1 on a parked event or a stale source).
+- The **first** A015 poll compares against the old snapshots on disk, so it can publish a burst of
+  events covering the whole gap since they were taken (each event states that window).
+
+## Reliability (hardened 2026-10-28)
+
+- **Single instance:** an OS lock on `live/supervisor.lock` — a second launch logs and exits.
+- **Failures are failures:** a job counts as done only when its command exits 0. A failed or
+  timed-out job is **not** stamped; it retries with capped exponential backoff + jitter
+  (1 min → 30 min cap) instead of waiting a full cadence or hammering every tick.
+- **State is crash-safe:** `state.json` is written atomically; a corrupt file is kept as
+  `state.json.corrupt-<time>` instead of being silently reset.
+- **Heartbeat:** every tick stamps `heartbeat` in `state.json`. Check on demand:
+
+```bash
+python live/supervisor.py --status
+```
+
+  Exit 0 = running with a fresh heartbeat; exit 1 = not running or stale.
+
 ## Tuning (top of `supervisor.py`)
 
 - `A001_EVERY_MIN` / `A002_EVERY_MIN` — cadence.

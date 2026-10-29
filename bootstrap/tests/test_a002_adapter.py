@@ -3,7 +3,7 @@ gate + budget, reading/writing the shared brain only within its declared surface
 """
 from brain.access import AgentBrainView, NamespaceDenied
 from brain.store import Brain
-from orchestrator.adapters import a002
+from bootstrap.adapters import a002
 from orchestrator.event_bus import Message, MessageBus
 
 
@@ -36,8 +36,9 @@ def test_a002_unknown_intent_is_honest():
     bus = MessageBus()
     a002.register(bus, manifest=a002.load_manifest(), intents=_fake_intents())
     res = bus.send(Message(to="A002", type="task.query", payload={"intent": "nope"}))
-    assert res.ok  # routed fine...
-    assert res.payload.get("error") == "unknown intent"  # ...but declines honestly
+    assert not res.ok and res.status == "error"  # an unknown intent is a failure, not ok
+    assert res.reason == "unknown intent"
+    assert res.payload.get("error") == "unknown intent"
 
 
 def test_a002_execution_action_denied_by_gate():

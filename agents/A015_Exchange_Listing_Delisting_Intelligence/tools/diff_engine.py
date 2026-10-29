@@ -4,6 +4,7 @@ Computes differences between two snapshots of exchange market data.
 """
 
 import json
+import os
 from typing import Dict, List, Set, Tuple, Any
 from dataclasses import dataclass, asdict
 from datetime import datetime, timezone
@@ -22,17 +23,22 @@ class MarketChange:
             self.detected_at = datetime.now(timezone.utc).isoformat()
 
 def load_snapshot(filepath: str) -> Dict[str, Dict]:
-    """Load a snapshot from a JSON file."""
+    """Load a snapshot from a JSON file. Missing or unreadable (torn/corrupt) -> {} = no
+    baseline, never a crash."""
     try:
-        with open(filepath, 'r') as f:
-            return json.load(f)
-    except FileNotFoundError:
+        with open(filepath, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        return data if isinstance(data, dict) else {}
+    except (FileNotFoundError, ValueError):
         return {}
 
 def save_snapshot(snapshot: Dict[str, Dict], filepath: str) -> None:
-    """Save a snapshot to a JSON file."""
-    with open(filepath, 'w') as f:
+    """Save a snapshot atomically: write a temp file, then os.replace over the old one,
+    so a crash mid-write cannot truncate the previous snapshot."""
+    tmp = filepath + '.tmp'
+    with open(tmp, 'w', encoding='utf-8') as f:
         json.dump(snapshot, f, indent=2)
+    os.replace(tmp, filepath)
 
 def diff_snapshots(old: Dict[str, Dict], new: Dict[str, Dict]) -> List[MarketChange]:
     """

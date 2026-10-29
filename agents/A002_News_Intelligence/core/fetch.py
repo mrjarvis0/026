@@ -18,6 +18,9 @@ from __future__ import annotations
 
 import asyncio
 import json
+import random
+import re
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -48,12 +51,39 @@ RSS_FEEDS: tuple[tuple[str, str], ...] = tuple(
 # ==============================================================================
 
 
-def http_get_sync(url: str, headers: dict[str, str] | None = None, timeout: float = 30.0) -> bytes:
-    """Blocking GET. Returns raw bytes. Raises on HTTP errors."""
+_RETRYABLE_HTTP = frozenset({429, 500, 502, 503, 504})
+_BACKOFF_CAP_SEC = 8.0
+
+# API keys travel in URL query strings (Tiingo token=, NewsAPI apiKey=) and Telegram's bot
+# token in the path; an exception that quotes the URL must never put them in a report/log.
+_SECRET_RE = re.compile(r"(?i)\b(token|api_?key|access_token|key)=[^&\s'\"<>]+|(bot)\d+:[\w-]+")
+
+
+def redact_secrets(text: str) -> str:
+    return _SECRET_RE.sub(lambda m: f"{m.group(1)}=***" if m.group(1) else f"{m.group(2)}***", text)
+
+
+def http_get_sync(url: str, headers: dict[str, str] | None = None, timeout: float = 30.0,
+                  retries: int = 2, sleep=time.sleep) -> bytes:
+    """Blocking GET. Returns raw bytes. Raises on HTTP errors.
+
+    Transient failures (429/5xx, connection errors, timeouts) are retried up to ``retries``
+    times with capped exponential backoff and full jitter; other 4xx fail at once.
+    """
 
     request = urllib.request.Request(url, headers={"User-Agent": _USER_AGENT, **(headers or {})})
-    with urllib.request.urlopen(request, timeout=timeout) as response:
-        return response.read()
+    for attempt in range(retries + 1):
+        try:
+            with urllib.request.urlopen(request, timeout=timeout) as response:
+                return response.read()
+        except urllib.error.HTTPError as exc:
+            if exc.code not in _RETRYABLE_HTTP or attempt == retries:
+                raise
+        except (urllib.error.URLError, TimeoutError, ConnectionError):
+            if attempt == retries:
+                raise
+        sleep(random.uniform(0, min(_BACKOFF_CAP_SEC, 0.5 * 2 ** attempt)))
+    raise AssertionError("unreachable")  # the loop always returns or raises
 
 
 # ==============================================================================
@@ -351,7 +381,8 @@ async def fetch_all(settings: Settings, max_workers: int = 4) -> tuple[list[RawI
             try:
                 return await asyncio.to_thread(fn)
             except Exception as exc:  # soft fail — connector errors never kill the cycle
-                return [RawItem(source=label, source_key=f"error:{label}", title=f"<connector error: {exc}>", content="")]
+                return [RawItem(source=label, source_key=f"error:{label}",
+                                title=f"<connector error: {redact_secrets(str(exc))}>", content="")]
 
     results = await asyncio.gather(*(run(label, fn) for label, _, fn in connectors))
     items: list[RawItem] = []

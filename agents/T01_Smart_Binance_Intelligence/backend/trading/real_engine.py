@@ -30,8 +30,11 @@ class RealTradingLocked(Exception):
 
 
 class RealEngine:
-    def __init__(self):
-        self.enabled = db.get_state("real_enabled", "false") == "true"
+    @property
+    def enabled(self) -> bool:
+        # The DB flag is the single source of truth, read on every use: any RealEngine
+        # instance (the bot's, the API's) sees the operator's enable/disable immediately.
+        return db.get_state("real_enabled", "false") == "true"
 
     # ---------- gating ----------
     def ready(self) -> tuple[bool, str]:
@@ -56,7 +59,6 @@ class RealEngine:
             raise RealTradingLocked("Cannot enable real mode before the accuracy gate unlocks.")
         if not (config.BINANCE_API_KEY and config.BINANCE_API_SECRET):
             raise RealTradingLocked("Cannot enable real mode without Binance API credentials.")
-        self.enabled = True
         db.set_state("real_enabled", "true")
         # Snapshot starting capital once, so real ROI is measured against it.
         if not db.get_state("real_start_equity"):
@@ -68,7 +70,6 @@ class RealEngine:
                 pass
 
     def disable(self) -> None:
-        self.enabled = False
         db.set_state("real_enabled", "false")
 
     # ---------- account reads ----------

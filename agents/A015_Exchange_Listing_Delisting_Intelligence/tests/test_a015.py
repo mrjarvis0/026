@@ -126,3 +126,18 @@ def test_run_all_does_not_double_count_a_pair_add():
     out = run_all([_change("binance", "ETH/BTC", "added")], old, new)
     assert out["NEW_LISTING"] == []          # not a new listing...
     assert len(out["PAIR_CHANGE"]) == 1      # ...only a pair change
+
+
+# --- found by the first live poll: 2191 of binance's 2210 STATUS_CHANGE reports were BREAK -> BREAK ---
+def test_status_that_did_not_change_is_not_a_status_change():
+    # regression: any 'changed' market whose NEW status was BREAK fired, even if it was already BREAK
+    # (long-dead pairs whose precision/info fields changed), flooding the log with non-events
+    still_broken = _change("binance", "HOT/BUSD", "changed",
+                           old={"status": "BREAK", "precision": 1}, new={"status": "BREAK", "precision": 2})
+    assert detect_status_change([still_broken]) == []
+
+
+def test_a_real_transition_into_break_is_still_reported():
+    went_down = _change("binance", "FOO/USDT", "changed", old={"status": "TRADING"}, new={"status": "BREAK"})
+    [report] = detect_status_change([went_down])
+    assert (report["status_from"], report["status_to"]) == ("TRADING", "BREAK")

@@ -25,6 +25,9 @@ def valid_namespace(namespace: str) -> bool:
 class Brain:
     def __init__(self, db_path: str = ":memory:") -> None:
         self._db = sqlite3.connect(db_path)
+        if db_path != ":memory:":   # WAL: no fsync per commit, and readers (dashboard) don't block the writer
+            self._db.execute("PRAGMA journal_mode=WAL")
+            self._db.execute("PRAGMA synchronous=NORMAL")
         self._db.execute(
             "CREATE TABLE IF NOT EXISTS records ("
             " namespace TEXT, key TEXT, version INTEGER, value_json TEXT,"

@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import sys
+import tempfile
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -24,6 +25,8 @@ def check(label: str, ok: bool) -> None:
 
 
 def main() -> None:
+    scratch = Path(tempfile.mkdtemp())            # never write to the real live/supervisor.log or state.json
+    sup.LOG_FILE, sup.STATE_FILE = scratch / "supervisor.log", scratch / "state.json"
     now = datetime(2026, 6, 1, 12, 0, tzinfo=UTC)
 
     # _due
@@ -33,8 +36,8 @@ def main() -> None:
 
     # event state machine — stub the agent calls so nothing hits the network
     fired = []
-    sup.a001_ingest = lambda: fired.append("a001")
-    sup.a002_scan = lambda: fired.append("a002")
+    sup.a001_ingest = lambda: fired.append("a001") or True
+    sup.a002_scan = lambda: fired.append("a002") or True
 
     state = {"a001_last": None, "a002_last": None, "events": {}}
     when = now + timedelta(minutes=1)

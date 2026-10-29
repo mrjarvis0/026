@@ -1,6 +1,17 @@
 from collections import defaultdict
 from datetime import datetime
 
+
+def _known_at(filing_dates):
+    """The date the LAST piece of evidence became public (max filing date). Windows are built
+    on transaction_date, but a trade is only public at filing_date (up to ~45 days later), so
+    a consumer must not act on a finding before this. None if any filing date is missing:
+    "cannot be determined", not a guess."""
+    if not filing_dates or any(not d for d in filing_dates):
+        return None
+    return max(filing_dates)
+
+
 def detect_congress_clusters(trades, window_days=7, min_trades=2):
     """
     Detects if multiple politicians are trading the same ticker in the same direction
@@ -78,6 +89,7 @@ def detect_congress_clusters(trades, window_days=7, min_trades=2):
                                 "trade_count": len(cluster_candidates),
                                 "window_start": valid_trades[i][1]["transaction_date"],
                                 "window_end": cluster_candidates[-1]["transaction_date"],
+                                "known_at": _known_at([c.get("filing_date") for c in cluster_candidates]),
                                 "evidence_ids": [c["id"] for c in cluster_candidates]
                             })
 
@@ -117,6 +129,7 @@ def detect_congress_insider_correlation(congress_trades, insider_trades, window_
                                 "insider_name": i_trade["insider_name"],
                                 "congress_trade_date": c_trade["transaction_date"],
                                 "insider_trade_date": i_trade["transaction_date"],
+                                "filing_dates": [c_trade.get("filing_date"), i_trade.get("filing_date")],
                                 "evidence_ids": [c_trade["id"], i_trade["id"]]
                             })
                     except (ValueError, TypeError):
@@ -134,8 +147,10 @@ def detect_congress_insider_correlation(congress_trades, insider_trades, window_
     for key, corrs in combined.items():
         congress_politicians = set()
         evidence_ids = set()
+        filing_dates = []
         for c in corrs:
             congress_politicians.add(c["congress_politician"])
+            filing_dates.extend(c["filing_dates"])
             for e_id in c["evidence_ids"]:
                 evidence_ids.add(e_id)
 
@@ -146,6 +161,7 @@ def detect_congress_insider_correlation(congress_trades, insider_trades, window_
             "insider_name": key[2],
             "insider_trade_date": key[3],
             "congress_politicians": list(congress_politicians),
+            "known_at": _known_at(filing_dates),
             "evidence_ids": list(evidence_ids)
         })
 

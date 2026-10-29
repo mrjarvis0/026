@@ -17,7 +17,7 @@ model:
   tier: none                 # deterministic diff + rule-based detectors, no LLM
   note: "CCXT fetch_markets() poll-diff; evidence gating is config-driven (config/exchanges.yaml)"
 
-memory:                      # target brain namespaces; wiring via orchestrator/adapters/a015.py
+memory:                      # target brain namespaces; wiring via bootstrap/adapters/a015.py
   reads:  [global, entities, markets, projects.*]
   writes: [markets, projects.*]
 
@@ -43,6 +43,14 @@ evidence:
     - { id: PAIR_CHANGE,   maturity: implemented, note: "snapshot-aware; pair add/remove on an already-listed base" }
     - { id: ANNOUNCED_LISTING, maturity: implemented, note: "earliest-detection: announced but not yet listed (OKX/Binance free announcement feeds); days_since_announcement + stale flag" }
   coverage_required_for_absence: true   # pair-change needs snapshots; no snapshot -> no claim
+
+# Event types this agent's facts become on the bus (published by bootstrap/relays/a015.py, never by
+# the agent itself). Schemas: config/events/. Phase 1 design: docs/superpowers/specs/.
+produces:
+  - {type: a015.listing.new,           schema_version: 1}
+  - {type: a015.listing.delisted,      schema_version: 1}
+  - {type: a015.market.status_changed, schema_version: 1}
+  - {type: a015.market.pair_changed,   schema_version: 1}
 
 charter: |
   - Facts, not advice. Report the event + historical context; never buy/sell.

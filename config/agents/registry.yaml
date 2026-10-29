@@ -11,7 +11,7 @@
 # Spec: AGENTS.md §2 (manifest) · §3 (the fleet) · docs/manual/02-structure.md.
 
 version: 1
-updated: 2026-09-06
+updated: 2026-10-28
 
 agents:
   A001:
@@ -22,7 +22,7 @@ agents:
     status: substantial
     trust: 2
     enabled: true
-    kernel_wired: false          # SP-4 pending
+    kernel_wired: true           # read-only bus adapter + sentinel gate (bootstrap/adapters/a001.py, registered in bootstrap/wire.py); no brain view yet
     runtime_verified: true       # SP-5 done 2026-09-07 (tests pass on py3.14) — see BUILD_LOG
     origin: "CIE-OS migration 2026-09-06"
 
@@ -34,7 +34,7 @@ agents:
     status: substantial
     trust: 2
     enabled: true
-    kernel_wired: true           # SP-4: bus adapter + manifest-scoped brain view + sentinel gate, tested (orchestrator/adapters/a002.py); live kernel loop = Phase 4
+    kernel_wired: true           # SP-4: bus adapter + manifest-scoped brain view + sentinel gate, tested (bootstrap/adapters/a002.py); live kernel loop = Phase 4
     runtime_verified: true       # SP-5 done 2026-09-07 (tests pass on py3.14) — see BUILD_LOG
     origin: "CIE-OS migration 2026-09-06"
 
@@ -59,7 +59,7 @@ agents:
     trust: 1
     enabled: true
     kernel_wired: false
-    runtime_verified: true        # 2026-09-18 — 2 pipeline tests pass on py3.14
+    runtime_verified: true        # MOCK data only (no live fetch) — 11 tests pass on py3.14 (2026-10-28)
     origin: "Proposed 2026-09-15 (LuxAlgo MCP S119); pipeline merged 2026-09-18 from Jules branch feat/build-a007-agent"
 
   T02:
@@ -83,7 +83,7 @@ agents:
     trust: 2
     enabled: true
     kernel_wired: false           # SP-4 pending — standalone service, not bus/brain-wired
-    runtime_verified: true        # 2026-09-18 — 30 tests pass (tests/test_t01_merge.py + test_t01_reflection.py)
+    runtime_verified: true        # 2026-10-28 — 53 tests pass (agents/T01_*/tests)
     execution_agent: true         # FIRST execution_enabled member; real order path is internally triple-gated
     origin: "Built in 026; registered 2026-09-18 as a T-series execution agent"
 
@@ -95,8 +95,8 @@ agents:
     status: partial
     trust: 1
     enabled: true
-    kernel_wired: true            # SP-4: bus adapter + manifest-scoped brain view + gate, tested (orchestrator/adapters/a015.py)
-    runtime_verified: true        # 2026-09-21 — 17 agent tests pass; cli doctor + demo OK
+    kernel_wired: true            # SP-4: bus adapter + manifest-scoped brain view + gate, tested (bootstrap/adapters/a015.py)
+    runtime_verified: true        # 2026-10-28 — 37 agent tests pass (fake exchange; no live poll run); cli doctor + demo OK
     execution_agent: false
     origin: "Built in Hermes; rebuilt + registered + kernel-wired in 026 2026-09-21 (38 MB runtime snapshot excluded)"
 

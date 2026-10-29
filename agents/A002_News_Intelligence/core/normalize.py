@@ -18,6 +18,7 @@ from __future__ import annotations
 import html
 import re
 from datetime import UTC, datetime
+from email.utils import parsedate_to_datetime
 
 from .models import NormalizedItem, RawItem
 from .dedup import content_fingerprint, title_fingerprint
@@ -50,7 +51,7 @@ def clean_text(text: str) -> str:
 
 
 def parse_timestamp(value: str | None) -> datetime | None:
-    """Parse an ISO-8601 timestamp, returning None on failure."""
+    """Parse an ISO-8601 or RFC-822 (RSS ``pubDate``) timestamp, returning None on failure."""
 
     if not value:
         return None
@@ -58,7 +59,10 @@ def parse_timestamp(value: str | None) -> datetime | None:
     try:
         parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
     except ValueError:
-        return None
+        try:
+            parsed = parsedate_to_datetime(text)
+        except (TypeError, ValueError):
+            return None
     if parsed.tzinfo is None:
         parsed = parsed.replace(tzinfo=UTC)
     return parsed

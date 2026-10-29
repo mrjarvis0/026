@@ -54,3 +54,14 @@ def test_agent_view_enforces_read_scope_and_shared_entities():
     # But A002 may not read A001's private domain namespace.
     with pytest.raises(NamespaceDenied):
         a002.read("chain", "0xabc")
+
+
+def test_file_brain_uses_wal(tmp_path):
+    # the first live consume wrote ~1.4 s per event with a rollback journal + full fsync on a slow disk
+    b = Brain(str(tmp_path / "brain.db"))
+    assert b._db.execute("PRAGMA journal_mode").fetchone()[0].lower() == "wal"
+
+
+def test_memory_brain_is_unaffected():
+    b = Brain(":memory:")
+    assert b.write("global", "k", {"v": 1}, by="t") == 1 and b.read("global", "k", by="t") == {"v": 1}

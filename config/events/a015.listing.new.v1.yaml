@@ -1,0 +1,6 @@
+type: a015.listing.new
+schema_version: 1
+platform: false
+data:
+  required: {exchange: str, symbol: str, base: str}
+  optional: {trading_pairs: list, historical_context: str, median_day_1_effect_pct: number}

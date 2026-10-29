@@ -6,6 +6,11 @@ from orchestrator.event_bus import Message
 ROOT = Path(__file__).resolve().parents[2]  # F:\026
 
 
+def test_production_bus_bounds_handler_time():
+    # regression: build_bus made an unbounded bus, so one hung agent call stalled everything
+    assert build_bus(ROOT).timeout_s and build_bus(ROOT).timeout_s > 0
+
+
 def test_a002_sources_query_through_bus():
     bus = build_bus(ROOT)
     res = bus.send(Message(to="A002", type="task.query", payload={"op": "sources"}))
@@ -51,5 +56,5 @@ def test_a001_coverage_with_chain_arg_through_bus():
 def test_a002_stats_db_query_through_bus():
     bus = build_bus(ROOT)
     res = bus.send(Message(to="A002", type="task.query", payload={"op": "stats"}))
-    assert res.ok and res.payload["op"] == "stats"
+    assert res.ok and res.payload["intent"] == "stats"
     assert res.payload["items"] >= 0 and res.payload["entities"] >= 0

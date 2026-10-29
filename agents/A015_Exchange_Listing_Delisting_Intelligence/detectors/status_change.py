@@ -33,6 +33,8 @@ def detect_status_change(changes: list[dict]) -> list[dict]:
         new_status = _status_of(change.get("new_value") or {})
         if not new_status or str(new_status).lower() not in _HALT_BREAK:
             continue
+        if old_status is not None and str(old_status).lower() == str(new_status).lower():
+            continue   # already in that state: another field changed, this is not a status transition
         report = base_report("STATUS_CHANGE", exchange_id, change.get("symbol"))
         report.update({
             "status_from": old_status,

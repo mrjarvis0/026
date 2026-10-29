@@ -13,8 +13,8 @@ Honest by construction: the default reader returns real counts from A002's own
 store — with no data it returns ``count: 0``, never a fabricated finding (A002
 charter: degraded, never invented).
 
-Scope: the operator chose to wire **A002 only** for this slice; A001's adapter is
-deliberately not built here (its imports + ~30 % build need untangling first).
+Intents: ``narratives`` (default), ``sources``, ``settings``, ``stats``. The intent is
+read from ``intent`` (the fleet-wide key) or the legacy ``op``.
 """
 from __future__ import annotations
 
@@ -75,8 +75,40 @@ def _read_narratives(payload: dict) -> dict:
     return asyncio.run(run())
 
 
+def _read_sources(payload: dict) -> dict:
+    """The static source registry (no DB)."""
+    from agents.A002_News_Intelligence.config.sources import SOURCES, sources_by_kind
+
+    kind = payload.get("kind")
+    srcs = sources_by_kind(kind) if kind else SOURCES
+    return {"count": len(srcs), "kinds": sorted({s.kind for s in SOURCES})}
+
+
+def _read_settings(payload: dict) -> dict:
+    from agents.A002_News_Intelligence.config.settings import get_settings
+
+    s = get_settings()
+    return {"agent": s.agent.id, "name": s.agent.name, "version": s.agent.version}
+
+
+def _read_stats(payload: dict) -> dict:
+    """Row counts from a002.db (schema-ensure only, as A002's doctor does)."""
+    from agents.A002_News_Intelligence.config.paths import DATABASE_FILE
+    from agents.A002_News_Intelligence.core.storage import Storage
+
+    async def run() -> dict:
+        store = Storage(str(DATABASE_FILE))
+        await store.init()
+        return {"items": await store.count_items(), "entities": await store.count_entities()}
+
+    return asyncio.run(run())
+
+
 _INTENTS: dict[str, Reader] = {
     "narratives": _read_narratives,
+    "sources": _read_sources,
+    "settings": _read_settings,
+    "stats": _read_stats,
 }
 
 
@@ -88,7 +120,8 @@ def build_handler(
     table = intents if intents is not None else _INTENTS
 
     def handle(message: Message) -> dict:
-        intent = (message.payload or {}).get("intent", "narratives")
+        payload = message.payload or {}
+        intent = payload.get("intent") or payload.get("op") or "narratives"
         reader = table.get(intent)
         if reader is None:
             return {"agent": AGENT_ID, "intent": intent, "error": "unknown intent"}

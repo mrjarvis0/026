@@ -41,6 +41,8 @@ What this makes easy, what it makes hard, and what we accept as the cost.
 | [0002](ADR-0002-gated-execution-charter.md) | Gated execution replaces the "never trades" law | accepted | 2026-09-05 |
 | [0003](ADR-0003-minimal-stack.md) | Deliberately minimal stack: Python + TypeScript + Postgres | accepted | 2026-09-05 |
 | [0004](ADR-0004-sources-by-access-type-and-stable-ids.md) | Source registry organized by access-type with stable IDs | accepted | 2026-09-05 |
+| [0005](ADR-0005-sqlite-event-bus.md) | The event bus runs on SQLite (WAL), not Redis, for now | accepted | 2026-10-28 |
+| [0006](ADR-0006-fleet-teams.md) | The fleet is organised into four teams: A, R, T, X | proposed | 2026-10-28 |
 
 *These four ADRs formalize decisions already recorded in [`BUILD_LOG.md`](../../BUILD_LOG.md)
 (sessions 2026-09-04 → 2026-09-05). They add no new decision — they make the existing

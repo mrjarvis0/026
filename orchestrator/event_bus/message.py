@@ -5,6 +5,11 @@ import uuid
 from dataclasses import dataclass, field
 
 
+# Message types that may travel without a declared action (they only read). Any other
+# type must declare an `action` so the sentinel gate can judge it (deny-by-default).
+READ_ONLY_TYPES = frozenset({"query", "task.query", "task.assign"})
+
+
 def _new_id(prefix: str) -> str:
     return f"{prefix}_{uuid.uuid4().hex[:12]}"
 
@@ -49,7 +54,7 @@ class Message:
 @dataclass
 class Response:
     ok: bool
-    status: str        # ok | denied | held | error | degraded | no_handler
+    status: str        # ok | denied | held | error | degraded | timeout | no_handler
     payload: dict = field(default_factory=dict)
     reason: str = ""
     message_id: str = ""

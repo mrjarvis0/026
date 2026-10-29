@@ -1,6 +1,6 @@
 # ADR-0003 — Deliberately minimal stack: Python + TypeScript + Postgres
 
-- **Status:** accepted
+- **Status:** accepted — its "Redis for … bus" line is superseded for the bus by [ADR-0005](ADR-0005-sqlite-event-bus.md)
 - **Date:** 2026-09-05
 - **Deciders:** operator, Claude
 - **History:** [`BUILD_LOG.md`](../../BUILD_LOG.md) → session 2026-09-05; full detail in [`docs/STACK.md`](../STACK.md)

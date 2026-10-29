@@ -13,11 +13,12 @@
 |--------|---------------|
 | `agents/` | The fleet — one folder per agent (`A001_…` through `A06_…` are defined in [`AGENTS.md`](../../AGENTS.md) §3; higher numbers are reserved, not yet assigned), plus a `_template/` to copy from. Each agent is a self-contained pipeline. |
 | `bootstrap/` | **Added 2026-09-07** — the composition root. Wires the fleet's read-only bus adapters into the orchestrator bus (`wire.build_bus()`). The only layer that imports *both* the kernel and the agents; ADR-0001 keeps the kernel itself agent-free, so this wiring lives here. |
+| `bootstrap/` (event bus) | **2026-10-28** — `adapters/` (A001/A002/A015 request/response adapters, payload key `intent`), `relays/a015.py` + `relay.py` (turn A015's `event_log` into envelopes, copy poll results into `source_health`, publish `system.source.stale` once per outage), `consumers/librarian.py` + `consume.py` (record `a015.*` facts in the persistent brain `data/brain/brain.db`, namespace `markets`), `bus_stats.py` (lag / parked / stale report, `--approvals`). Agents stay bus-unaware; only `bootstrap/` publishes for them. |
 | `brain/` | Shared memory: embeddings, knowledge graph, RAG, reasoning, LLM access, and shared prompts. |
 | `config/` | All configuration: agent registry, environments (dev/prod), feature flags, model routing. |
 | `dashboard/` | The web UI — frontend, backend, and assets. The one face for the whole fleet. |
 | `data/` | Where data lives: raw, processed, cache, vector store, and backups. |
-| `docs/` | All documentation — including this manual, architecture, ADRs, API docs, runbooks. |
+| `docs/` | All documentation — including this manual, architecture, ADRs, API docs, runbooks. `docs/teams/` (2026-10-28) holds the four-team fleet structure: [README](../teams/README.md), one doc per team, handoffs, gap register, research. |
 | `infra/` | Deployment: Docker, Kubernetes, Terraform. |
 | `integrations/` | Connections to the outside world: APIs, exchanges, MCP servers, messaging, webhooks. |
 | `logs/` | Runtime logs, split into agent logs, system logs, and the audit trail. |
@@ -143,7 +144,8 @@ Plus top-level files in `docs/`: `STACK.md` (the chosen tech stack) and `SOURCES
 | Folder | What it holds |
 |--------|---------------|
 | `core` | The orchestrator runtime. |
-| `event_bus` | **Built 2026-09-07 (slice 1)** — the message bus: `Message`/`Budget`/`Response`, an append-only replayable `TraceLog`, and `MessageBus` (register a handler, `send` a message). Every send is traced, gated (via `security.sentinel.gate`), and budgeted; handlers are thin adapters over an agent's entry points (stub/echo for now — real A001/A002 adapters are the next slice). |
+| `event_bus` | **Built 2026-09-07 (slice 1)** — the message bus: `Message`/`Budget`/`Response`, an append-only replayable `TraceLog`, and `MessageBus` (register a handler, `send` a message). Every send is traced, gated (via `security.sentinel.gate`), and budgeted. Since 2026-10-28: a message that is not a plain read must declare its action (else denied), a handler payload carrying `error` is a failed Response, a duplicate `register` raises, and the production bus (`bootstrap.wire.build_bus`) bounds each handler with a timeout; handlers are thin adapters over an agent's entry points (the adapters live in `bootstrap/adapters/`: A001, A002, A015). |
+| `event_bus` (events) | **Built 2026-10-28 (Phase 1, ADR-0005)** — the durable half of the bus: `envelope.py` (the event envelope, schema registry `config/events/*.yaml`, `validate_event`) and `store.py` (`EventStore`: one SQLite WAL file `data/bus/bus.db` with append-only `events`, per-consumer cursors + retry/park, `source_health` coverage proof, relay high-water marks, the persisted bus `trace` and the `approvals` queue for held actions). Stdlib + yaml only. Design: `docs/superpowers/specs/2026-10-28-phase1-event-bus-design.md`. |
 | `router` | Task routing to agents (folded into `event_bus.send` for slice 1). |
 | `scheduler` | Scheduled/periodic work. |
 | `workflows` | Multi-step agent workflows. |

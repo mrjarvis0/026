@@ -1,8 +1,8 @@
 """Run one round of messages through the real message bus and return its trace.
 
 Read by the dashboard's /trace page. Uses the same composition root as the kernel
-(bootstrap.wire.build_bus: real manifests, the sentinel gate, A001/A002 read-only
-adapters) plus A015's kernel adapter without a brain handle, so nothing is written.
+(bootstrap.wire.build_bus: real manifests, the sentinel gate, the A001/A002/A015
+read-only adapters, no brain handle, so nothing is written).
 
 stdin:  {"messages": [{"to", "type", "payload", "action"?, "budget"?}, ...]}
 stdout: {"results": [{"message", "response", "ms"}], "trace": [...]}
@@ -18,7 +18,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))  # repo root
 
 from bootstrap.wire import build_bus  # noqa: E402
-from orchestrator.adapters import a015  # noqa: E402
 from orchestrator.event_bus.message import Budget, Message  # noqa: E402
 
 MAX_PAYLOAD_BYTES = 3000
@@ -27,7 +26,6 @@ MAX_PAYLOAD_BYTES = 3000
 def main() -> None:
     request = json.load(sys.stdin)
     bus = build_bus()
-    a015.register(bus)
     results = []
     for spec in request["messages"]:
         message = Message(

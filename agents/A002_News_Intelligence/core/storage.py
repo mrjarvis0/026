@@ -157,6 +157,9 @@ class Storage:
         """Create schema if missing and migrate old tables. Safe to call multiple times."""
 
         async with aiosqlite.connect(self.db_path) as db:
+            # WAL (persistent in the file): the supervisor scan writes while the bus adapter and
+            # dashboard read; in rollback-journal mode readers and the writer block each other.
+            await db.execute("PRAGMA journal_mode=WAL")
             await db.executescript(_SCHEMA)
             await self._migrate(db)
             await db.commit()

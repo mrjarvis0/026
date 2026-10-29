@@ -13,6 +13,7 @@ from security.sentinel.checks.execution import check_execution
 from security.sentinel.checks.secrets import check_secrets
 from security.sentinel.checks.registry import check_registry
 from security.sentinel.checks.deviation import check_deviation
+from security.sentinel.checks.contracts import check_contracts
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]  # F:\026
 
@@ -20,7 +21,8 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]  # F:\026
 def run_sentinel(repo_root: Path, policy: dict | None = None, only: str | None = None) -> FleetReport:
     policy = policy or load_policy()
     report = FleetReport(policy_version=policy.get("version", 1))
-    for rec in load_fleet(repo_root, policy):
+    fleet = load_fleet(repo_root, policy)
+    for rec in fleet:
         if only and rec.id != only:
             continue
         trust_result, effective_trust = check_trust(rec, policy)
@@ -31,6 +33,7 @@ def run_sentinel(repo_root: Path, policy: dict | None = None, only: str | None =
             check_secrets(rec, policy),
             check_registry(rec, policy),
             check_deviation(rec, policy),
+            check_contracts(rec, policy, fleet),
         ]
         report.agents.append(AgentReport(
             id=rec.id, dir=str(rec.dir.relative_to(repo_root)),

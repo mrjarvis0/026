@@ -1,0 +1,6 @@
+type: a015.market.status_changed
+schema_version: 1
+platform: false
+data:
+  required: {exchange: str, symbol: str, status_from: any, status_to: any}
+  optional: {historical_context: str}

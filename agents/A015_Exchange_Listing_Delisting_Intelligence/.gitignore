@@ -10,3 +10,4 @@ reports/*
 # python bytecode
 __pycache__/
 *.pyc
+memory/poll_status.json

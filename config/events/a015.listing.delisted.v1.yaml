@@ -1,0 +1,6 @@
+type: a015.listing.delisted
+schema_version: 1
+platform: false
+data:
+  required: {exchange: str, symbol: str, base: str, stated_reason: str}
+  optional: {historical_context: str, median_crash_pct: number}

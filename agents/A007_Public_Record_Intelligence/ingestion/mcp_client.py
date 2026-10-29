@@ -40,8 +40,9 @@ def fetch_congress_trades(mock=False):
                 "source": "S119"
             }
         ]
-    # We could implement real fetch logic here if needed.
-    return []
+    # Not implemented: returning [] here would read as "no trades were filed", which is a claim
+    # of absence this agent cannot back (coverage_required_for_absence).
+    raise NotImplementedError("live MCP fetch for congress trades is not built; pass mock=True")
 
 def fetch_insider_trades(mock=False):
     if mock:
@@ -73,4 +74,4 @@ def fetch_insider_trades(mock=False):
                 "source": "S028"
             }
         ]
-    return []
+    raise NotImplementedError("live MCP fetch for insider trades is not built; pass mock=True")

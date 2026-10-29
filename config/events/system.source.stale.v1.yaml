@@ -1,0 +1,6 @@
+type: system.source.stale
+schema_version: 1
+platform: true            # only the platform (source "SYS") may publish this
+data:
+  required: {source: str, max_age_s: number, last_ok_at: any}
+  optional: {}

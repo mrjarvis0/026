@@ -4,8 +4,49 @@
 > This file describes what *is* â€” not what is planned. Planned work lives in the
 > roadmaps in `README.md`, `ROADMAP.md`, and `AGENTS.md`.
 
-- **Last updated:** 2026-10-27
+- **Last updated:** 2026-10-28
 - **Repo root:** `F:\026`
+- **Fleet teams (2026-10-28, ADR-0006, docs only)** - the fleet is divided into four teams:
+  **A** Intelligence Team (collectors), **R** Analysis Bureau (analysts; reserved R01-R05 = today's
+  A009/A010/A012/A013/A014 README scaffolds), **T** Trading Desk (T01-T03), **X** Control Tower
+  (stewards; X01-X07 proposed, nothing built). Platform actors stay as they are. Design, 41-row
+  gap register and research: `docs/teams/` (start at `README.md`). **No code, registry, manifest or
+  folder changed**; ADR-0006 is `proposed` (names and the letter `R` provisional). Before an R/X
+  agent is registered, `security/sentinel/fleet.py:12` (`_ROW`, `[AT]`) must be widened. Biggest
+  findings: A005 Market Data (README-only) is the critical path for the whole R team and part of
+  the Desk; A015's events carry `maturity: implemented`, so an A->T hard-stop pause is blocked by
+  the maturity gate (G-ORG-06); T03's scalper breakers are inert (`scalper.py:267,275`).
+- **Phase 1 event bus (2026-10-28, ADR-0005)** - durable, evidence-labelled events. A015's facts now
+  reach a persistent brain: A015 `poll` (+ `poll_status.json`, enriched `event_log`) -> `bootstrap/relay.py`
+  -> `data/bus/bus.db` (SQLite WAL: immutable `events`, per-consumer cursor/retry/park, `source_health`,
+  persisted bus `trace`, `approvals` queue) -> `bootstrap/consume.py` (librarian) -> `data/brain/brain.db`
+  (`markets`, the first persistent brain). Maturity is a code path (`consume(min_maturity="validated")`
+  default; the librarian is a recorder at `implemented`); a baseline poll is never "ok"; the health monitor
+  publishes one `system.source.stale` per outage. New sentinel check `contracts` (manifest `produces`/
+  `consumes`). Supervisor now also runs `a015` (every 15 min, binance/bybit/coinbase/okx) and `bus`
+  (every 5 min); **running since 2026-10-28 13:40Z** (hidden, via `start-live.vbs`; not yet in the Startup folder). First live
+  cycle found and fixed 6 defects (see BUILD_LOG). State: `data/bus/bus.db` 452 events (119 new listings, 24
+  delistings, 289 pair changes, 19 real status changes), `data/brain/brain.db` 451 `markets` records; binance /
+  coinbase / okx fresh, **bybit unreachable from this network (STALE)**. Check: `python -m bootstrap.bus_stats`. Tests: platform 194 pass
+  + 2 known T03-secret red; A015 45, A002 64, A007 11, T01 53, T03 18. Not built: Slice 2 (T01 pause flag,
+  needs its own design review), Slice 3 (A002 relay), dashboard pages for events/approvals (the sentinel
+  page does not show the new `contracts` check yet).
+- **Phase 0 hardening (2026-10-28)** - from the orchestration audit
+  (`docs/architecture/orchestration-network-audit-2026-10-28.md`). Test-first; green per suite
+  (platform 97 / A002 64 / A007 11 / A015 37 / T01 53 / T03 18). Run agent suites one process
+  each - T01 and T03 both put their own top-level packages on `sys.path`.
+  **Bus:** a non-read message must declare an action (else denied); a handler payload with
+  `error` is a failed Response; duplicate `register` raises (`replace=True` to override); optional
+  `timeout_s` (production bus: 60 s). **Adapters:** one family in `bootstrap/adapters/`
+  (A001, A002, A015 all registered in `wire.py`); payload key `intent` (legacy `op` still read).
+  **T01:** the live loop applies the T03 veto; `RealEngine.enabled` reads the DB flag every time,
+  so the dashboard's enable/disable now reaches the running bot (**enable takes effect without a
+  restart**; accuracy gate, credentials and `_guard` unchanged). **Supervisor:** OS lock,
+  success-only stamping + backoff/jitter retry, atomic state, heartbeat, `--status`; it is **not
+  running** right now (launched by hand / at login). **A015:** first poll = baseline, failed
+  fetch reported, shrink guard, spot-only, atomic snapshot, durable `memory/event_log` written
+  before the snapshot advances. **A002:** RFC-822 dates, secret redaction, transient-error
+  retry, WAL. **A007:** natural-key ids, `known_at`, live fetch raises instead of returning `[]`.
 - **T03 (Strategy Intelligence Hub) — merged 2026-10-27:** Brought in from
   `F:\my-agents\$trategy-master` (source preserved). 8 strategy agents ($001–$008,
   `reviewed`) + 6 new components built on top: MTF analyzer (`core/futures/mtf.py`),
@@ -20,10 +61,11 @@
   bug, market-order price bug in both broker files). Registered in `config/agents/registry.yaml`
   (T03, partial, trust=2, execution_agent=true, testnet-only). **Not yet kernel-wired.**
   `tests/test_t03_foundation.py` — 40/40 green (verified 2026-10-27).
-- **T03 integration with T01 (2026-10-27):** T01's `decide()` now uses T03 consensus
-  as a soft veto: if T03's 8-strategy majority opposes T01's signal with strength ≥ 0.75,
-  the signal is overridden to hold. Config knobs: `T03_ENABLED`, `T03_SYMBOL`,
-  `T03_TIMEFRAME` in T01 `.env` / `config.py`. Fails silently when T03 unavailable.
+- **T03 -> T01 soft veto (live since 2026-10-28):** the 2026-10-27 wiring in `decide()` was dead
+  code (nothing called it). Now `TradingBot._decide` (bot.py) applies `engine.apply_t03_veto` to
+  BUY entries only (a SELL/exit is never vetoed), asks T03 about the symbol T01 is actually
+  trading, and runs off the event loop with a 20 s cap (slow/failed T03 = no veto). Knobs:
+  `T03_ENABLED` (default **true**), `T03_SYMBOL` (fallback only), `T03_TIMEFRAME`.
 - **T03 backtest results (BTC/USDT 1d, 2023-01-01→2026-10-27):** best by Sharpe:
   $007-oneil (0.98, +147%, 26.6% max DD), $005-seykota (0.87, +143%, 34.4% max DD),
   $003-darvas (0.68, +84%, 37.2% max DD). $001-dennis is the only loser (-34%, Sharpe -0.06)
@@ -68,12 +110,12 @@
   controls; a real-mode switch behind a typed confirmation, with T01's own accuracy +
   credentials gate still deciding. **All 9 pages are built** (026 · narratives · agents ·
   onchain · desk · brain · orchestrator · sentinel · trace). Not committed yet.
-- **Known red test (pre-existing, not from the dashboard work):**
-  `tests/test_architecture.py::test_orchestrator_does_not_import_agents_or_composition_root`
-  fails — `orchestrator/adapters/a002.py` imports `agents.*` (committed in d36247d). Nav plan (operator, 2026-09-28): 026 · narratives · agents · brain ·
-  orchestrator · sentinel · trace (old `correlation` + `news.intelligence` merged into
-  `narratives`). Read-only: reads the registry/manifests and A002's SQLite directly
-  (`node:sqlite`, readOnly); no backend API yet (`dashboard/backend/` empty).
+- **Known red tests (2026-10-28):** `security/sentinel/tests/test_sentinel_integration.py`
+  (2 tests) - T03 FAILs the sentinel secrets check: `HUMAN_CONFIRM_TOKEN` in
+  `T03/core/paper/__init__.py:15` is a public confirmation phrase, not a credential (regex false
+  positive). Operator decision pending: rename it, or whitelist it in `security/policies/sentinel.yaml`.
+  (The old `test_architecture` red - adapters importing `agents.*` - is fixed: adapters moved to
+  `bootstrap/adapters/`.)
 - **A002 (2026-09-28):** narratives now persist a topic `category` (A002's own
   `classify_category`, rules + ML) — new `category` column, auto-migrated. Live DB
   `a002.db` had been empty since 2026-09-15; restored from the legacy `a02.db`

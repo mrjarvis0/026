@@ -1,6 +1,6 @@
 import { run } from "./sentinel";
 
-// What the bus adapters answer today (bootstrap/adapters.py, orchestrator/adapters/a015.py).
+// What the bus adapters answer today (bootstrap/adapters/).
 // A UX list only: the op is still passed to the adapter, which rejects anything it doesn't know.
 export const BUS_OPS: Record<string, { key: "op" | "intent"; values: string[] }> = {
   A001: { key: "op", values: ["detectors", "skills", "chains", "metrics", "coverage", "flows", "labels", "health"] },

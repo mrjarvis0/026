@@ -89,9 +89,9 @@ PORT = _get_int("PORT", 8000)
 TRUSTED_HOSTS = [h.strip() for h in os.getenv("TRUSTED_HOSTS", "").split(",") if h.strip()]
 
 # --- T03 Strategy Intelligence Hub integration ---
-# Set T03_ENABLED=true in .env to activate T03 consensus as a soft veto in decide().
-# T03_PATH: absolute path to T03 root (auto-detected when empty: assumes fleet layout
-# agents/T01_… and agents/T03_… are siblings under the same 026 root).
+# Set T03_ENABLED=true in .env to activate T03 consensus as a soft veto on entries (engine.apply_t03_veto).
+# T03 is located automatically (fleet layout: agents/T01_... and agents/T03_... are siblings).
+# T03_SYMBOL is only the fallback; the veto asks T03 about the symbol T01 is trading.
 T03_ENABLED = _get_bool("T03_ENABLED", True)
 T03_SYMBOL = os.getenv("T03_SYMBOL", "BTC/USDT")
 T03_TIMEFRAME = os.getenv("T03_TIMEFRAME", "1h")

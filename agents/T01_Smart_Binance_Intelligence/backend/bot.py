@@ -26,6 +26,8 @@ _TF_MS = {
 # old a completed cycle may be before the feed counts as stale (seconds).
 MAX_CONSECUTIVE_ERRORS = 5
 STALE_FEED_SECONDS = 60.0
+# T03's consensus may download bars the first time; a slow T03 means "no veto", never a stalled cycle.
+T03_TIMEOUT_S = 20.0
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -153,6 +155,21 @@ class TradingBot:
             db.set_state("real_base_equity", str(equity_now))
         return float(db.get_state("real_base_equity", str(equity_now)))
 
+    async def _decide(self, df, params: dict):
+        """T01's signal, then the T03 soft veto on an entry (off the event loop; a slow or
+        failing T03 means no veto)."""
+        sig = signals.generate_signal(df, params)
+        if sig.action != "buy":
+            return sig
+        try:
+            out = await asyncio.wait_for(
+                asyncio.to_thread(engine.apply_t03_veto, sig, self.symbol), T03_TIMEOUT_S)
+        except Exception:  # includes the timeout
+            return sig
+        if out.details.get("t03_veto"):
+            self.log("info", f"{out.reason}")
+        return out
+
     # ---------- main loop ----------
     async def run_forever(self):
         while True:
@@ -252,7 +269,7 @@ class TradingBot:
         bars = self._closed_bars(ohlcv)
         df = indicators.compute_all(bars)
         cur_params = engine.load_params()
-        signal = signals.generate_signal(df, cur_params)
+        signal = await self._decide(df, cur_params)
         # Latest ATR feeds volatility-adaptive stops/sizing; NaN while warming up.
         atr_v = signals._safe(df.iloc[-1].get("atr"), 0.0) if len(df) else 0.0
         # Non-acting foresight (conservative/standard/aggressive) for the dashboard.

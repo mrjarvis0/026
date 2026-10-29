@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 
 from agents.A015_Exchange_Listing_Delisting_Intelligence.core import config_loader as cfg
+from agents.A015_Exchange_Listing_Delisting_Intelligence.core import event_log, poll_status
 from agents.A015_Exchange_Listing_Delisting_Intelligence.detectors import run_all
 from agents.A015_Exchange_Listing_Delisting_Intelligence.tools.diff_engine import diff_snapshots
 
@@ -50,13 +51,37 @@ def demo() -> int:
     return 0
 
 
-def poll(limit: int | None) -> int:
+def _log_events(res: dict) -> None:
+    """Detect over one exchange's diff and persist the events. Runs BEFORE the snapshot
+    advances (poller contract), so a failed write never loses the diff."""
+    res["reports"] = run_all(res["changes"], res["old_snapshot"], res["new_snapshot"])
+    flat = [r for reports in res["reports"].values() for r in reports]
+    for report in flat:   # what the bus relay needs to state the window, evidence and coverage honestly
+        report.update(snapshot_digest=res["old_digest"], old_snapshot_at=res["old_snapshot_at"],
+                      observed_at=res["observed_at"], spot_markets=res["spot_markets"])
+    event_log.append_events(res["exchange"], flat, res["old_digest"])
+
+
+def poll(limit: int | None, exchange_ids: list[str] | None = None, partial_ok: bool = False) -> int:
+    """Poll, log events durably, print a summary. Exit 1 if any exchange failed — unless
+    ``partial_ok`` and at least one succeeded (each exchange's health is in poll_status.json)."""
     from agents.A015_Exchange_Listing_Delisting_Intelligence.tools import ccxt_market_poller as poller
-    for eid, res in poller.poll(limit=limit).items():
-        reports = run_all(res["changes"], res["old_snapshot"], res["new_snapshot"])
-        counts = {k: len(v) for k, v in reports.items()}
-        print(f"[A015] {eid}: {len(res['changes'])} changes -> {counts}")
-    return 0
+    failed = 0
+    results = poller.poll(exchange_ids, limit=limit, on_changes=_log_events)
+    for eid, res in results.items():
+        if not res["ok"]:
+            failed += 1
+            print(f"[A015] {eid}: FAILED - {res['error']}")
+        elif res["baseline"]:
+            print(f"[A015] {eid}: baseline recorded ({len(res['new_snapshot'])} spot markets), no events")
+        else:
+            counts = {k: len(v) for k, v in res["reports"].items()}
+            print(f"[A015] {eid}: {len(res['changes'])} changes since {res['old_snapshot_at']} -> {counts}")
+    try:
+        poll_status.write_poll_status(results)
+    except OSError as exc:   # a status-file problem must not turn a good poll into a failure
+        print(f"[A015] could not write poll_status.json: {exc}")
+    return 0 if not failed or (partial_ok and failed < len(results)) else 1
 
 
 def _listed_bases(exchange_ids) -> dict[str, set]:
@@ -112,6 +137,9 @@ def main(argv=None) -> int:
     sub.add_parser("demo", help="Offline mock detector pipeline")
     poll_p = sub.add_parser("poll", help="Live poll (needs ccxt + network)")
     poll_p.add_argument("--limit", type=int, default=2)
+    poll_p.add_argument("--exchange", action="append", help="exchange id (repeatable); overrides --limit")
+    poll_p.add_argument("--partial-ok", action="store_true",
+                        help="exit 0 if at least one exchange succeeded (the supervisor uses this)")
     pend_p = sub.add_parser("pending", help="Announced-but-not-yet-listed (needs network)")
     pend_p.add_argument("--stale-days", type=float, default=3.0)
     pend_p.add_argument("--source", action="append", help="okx | binance (repeatable; default: all)")
@@ -121,7 +149,7 @@ def main(argv=None) -> int:
     if args.command == "demo":
         return demo()
     if args.command == "poll":
-        return poll(args.limit)
+        return poll(None if args.exchange else args.limit, args.exchange, args.partial_ok)
     if args.command == "pending":
         return pending(args.stale_days, args.source)
     return 1

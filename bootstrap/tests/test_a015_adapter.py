@@ -3,7 +3,8 @@ shared brain only within its declared surface.
 """
 from brain.access import AgentBrainView, NamespaceDenied
 from brain.store import Brain
-from orchestrator.adapters import a015
+from agents.A015_Exchange_Listing_Delisting_Intelligence.core import event_log
+from bootstrap.adapters import a015
 from orchestrator.event_bus import Message, MessageBus
 
 
@@ -60,3 +61,20 @@ def test_a015_manifest_declares_markets_write_and_no_execution():
 def test_a015_real_event_log_reader_is_honest_when_empty(tmp_path):
     out = a015._read_latest_events({"event_log_dir": str(tmp_path)})
     assert out["count"] == 0 and out["events"] == []
+
+
+def test_adapter_reads_what_a015_actually_writes(tmp_path):
+    # contract: the adapter read an event_log nothing ever wrote (count was always 0).
+    # What A015's own event_log writes must come back through the adapter, oldest first.
+    from datetime import datetime, timezone
+
+    older = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    newer = datetime(2026, 1, 2, tzinfo=timezone.utc)
+    event_log.append_events("okx", [{"event_type": "NEW_LISTING", "exchange": "okx", "symbol": "A/USDT"}],
+                            "d1", log_dir=tmp_path, now=newer)
+    event_log.append_events("binance", [{"event_type": "DELISTING", "exchange": "binance", "symbol": "B/USDT"}],
+                            "d2", log_dir=tmp_path, now=older)
+    out = a015._read_latest_events({"event_log_dir": str(tmp_path)})
+    assert out["count"] == 2
+    assert [e["symbol"] for e in out["events"]] == ["B/USDT", "A/USDT"]   # chronological, not by exchange
+    assert all(e["event_id"].startswith("evt_") for e in out["events"])
