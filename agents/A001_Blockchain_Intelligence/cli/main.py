@@ -885,13 +885,20 @@ def cmd_ingest(args: argparse.Namespace) -> int:
                 f"mode       : follow head at {poller.confirmations} confirmations"
                 + ("  +tokens" if wants_tokens else "")
             )
-            results = poller.run(max_steps=args.blocks)
+            # One block at a time, drained after each: the checkpoint advances when a record is queued, so a
+            # kill mid-run must not leave checkpointed blocks that were never stored.
+            from ingestion.interleave import poll_and_drain
+
+            sink = writer if selective is None else selective
+            results, reports = poll_and_drain(poller, lambda chunk: sink.consume(chunk, queue), args.blocks)
             if selective is not None:
-                selective.consume(results, queue)
                 report = DrainReport(drained=0, written=selective.stats.blocks,
                                      duplicates=0, rejections=())
             else:
-                report = writer.consume(results, queue)
+                report = DrainReport(
+                    drained=sum(r.drained for r in reports), written=sum(r.written for r in reports),
+                    duplicates=sum(r.duplicates for r in reports),
+                    rejections=tuple(x for r in reports for x in r.rejections))
 
             statuses: dict[str, int] = {}
             for result in results:
