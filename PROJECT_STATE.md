@@ -31,6 +31,7 @@
   findings: A005 Market Data (README-only) is the critical path for the whole R team and part of
   the Desk; A015's events carry `maturity: implemented`, so an A->T hard-stop pause is blocked by
   the maturity gate (G-ORG-06); T03's scalper breakers are inert (`scalper.py:267,275`).
+- **Slice 2a pause flags (2026-10-29, platform side only; T01 untouched)** - `bootstrap/consumers/risk_flagger.py` (runs inside `bootstrap.consume`, `min_maturity="implemented"` because a flag only blocks new entries) turns A015 Binance facts into `data/risk/pause_flags.json` (atomic, versioned): `listing.delisted` -> no-expiry flag, `status_changed` to BREAK/HALT -> 24 h flag, TRADING / `listing.new` -> cleared; each change publishes a `system.risk.flag_set` / `flag_cleared` audit event (source SYS, `causation_id` = trigger). Operator: `python -m bootstrap.flags list | set <subject> --hours N | clear <subject>`. Live: 19 real BREAK flags set on the first cycle. **S2b (T01 reads the file) is NOT built** - funds boundary, needs operator sign-off after S2a has run on live events.
 - **Phase 1 event bus (2026-10-28, ADR-0005)** - durable, evidence-labelled events. A015's facts now
   reach a persistent brain: A015 `poll` (+ `poll_status.json`, enriched `event_log`) -> `bootstrap/relay.py`
   -> `data/bus/bus.db` (SQLite WAL: immutable `events`, per-consumer cursor/retry/park, `source_health`,

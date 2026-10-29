@@ -1,0 +1,6 @@
+type: system.risk.flag_set
+schema_version: 1
+platform: true            # only the platform (source "SYS") may publish this
+data:
+  required: {subject: str, reason: str, expires_at: any, by: str}
+  optional: {trigger: any}

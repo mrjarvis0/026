@@ -1,0 +1,6 @@
+type: system.risk.flag_cleared
+schema_version: 1
+platform: true            # only the platform (source "SYS") may publish this
+data:
+  required: {subject: str, reason: str, by: str}
+  optional: {trigger: any}

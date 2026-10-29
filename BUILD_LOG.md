@@ -4476,3 +4476,27 @@ needs `armed` + the human-confirm phrase (`submit_order` / `submit_stop` / `canc
 - **Untested:** the real testnet (no keys here) and `step()` end to end (190k-bar download). First armed run should be
   watched: exchange rounding/min-notional of the stop, and `cancel_all_orders` also cancels any non-stop order.
 - Ruling: cancel is "all open orders for the symbol" (the scalper owns the symbol on that account).
+
+
+---
+
+## 2026-10-29 (cont.) · Slice 2a: risk flagger + pause-flags file (operator: "Approve S2a")
+
+Platform side of the Slice 2 design (`docs/superpowers/specs/2026-10-29-slice2-t01-pause-flags-design.md`). **T01 not touched.**
+- `bootstrap/consumers/risk_flagger.py` (consumer `risk_flagger`, `min_maturity="implemented"`, idempotent by event_id), wired
+  into `bootstrap.consume` after the librarian (`--flags` overrides the path); `bootstrap/risk_flags.py` (atomic versioned
+  file, `active_flags`, audit-event builder); `bootstrap/flags.py` operator CLI; schemas `system.risk.flag_set/flag_cleared`.
+- Rules: Binance only; `a015.listing.delisted` -> no-expiry flag; `status_changed` -> BREAK/HALT 24 h flag (never shortens a
+  no-expiry flag); TRADING / `a015.listing.new` clears. The audit event is published BEFORE the file write (idempotent id), so a
+  crash/failed write is repaired by redelivery without a duplicate audit.
+- Tests (15, `bootstrap/tests/test_risk_flagger.py`): rules, redelivery, failed write retried, atomic write, torn file, expiry,
+  CLI roundtrip + audit, consume wiring, live-file isolation regression.
+- **Defect found by the live run (mine):** wiring the flagger into `consume.main` made the older consume CLI tests write the REAL
+  `data/risk/pause_flags.json` (a fake `T1/USDT` delisting flag appeared). Fixed with `bootstrap/tests/conftest.py` (autouse
+  redirect of `FLAGS_FILE`) + a regression test; the junk row was removed from the live file.
+- Live: first supervisor cycle delivered 162 events to `risk_flagger` (0 failed/parked) and set 19 real BREAK flags (24 h).
+- **Open / fragile:** flags expire silently (no `flag_cleared` audit on expiry); the file is read by nobody until S2b; BREAK on
+  USDC/FDUSD pairs is common noise - S2b should decide whether T01 cares only about its own quote asset.
+- **Not green, not mine:** A001 ingest has timed out (900 s) 3x in a row on the live supervisor and holds `a001.db`, so
+  `test_a001_metrics_db_query_through_bus` fails even alone right now (it passed alone earlier). Needs a look (RPC health).
+- Next: watch flags on live events; operator sign-off for S2b (T01 `pause_flags.py` + one BUY-only condition in `bot._cycle`).
