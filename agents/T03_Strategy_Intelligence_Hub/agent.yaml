@@ -32,7 +32,7 @@ trust:
 invariants:
   execution_enabled: true    # $009-scalper CAN submit orders — but ONLY to Binance Futures Testnet
   testnet_only: true         # set_sandbox_mode(True) hard-coded in broker; no live keys supported
-  paper_by_default: true     # armed=False by default; --arm + HUMAN_CONFIRM_TOKEN required
+  paper_by_default: true     # armed=False by default; --arm + HUMAN_CONFIRM_PHRASE required
   reports_deviation_only: false  # $009 takes action — not pure intelligence
 
 evidence:

@@ -24,7 +24,7 @@ sys.path.insert(0, str(HUB_ROOT))
 from _common import load_agent  # noqa: E402  (also reconfigures stdout to UTF-8)
 from core.config import LOGS_DIR  # noqa: E402
 from core.live import LiveTrader  # noqa: E402
-from core.paper import HUMAN_CONFIRM_TOKEN  # noqa: E402
+from core.paper import HUMAN_CONFIRM_PHRASE  # noqa: E402
 
 
 def _log(agent: str, line: str) -> None:
@@ -73,14 +73,14 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="Run an agent as a (paper) trader on testnet.")
     ap.add_argument("agent", help="agent id, e.g. '$005-seykota'")
     ap.add_argument("--arm", action="store_true", help="actually transmit orders to the testnet")
-    ap.add_argument("--confirm", default=None, help=f"must equal '{HUMAN_CONFIRM_TOKEN}' to send")
+    ap.add_argument("--confirm", default=None, help=f"must equal '{HUMAN_CONFIRM_PHRASE}' to send")
     ap.add_argument("--loop", action="store_true", help="run continuously, once per daily bar close")
     ap.add_argument("--interval", type=float, default=None,
                     help="loop sleep seconds (overrides daily alignment)")
     args = ap.parse_args()
 
-    if args.arm and args.confirm != HUMAN_CONFIRM_TOKEN:
-        print(f"--arm requires --confirm {HUMAN_CONFIRM_TOKEN} (nothing sent).", file=sys.stderr)
+    if args.arm and args.confirm != HUMAN_CONFIRM_PHRASE:
+        print(f"--arm requires --confirm {HUMAN_CONFIRM_PHRASE} (nothing sent).", file=sys.stderr)
         return 2
 
     agent_dir, config, strategy = load_agent(args.agent)

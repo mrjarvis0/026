@@ -12,7 +12,7 @@ from dataclasses import dataclass
 
 #: The caller must pass this exact token to actually transmit an order. Requiring a
 #: literal, non-default value makes "send" an explicit human act, not a default path.
-HUMAN_CONFIRM_TOKEN = "I-CONFIRM-PAPER-ORDER"
+HUMAN_CONFIRM_PHRASE = "I-CONFIRM-PAPER-ORDER"
 
 
 @dataclass
@@ -36,8 +36,8 @@ class OrderRefused(RuntimeError):
 
 def require_confirmation(confirm_token: str | None) -> None:
     """Gate every real transmission behind the explicit human token."""
-    if confirm_token != HUMAN_CONFIRM_TOKEN:
+    if confirm_token != HUMAN_CONFIRM_PHRASE:
         raise OrderRefused(
             "Refusing to send order: human confirmation required. "
-            f"Pass confirm_token='{HUMAN_CONFIRM_TOKEN}' to transmit to the testnet/practice account."
+            f"Pass confirm_token='{HUMAN_CONFIRM_PHRASE}' to transmit to the testnet/practice account."
         )

@@ -9,7 +9,7 @@
     6. RiskEngine gates     → sizing, circuit breakers, daily limits
     7. Futures broker       → open/close position on testnet (dry-run by default)
 
-Dry-run by default: pass armed=True + confirm=HUMAN_CONFIRM_TOKEN to transmit.
+Dry-run by default: pass armed=True + confirm=HUMAN_CONFIRM_PHRASE to transmit.
 Real money is NOT supported here (testnet only, Constitution R-B.4).
 """
 from __future__ import annotations
@@ -27,7 +27,7 @@ import pandas as pd
 from ..config import HUB_ROOT, LiveConfig
 from ..data import get_data
 from ..live.risk import RiskEngine, RiskLimits
-from ..paper import HUMAN_CONFIRM_TOKEN
+from ..paper import HUMAN_CONFIRM_PHRASE
 from ..scan import consensus, scan
 from .fuse import FusedSignal, SignalFuser, ScannerConsensus
 from .mtf import MTFAnalyzer
@@ -320,7 +320,7 @@ class FuturesScalper:
         # 10. Transmit to futures testnet
         try:
             from ..paper import binance_futures_testnet as fut
-            from ..paper import HUMAN_CONFIRM_TOKEN as _TOKEN
+            from ..paper import HUMAN_CONFIRM_PHRASE as _TOKEN
             resp = fut.submit_order(
                 self._broker,
                 __import__("core.paper", fromlist=["PaperOrder"]).PaperOrder(

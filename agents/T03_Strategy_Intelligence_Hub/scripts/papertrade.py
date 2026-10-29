@@ -20,7 +20,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from _common import fetch_for, load_agent, primary_symbol  # noqa: E402
-from core.paper import HUMAN_CONFIRM_TOKEN, OrderRefused, PaperOrder  # noqa: E402
+from core.paper import HUMAN_CONFIRM_PHRASE, OrderRefused, PaperOrder  # noqa: E402
 
 BROKERS = {
     "crypto": "core.paper.binance_testnet",
@@ -33,7 +33,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="Paper-trade an agent (dry-run by default).")
     ap.add_argument("agent", help="agent id, e.g. '$001-dennis'")
     ap.add_argument("--send", action="store_true", help="actually transmit to testnet/practice")
-    ap.add_argument("--confirm", default=None, help=f"must equal '{HUMAN_CONFIRM_TOKEN}' to send")
+    ap.add_argument("--confirm", default=None, help=f"must equal '{HUMAN_CONFIRM_PHRASE}' to send")
     ap.add_argument("--notional", type=float, default=None, help="override notional to size the order")
     args = ap.parse_args()
 
@@ -64,7 +64,7 @@ def main() -> int:
 
     if not args.send:
         print("\n[DRY-RUN] Nothing sent. To transmit to the testnet/practice account, re-run with:")
-        print(f"    --send --confirm {HUMAN_CONFIRM_TOKEN}")
+        print(f"    --send --confirm {HUMAN_CONFIRM_PHRASE}")
         return 0
 
     if order is None:

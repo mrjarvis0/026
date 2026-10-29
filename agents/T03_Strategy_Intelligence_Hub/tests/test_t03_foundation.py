@@ -288,14 +288,14 @@ def test_reg_predict_oos_gate() -> None:
 # ============================================================
 
 def test_arch_execution_gated() -> None:
-    """ARCH-01: No order reaches the broker without HUMAN_CONFIRM_TOKEN.
+    """ARCH-01: No order reaches the broker without HUMAN_CONFIRM_PHRASE.
 
     Check that the paper broker raises without the correct token.
     """
     _section("C. Architecture tests")
-    from core.paper import HUMAN_CONFIRM_TOKEN
-    _assert(isinstance(HUMAN_CONFIRM_TOKEN, str) and len(HUMAN_CONFIRM_TOKEN) > 0,
-            "ARCH-01a HUMAN_CONFIRM_TOKEN is defined")
+    from core.paper import HUMAN_CONFIRM_PHRASE
+    _assert(isinstance(HUMAN_CONFIRM_PHRASE, str) and len(HUMAN_CONFIRM_PHRASE) > 0,
+            "ARCH-01a HUMAN_CONFIRM_PHRASE is defined")
 
     from core.paper.binance_testnet import require_confirmation
     raised = False

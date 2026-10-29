@@ -21,7 +21,7 @@ HUB_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(HUB_ROOT))
 
 from _common import HUB_ROOT  # noqa: E402,F401  (also configures UTF-8 stdout)
-from core.paper import HUMAN_CONFIRM_TOKEN  # noqa: E402
+from core.paper import HUMAN_CONFIRM_PHRASE  # noqa: E402
 from core.registry import load_agent_config, resolve_agent  # noqa: E402
 from core.futures.scalper import FuturesScalper  # noqa: E402
 
@@ -70,7 +70,7 @@ def main() -> int:
                     help="agent id (default: '$009-scalper')")
     ap.add_argument("--arm", action="store_true", help="transmit orders to the Futures Testnet")
     ap.add_argument("--confirm", default=None,
-                    help=f"must equal '{HUMAN_CONFIRM_TOKEN}' to send")
+                    help=f"must equal '{HUMAN_CONFIRM_PHRASE}' to send")
     ap.add_argument("--loop", action="store_true", help="run continuously on a timer")
     ap.add_argument("--interval", type=float, default=300.0,
                     help="loop interval in seconds (default 300 = 5 min, matches 5m bars)")
@@ -78,8 +78,8 @@ def main() -> int:
                     help="bypass data cache, always re-download")
     args = ap.parse_args()
 
-    if args.arm and args.confirm != HUMAN_CONFIRM_TOKEN:
-        print(f"ERROR: --arm requires --confirm '{HUMAN_CONFIRM_TOKEN}'")
+    if args.arm and args.confirm != HUMAN_CONFIRM_PHRASE:
+        print(f"ERROR: --arm requires --confirm '{HUMAN_CONFIRM_PHRASE}'")
         return 1
 
     if not args.loop:
