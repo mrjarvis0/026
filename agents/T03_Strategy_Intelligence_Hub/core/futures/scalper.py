@@ -26,12 +26,48 @@ import pandas as pd
 
 from ..config import HUB_ROOT, LiveConfig
 from ..data import get_data
-from ..live.risk import RiskEngine, RiskLimits
+from ..live.risk import RiskEngine, RiskLimits, RiskState
 from ..paper import HUMAN_CONFIRM_PHRASE
 from ..scan import consensus, scan
 from .fuse import FusedSignal, SignalFuser, ScannerConsensus
 from .mtf import MTFAnalyzer
 from .predict import CandlePredictor
+
+
+# ---------------------------------------------------------------------------
+# Risk wiring (pure helpers — testable without market data)
+# ---------------------------------------------------------------------------
+
+def risk_gate(limits: RiskLimits, state: dict, equity: float) -> tuple[RiskEngine, bool, str]:
+    """RiskEngine whose state is carried across steps in the scalper state dict.
+
+    A fresh engine every step (the old code) can never see a drawdown, a daily loss or a trade count,
+    so no breaker could trip. The state dict is updated in place; the caller persists it. A drawdown /
+    equity-floor halt is sticky: clear ``risk_halted`` in scalper_state.json to resume.
+    """
+    rs = RiskState(
+        peak_equity=float(state.get("equity_peak") or 0.0),
+        day=state.get("daily_date") or "",
+        day_start_equity=float(state.get("day_start_equity") or 0.0),
+        trades_today=int(state.get("trades_today", 0)),
+        halted=bool(state.get("risk_halted", False)),
+        halt_reason=state.get("risk_halt_reason", ""),
+    )
+    engine = RiskEngine(limits, rs)
+    engine.update_equity(equity)               # rolls the day, tracks the peak
+    ok, reason = engine.can_trade(equity)      # (can_trade takes the equity FLOAT, not a dict)
+    state.update(equity_peak=rs.peak_equity, daily_date=rs.day, day_start_equity=rs.day_start_equity,
+                 trades_today=rs.trades_today, risk_halted=rs.halted, risk_halt_reason=rs.halt_reason)
+    return engine, ok, reason
+
+
+def size_units(risk: RiskEngine, equity: float, price: float, atr: float) -> float:
+    """Units for a stop one ATR away. position_size wants the stop as a FRACTION of price; the old
+    code passed the ATR in price units, making every size ~price-times too small."""
+    if price <= 0:
+        return 0.0
+    stop_distance = atr if atr > 0 else price * 0.01
+    return risk.position_size(equity, price, stop_distance / price)
 
 
 # ---------------------------------------------------------------------------
@@ -258,21 +294,10 @@ class FuturesScalper:
 
         # 7. Account state
         equity, current_units, mode = self._account()
-        if equity_peak := state.get("equity_peak"):
-            equity_peak = float(equity_peak)
-        else:
-            equity_peak = equity
 
-        # 8. RiskEngine check
-        risk = RiskEngine(self.risk_limits)
-        risk_state = {
-            "equity": equity,
-            "equity_peak": max(equity, equity_peak),
-            "daily_pnl": float(state.get("daily_pnl", 0.0)),
-            "daily_date": state.get("daily_date"),
-            "trades_today": int(state.get("trades_today", 0)),
-        }
-        can_trade, block_reason = risk.can_trade(risk_state)
+        # 8. RiskEngine check — state persists across steps (breakers can actually trip)
+        risk, can_trade, block_reason = risk_gate(self.risk_limits, state, equity)
+        self._save_state(state)
         if not can_trade:
             notes.append(f"RiskEngine BLOCKED: {block_reason}")
             fused = FusedSignal(0, 0.0, True, f"risk: {block_reason}",
@@ -286,8 +311,7 @@ class FuturesScalper:
 
         if not fused.stand_aside and can_trade and fused.direction != 0:
             atr = float((closed["High"] - closed["Low"]).ewm(span=14, adjust=False).mean().iloc[-1])
-            stop_distance = atr if atr > 0 else close_price * 0.01
-            target_units = risk.position_size(equity, close_price, stop_distance) * fused.direction
+            target_units = size_units(risk, equity, close_price, atr) * fused.direction
             target_units = max(min(target_units, 1e6), -1e6)  # sanity cap
 
             delta = target_units - current_units
