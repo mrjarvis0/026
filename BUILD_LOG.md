@@ -4500,3 +4500,18 @@ Platform side of the Slice 2 design (`docs/superpowers/specs/2026-10-29-slice2-t
 - **Not green, not mine:** A001 ingest has timed out (900 s) 3x in a row on the live supervisor and holds `a001.db`, so
   `test_a001_metrics_db_query_through_bus` fails even alone right now (it passed alone earlier). Needs a look (RPC health).
 - Next: watch flags on live events; operator sign-off for S2b (T01 `pause_flags.py` + one BUY-only condition in `bot._cycle`).
+
+
+---
+
+## 2026-10-29 (cont.) · A001 ingest timeouts: root cause = the F: drive (investigation, no fix applied)
+
+- Symptom: supervisor `A001 ingest` hit the 900 s timeout 3x in a row (60 blocks used to take 5-15 min, so it sat on the edge).
+- Not RPC: a fresh DB ingests 3 blocks in 6 s (0.47 s/call). Not corruption: `PRAGMA quick_check` on `a001.db` = ok (84,828 pages).
+- Cause: **F: is a 5400 rpm laptop HDD** (Toshiba MQ04ABF100, RAID bus); C: is NVMe. Measured: F: read 54 MB/s, F: write+fsync
+  19 MB/s vs C: 150 MB/s. `quick_check` took 17.5 min with ~1.4 s CPU. A001 stores ~0.70 MB/block with indexes on a 340 MB DB
+  (random I/O), so each run gets slower as the DB grows; a 65 MB WAL had also accumulated.
+- Options (operator's call, none applied): (a) move `a001.db` + `data/bus` + `data/brain` to C: (biggest win); (b) run ingest with
+  `--selective` (kilobytes per block instead of 0.70 MB); (c) fewer blocks per run / larger `RUN_TIMEOUT_SEC`.
+- Also this session: `agents/T03.../core/data/` (5 source files) was hidden by the blanket `data/` ignore and never committed;
+  now tracked (35c2752), fresh-clone import of 13 key modules verified.
