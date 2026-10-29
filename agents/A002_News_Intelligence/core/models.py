@@ -73,6 +73,7 @@ class IngestReport(BaseModel):
     duplicates: int = 0
     failed: int = 0
     narratives: int = 0
+    recovered: int = 0          # stored-but-unclustered items picked up again this cycle
     errors: list[str] = Field(default_factory=list)
     sources: list[str] = Field(default_factory=list)
 

@@ -12,6 +12,8 @@ Purpose:
 
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
+
 from agents.A002_News_Intelligence.config.paths import DATABASE_FILE
 from agents.A002_News_Intelligence.config.settings import Settings
 from agents.A002_News_Intelligence.intelligence.narrative import NarrativeEngine
@@ -44,6 +46,14 @@ async def ingest(settings: Settings | None = None, db_path: str | None = None) -
     report = IngestReport()
     storage = Storage(db_path)
     await storage.init()
+
+    # Recovery: items stored by an earlier cycle whose clustering failed (they would otherwise look
+    # like duplicates forever and never reach a narrative).
+    since = (datetime.now(UTC) - timedelta(hours=settings.narrative.window_hours)).isoformat()
+    recovered = await storage.load_unclustered_items(since)
+    for item in recovered:
+        item.entities = extract_entities(f"{item.title} {item.content}")
+    report.recovered = len(recovered)
 
     raw_items, errors = await fetch_all(settings)
     report.fetched = len(raw_items)
@@ -86,13 +96,18 @@ async def ingest(settings: Settings | None = None, db_path: str | None = None) -
             report.failed += 1
             report.errors.append(f"{item.source}:{exc}")
 
-    if new_items:
+    to_cluster = recovered + new_items
+    if to_cluster:
         engine = NarrativeEngine(
             window_hours=settings.narrative.window_hours,
             min_mentions=settings.narrative.min_mentions,
         )
-        narratives = await engine.update(storage, new_items)
-        report.narratives = len(narratives)
+        try:
+            narratives = await engine.update(storage, to_cluster)
+            report.narratives = len(narratives)
+        except Exception as exc:  # items are already stored; the next cycle re-clusters them
+            report.failed += 1
+            report.errors.append(f"cluster: {type(exc).__name__}: {exc}")
 
     return report
 

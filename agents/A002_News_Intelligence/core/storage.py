@@ -349,6 +349,32 @@ class Storage:
             )
             await db.commit()
 
+    async def load_unclustered_items(self, since: str, limit: int = 500) -> list[NormalizedItem]:
+        """Stored items fetched since ``since`` that are in NO narrative. Every clustered item is linked
+        by add_narrative_item, so "no link" reliably means a failed clustering step, not a choice."""
+
+        async with aiosqlite.connect(self.db_path) as db:
+            cursor = await db.execute(
+                """
+                SELECT i.id, i.source, i.source_key, i.url, i.title, i.content, i.author, i.published_at,
+                       i.fetched_at, i.language, i.platform, i.title_fp, i.content_fp
+                FROM items i LEFT JOIN narrative_items ni ON ni.item_id = i.id
+                WHERE ni.item_id IS NULL AND i.fetched_at >= ?
+                ORDER BY i.id LIMIT ?
+                """,
+                (since, limit),
+            )
+            rows = await cursor.fetchall()
+        return [
+            NormalizedItem(
+                id=r[0], source=r[1], source_key=r[2], url=r[3], title=r[4], content=r[5] or "", author=r[6],
+                published_at=datetime.fromisoformat(r[7]) if r[7] else None,
+                fetched_at=datetime.fromisoformat(r[8]), language=r[9] or "en", platform=r[10] or "web",
+                title_fingerprint=r[11] or "", content_fingerprint=r[12] or "",
+            )
+            for r in rows
+        ]
+
     async def add_narrative_item(
         self, narrative_id: int, item: NormalizedItem, stance: str
     ) -> None:
