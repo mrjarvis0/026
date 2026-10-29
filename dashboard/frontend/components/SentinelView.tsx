@@ -20,7 +20,7 @@ type Policy = {
 };
 type Decision = { decision: "allow" | "hold" | "deny"; reason: string };
 
-const CHECKS = ["manifest", "trust", "execution", "secrets", "registry", "deviation"] as const;
+const CHECKS = ["manifest", "trust", "execution", "secrets", "registry", "deviation", "contracts"] as const;
 const FILE_SCANS = new Set(["execution", "secrets", "deviation"]);
 const UNDECLARED = "undeclared.tool";
 
