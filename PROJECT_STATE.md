@@ -23,11 +23,11 @@
   (`markets`, the first persistent brain). Maturity is a code path (`consume(min_maturity="validated")`
   default; the librarian is a recorder at `implemented`); a baseline poll is never "ok"; the health monitor
   publishes one `system.source.stale` per outage. New sentinel check `contracts` (manifest `produces`/
-  `consumes`). Supervisor now also runs `a015` (every 15 min, binance/bybit/coinbase/okx) and `bus`
+  `consumes`). Supervisor now also runs `a015` (every 15 min, binance/coinbase/okx) and `bus`
   (every 5 min); **running since 2026-10-28 13:40Z** (hidden, via `start-live.vbs`; not yet in the Startup folder). First live
   cycle found and fixed 6 defects (see BUILD_LOG). State: `data/bus/bus.db` 452 events (119 new listings, 24
   delistings, 289 pair changes, 19 real status changes), `data/brain/brain.db` 451 `markets` records; binance /
-  coinbase / okx fresh, **bybit unreachable from this network (STALE)**. Check: `python -m bootstrap.bus_stats`. Tests: platform 194 pass
+  coinbase / okx fresh, bybit was unreachable from this network and was removed from `config/bus.json` (2026-10-29). Check: `python -m bootstrap.bus_stats`. Tests: platform 194 pass
   + 2 known T03-secret red; A015 45, A002 64, A007 11, T01 53, T03 18. Not built: Slice 2 (T01 pause flag,
   needs its own design review), Slice 3 (A002 relay), dashboard pages for events/approvals (the sentinel
   page does not show the new `contracts` check yet).

@@ -61,7 +61,7 @@ PY = sys.executable
 
 # Event-bus jobs (Phase 1). config/bus.json is plain JSON so this supervisor stays stdlib-only.
 BUS_CONFIG_FILE = REPO / "config" / "bus.json"
-_BUS_DEFAULTS = {"a015_exchanges": ["binance", "bybit", "coinbase", "okx"], "a015_every_min": 15,
+_BUS_DEFAULTS = {"a015_exchanges": ["binance", "coinbase", "okx"], "a015_every_min": 15,
                  "stale_factor": 2, "retention_days": 90}
 A015_CLI = "agents.A015_Exchange_Listing_Delisting_Intelligence.cli"
 BUS_EVERY_MIN = 5             # relay + consume are two short subprocesses; A015 only produces every 15 min

@@ -164,7 +164,7 @@ def test_a015_command_lists_all_configured_exchanges(monkeypatch):
     [args] = calls
     assert args[0] == "agents.A015_Exchange_Listing_Delisting_Intelligence.cli" and args[1] == "poll"
     exchanges = [args[i + 1] for i, a in enumerate(args) if a == "--exchange"]
-    assert exchanges == sup.load_bus_config()["a015_exchanges"] and len(exchanges) == 4
+    assert exchanges == sup.load_bus_config()["a015_exchanges"] and len(exchanges) == 3 and "bybit" not in exchanges
     assert "--partial-ok" in args      # one unreachable exchange must not fail the whole job
 
 
@@ -217,4 +217,4 @@ def test_old_state_gains_a015_and_bus_keys():
 
 def test_missing_bus_config_falls_back_to_defaults(tmp_path):
     cfg = sup.load_bus_config(tmp_path / "nope.json")
-    assert cfg["a015_exchanges"] == ["binance", "bybit", "coinbase", "okx"] and cfg["a015_every_min"] == 15
+    assert cfg["a015_exchanges"] == ["binance", "coinbase", "okx"] and cfg["a015_every_min"] == 15

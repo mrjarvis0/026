@@ -21,7 +21,7 @@ _REPO_ROOT = Path(__file__).resolve().parents[1]
 HANDLER_TIMEOUT_S = 60.0  # one hung agent call must not stall the whole bus
 BUS_CONFIG = _REPO_ROOT / "config" / "bus.json"
 BRAIN_DB = _REPO_ROOT / "data" / "brain" / "brain.db"
-_BUS_DEFAULTS = {"a015_exchanges": ["binance", "bybit", "coinbase", "okx"], "a015_every_min": 15,
+_BUS_DEFAULTS = {"a015_exchanges": ["binance", "coinbase", "okx"], "a015_every_min": 15,
                  "stale_factor": 2, "retention_days": 90}
 
 

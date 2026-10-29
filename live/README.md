@@ -42,7 +42,7 @@ Stop everything (dashboard, T01, supervisor) with `stop-026.bat`.
 Two more jobs run on the same tick, reusing the retry/backoff/lock below. Config: `config/bus.json`.
 
 - **A015 poll** every `a015_every_min` (15) minutes for the configured exchanges
-  (`binance, bybit, coinbase, okx`) — one `fetch_markets` call each, network only, no API keys.
+  (`binance, coinbase, okx`) — one `fetch_markets` call each, network only, no API keys.
   Writes `memory/event_log/` and `memory/poll_status.json`.
 - **Bus cycle** every 5 minutes: `python -m bootstrap.relay --once` (A015 facts -> `data/bus/bus.db`,
   source health, stale-source events) then `python -m bootstrap.consume --once` (-> persistent brain).
