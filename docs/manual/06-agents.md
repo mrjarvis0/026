@@ -13,6 +13,11 @@
 
 ---
 
+> **Superseded in part (2026-10-28):** the fleet is now organised into four teams
+> (A / R / T / X) — see [`docs/teams/README.md`](../teams/README.md) and
+> [ADR-0006](../adr/ADR-0006-fleet-teams.md). §1 below is the earlier three-layer view,
+> kept for history; §2's T01 row and §4 are corrected.
+
 ## 1. The three fleet layers
 
 | Layer | Series | Can it act on the world? | Trust (§6 of `AGENTS.md`) | Members today |
@@ -39,7 +44,7 @@ read-only intelligence agent would make the name lie about
 | `A001` | Blockchain Intelligence | Intelligence | On-chain: whales, flows, anomaly | substantial | ✅ `agent.yaml` + `config/agents/registry.yaml` |
 | `A002` | News Intelligence | Intelligence | Fake-news / rumor / market impact | substantial | ✅ `agent.yaml` + `config/agents/registry.yaml` |
 | `A007` | Public-Record Intelligence | Intelligence | Government/insider records — Congress & insider trades, 13F, lobbying, patents, clinical trials | partial (pipeline + 2 detectors + tests; ingestion **mock-only**, no live fetch/CLI — merged 2026-09-18) | ✅ `agent.yaml` + `config/agents/registry.yaml` (sentinel PASS) |
-| `T01` | Smart Binance Intelligence | Execution | Binance spot trading — paper-trade now, real orders locked behind a 70%-accuracy gate | built (live FastAPI dashboard; paper trading with fee-aware PnL, ATR/trailing stops, VWAP confluence, loss reflection — see agent.md §8, updated 2026-09-18) | ❌ see [§4](#4-open-item-t01-is-not-yet-onboarded) |
+| `T01` | Smart Binance Intelligence | Execution | Binance spot trading — paper-trade now, real orders locked behind a 70%-accuracy gate | built (live FastAPI dashboard; paper trading with fee-aware PnL, ATR/trailing stops, VWAP confluence, loss reflection — see agent.md §8, updated 2026-09-18) | ✅ `agent.yaml` + `config/agents/registry.yaml` (sentinel PASS; corrected 2026-10-28 — see [§4](#4-open-item-t01-is-not-yet-onboarded)) |
 | `T02` | Swarm Trading Intelligence | Execution* | Market consensus: a 1000-bot agent-based swarm simulating how a market reacts to a trade event | built (swarm sim + SQLite store + CLI; 4 tests pass) | ✅ `agent.yaml` + `config/agents/registry.yaml` (sentinel PASS) |
 
 **\*T02's numbering is an open call.** By §1's one-line test — *does it ever place
@@ -68,6 +73,12 @@ contract and passes the sentinel scan.
 ---
 
 ## 4. Open item: T01 is not yet onboarded
+
+> **Update 2026-10-28:** the first three bullets below are resolved — T01 has had an
+> `agent.yaml`, a registry row and an `AGENTS.md` §3 row since 2026-09-18. Still open:
+> the T-series trust tier and wiring T01's unlock into `sentinel.gate`, now tracked in
+> [`docs/teams/03-trading-desk.md`](../teams/03-trading-desk.md) §3 (proposal: an
+> orthogonal `execution_tier` field). The text below is the original 2026-09 note.
 
 Flagging this rather than fixing it silently — it's a real gap, not a documentation
 nitpick:

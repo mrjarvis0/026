@@ -104,8 +104,33 @@ decision`). Not a chat wrapper. Lives at `agents/<AXX_Name>/`.
 **Vertical pipeline** — the full stack an agent owns end-to-end; the platform
 surrounds it but never reaches inside.
 
-**Fleet** — all the domain agents (`A001`–`A006` planned). The fleet is only as strong
+**Fleet** — all the domain agents across the four teams (`A`, `R`, `T`; see **Team**). The fleet is only as strong
 as its weakest agent — and its weakest claim.
+
+**Team** — one of the four groups the fleet is divided into: Intelligence Team (`A`),
+Analysis Bureau (`R`), Trading Desk (`T`), Control Tower (`X`). An agent is classified
+by four ordered questions (money/order → T; raw external source → A; derives from
+other agents, read-only → R; runs/monitors agents → X), never by its name. See
+[`docs/teams/`](../teams/README.md) and [ADR-0006](../adr/ADR-0006-fleet-teams.md).
+
+**Collector / analyst** — a *collector* (`A`) fetches raw facts from an external source;
+an *analyst* (`R`) derives conclusions from other agents' output and may not fetch
+externally. An analyst's confidence never exceeds its weakest input (`AGENTS.md` §4).
+
+**Steward vs machinery** — platform actors (orchestrator, sentinel, librarian,
+operator-io) are the *machinery* that executes; Control Tower (`X`) agents are their
+*stewards*: they design, monitor, tune and repair, and never replace the machinery or
+bypass the sentinel.
+
+**Handoff** — a transfer of responsibility between agents, teams, a human, or build
+sessions. Four kinds: intel (A→R/T facts), human (approvals), task (orchestrator →
+agent), session (`PROJECT_STATE.md` + `BUILD_LOG.md`). The sender owns it until the
+receiver acknowledges. See [`docs/teams/05-handoffs-and-contracts.md`](../teams/05-handoffs-and-contracts.md).
+
+**Lane (self-improvement)** — one of three tiers limiting what the Evolver (`X06`) may
+change: *auto* (allowlisted, bounded, reversible, non-money knobs, auto-rollback),
+*propose-only* (rules, thresholds, prompts, code — operator approval), *forbidden*
+(trading parameters, execution gate, funds, secrets, trust levels).
 
 **Kernel** — the shared lowest layers: `config/`, `src/`, `brain/`, `orchestrator/`.
 The kernel never imports an agent.

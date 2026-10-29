@@ -23,6 +23,7 @@ Read in order the first time. After that, jump to the section you need.
 | 05 | [Data sources](05-data-sources.md) | Where 026's data comes from, and how the `sources/` registry governs it | ✅ written |
 | 06 | [Agents](06-agents.md) | The fleet layers (Intelligence / Execution / Platform), which agent sits where, and how to add one | ✅ written |
 | 07 | [Glossary](07-glossary.md) | Every 026 term defined in one place | ✅ written |
+| — | [Teams](../teams/README.md) | The four fleet teams (A / R / T / X): who does what, how they hand off, and the gap register | ✅ written · structure proposed ([ADR-0006](../adr/ADR-0006-fleet-teams.md)) |
 | 08 | Manual log | What changed in the manual, and the rules for updating it | ⬜ planned |
 
 *Sections 03 and 08 are planned and will be added one at a time — no rush.*
