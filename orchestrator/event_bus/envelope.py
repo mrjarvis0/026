@@ -29,6 +29,11 @@ class EnvelopeError(ValueError):
     pass
 
 
+class ContractError(EnvelopeError):
+    """The event is refused because of the contract (unregistered type, wrong schema_version, producer not
+    declared) rather than its own data — a systemic failure that affects every event of that kind."""
+
+
 def _is_number(v) -> bool:
     return isinstance(v, (int, float)) and not isinstance(v, bool)
 
@@ -103,16 +108,16 @@ def validate_event(event: dict, schemas: dict[str, dict], manifests: dict[str, d
     type_ = event["type"]
     schema = schemas.get(type_)
     if not _TYPE_RE.match(str(type_)) or schema is None:
-        raise EnvelopeError(f"unregistered type {type_!r}")
+        raise ContractError(f"unregistered type {type_!r}")
     if event["schema_version"] != schema["schema_version"]:
-        raise EnvelopeError(f"{type_}: schema_version {event['schema_version']} != {schema['schema_version']}")
+        raise ContractError(f"{type_}: schema_version {event['schema_version']} != {schema['schema_version']}")
 
     source = event["source"]
     if schema["platform"]:
         if source != "SYS":
-            raise EnvelopeError(f"{type_} is a platform type: only source 'SYS' may publish it")
+            raise ContractError(f"{type_} is a platform type: only source 'SYS' may publish it")
     elif type_ not in _produces(manifests.get(source) or {}):
-        raise EnvelopeError(f"source {source!r} does not declare that it produces {type_!r}")
+        raise ContractError(f"source {source!r} does not declare that it produces {type_!r}")
 
     _aware(event["observed_at"], "observed_at")
     for name in ("event_time", "known_at"):
@@ -124,6 +129,8 @@ def validate_event(event: dict, schemas: dict[str, dict], manifests: dict[str, d
             raise EnvelopeError("event_window: 'from' is after 'to'")
 
     detector, confidence = event.get("detector"), event.get("confidence")
+    if confidence is not None and detector is None:   # else the ceiling and the maturity gate are both skipped
+        raise EnvelopeError("confidence requires a detector (its maturity and ceiling gate the claim)")
     if detector is not None:
         if detector.get("maturity") not in MATURITY_ORDER:
             raise EnvelopeError(f"detector.maturity must be one of {sorted(MATURITY_ORDER)}")

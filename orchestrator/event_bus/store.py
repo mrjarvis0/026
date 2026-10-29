@@ -2,7 +2,7 @@
 
 Append-only ``events`` with a never-reused ``seq``; per-consumer cursors, retry/park state, source
 health (coverage proof), relay high-water marks, the persisted bus trace and the approval queue
-all live in the same file. Every call opens its own short-lived connection (WAL: readers don't
+all live in the same file. One long-lived connection per store, guarded by a lock (WAL: readers don't
 block the single writer; keep write transactions tiny).
 """
 from __future__ import annotations
@@ -247,7 +247,7 @@ class EventStore:
 
         def w(conn):
             conn.execute("INSERT INTO consumers (name, cursor, updated_at) VALUES (?,?,?) ON CONFLICT(name)"
-                         " DO UPDATE SET cursor = excluded.cursor, updated_at = excluded.updated_at",
+                         " DO UPDATE SET cursor = MAX(cursor, excluded.cursor), updated_at = excluded.updated_at",
                          (name, seq, when))
             if clear_attempts:
                 conn.execute("DELETE FROM attempts WHERE consumer = ? AND seq = ?", (name, seq))
@@ -269,7 +269,7 @@ class EventStore:
                          " VALUES (?,?,?,?,?)", (name, seq, n, err, when))
             conn.execute("DELETE FROM attempts WHERE consumer = ? AND seq = ?", (name, seq))
             conn.execute("INSERT INTO consumers (name, cursor, updated_at) VALUES (?,?,?) ON CONFLICT(name)"
-                         " DO UPDATE SET cursor = excluded.cursor, updated_at = excluded.updated_at",
+                         " DO UPDATE SET cursor = MAX(cursor, excluded.cursor), updated_at = excluded.updated_at",
                          (name, seq, when))
 
         self._write(w)
@@ -283,9 +283,29 @@ class EventStore:
             return [dict(zip(("consumer", "seq", "attempts", "last_error", "parked_at"), r))
                     for r in conn.execute(sql + " ORDER BY seq", args)]
 
+    def retry_parked(self, consumer: str, handler: Callable[[dict], None]) -> int:
+        """Give every parked event of ``consumer`` another delivery. A success removes it from the
+        dead-letter; a failure leaves it parked. Returns how many were recovered."""
+        recovered = 0
+        for row in self.parked(consumer):
+            with self._conn() as conn:
+                found = conn.execute("SELECT envelope FROM events WHERE seq = ?", (row["seq"],)).fetchone()
+            if found is None:
+                continue
+            try:
+                handler({**json.loads(found[0]), "seq": row["seq"]})
+            except Exception:
+                continue
+            self._write(lambda conn, seq=row["seq"]: conn.execute(
+                "DELETE FROM parked WHERE consumer = ? AND seq = ?", (consumer, seq)))
+            recovered += 1
+        return recovered
+
     # ---- source health: the coverage proof for "nothing happened" ---------------------------
 
     def record_health(self, source: str, *, ok: bool, detail: str = "", at: datetime | None = None) -> None:
+        if at is not None and at.tzinfo is None:
+            raise ValueError("record_health: 'at' must be timezone-aware (a naive time breaks staleness checks)")
         when = (at or self.now()).isoformat()
         self._write(lambda conn: conn.execute(
             "INSERT INTO source_health (source, last_attempt_at, last_ok_at, ok, detail) VALUES (?,?,?,?,?)"

@@ -4425,3 +4425,36 @@ registry, manifest or folder was changed.**
 Operator reviews `docs/teams/README.md` and answers the questions above (flip ADR-0006 to accepted); then,
 on separate go-aheads: (a) the R rename + sentinel `_ROW` widening + `team:` field, (b) A005 Market Data
 (critical path), (c) X05/X07 first slices, (d) the T03 `RiskEngine` fix (G-T-01, test-first).
+
+
+---
+
+## 2026-10-29 · Follow-up chunks + independent review
+
+### Chunks (each committed separately; git log has the detail)
+bybit dropped from the poll list; T03 `HUMAN_CONFIRM_TOKEN` renamed (secrets false-positive, scanner left strict);
+supervisor lanes + weekly prune; dashboard `contracts` column (typechecked, not seen in a browser — the pane
+refused navigation); Slice 2 design doc (T01 pause flags, no code); T03 scalper risk wiring; A002 clustering
+recovery; A001 per-block drain. Teams docs (another session) were committed separately (1ec1e32).
+
+### Independent review (fresh subagent, read-only) — no Critical finding
+Fixed test-first: relay crash on a malformed report (#1); transient OSError / systemic contract failures marked a
+file consumed (#2, new `ContractError`); T03 breakers evaluated on the fake fallback equity (#3); `confidence` with
+no `detector` bypassing ceiling+maturity gates (#6); parked events with no way back and a 25-minute park horizon (#7,
+`retry_parked`, `--retry-parked`, librarian `max_attempts=20`); A002 poison item blocking clustering (#8); cursor
+regression (#9); naive `record_health` time (#10); shared `state.json.tmp` (#11); fast lane hiding a dead slow lane
+(#12); A015 text marked `untrusted` (#15); stale docstring (#17).
+
+### Rulings
+- #4 (T03 keeps its open position after a risk halt) and #5 (size now reaches the leverage cap, no stop order is
+  placed) are **not** fixed: both are trading decisions on an execution path (testnet) — left to the operator.
+- #13/#14 (T01 executor leak on a hung T03 call; disable() leaves open real positions unmanaged) — T01 is the
+  real-money agent: recorded, not changed. #16, #18, #19 (prune/new consumers, `blocks<=0`, A007 id change) — minor, deferred.
+
+### Self-critique / open
+- A001 `coverage` is `contiguous: False` (798 of 844 heights): gaps predate the drain fix; repair = a backfill run
+  (RPC calls) — operator's call.
+- Not run end-to-end: the T03 `step()` dry-run (needs a ~190k-bar download), the dashboard in a browser.
+- The first A002 scan after the recovery change may re-cluster old orphan items from the last window.
+- Next: operator decisions on #4/#5, Slice 2 approval, Phase 2/3 design (orchestrator planner/router, entity ledger,
+  fusion, execution gate).

@@ -225,3 +225,37 @@ def test_seq_not_reused_after_prune(store, clock, tmp_path):
     clock.advance(86400 * 100)
     store.prune(clock() - timedelta(days=90), tmp_path / "a.jsonl")
     assert store.publish(event_n(2)) == (2, False)
+
+
+# ---- independent review (2026-10-29) ---------------------------------------------------------------------
+
+def test_cursor_never_moves_backward(store):
+    # review #9: two concurrent consumers of one name could regress the cursor
+    store.consume("c", lambda e: None, types=["a015.*"])      # registers the consumer
+    store._advance("c", 5)
+    store._advance("c", 3)
+    assert cursor_of(store, "c") == 5
+
+
+def test_record_health_rejects_a_naive_time(store):
+    # review #10: a naive timestamp later broke stale_sources with a TypeError
+    with pytest.raises(ValueError, match="timezone"):
+        store.record_health("A015:okx", ok=True, at=datetime(2026, 10, 28, 9, 0))
+
+
+def test_parked_events_can_be_retried(store):
+    # review #7: a parked event had no way back
+    store.publish(event_n(1))
+    kw = dict(types=["a015.*"], min_maturity="implemented", max_attempts=1)
+    store.consume("c", failing_on(1)[2], **kw)
+    assert len(store.parked("c")) == 1
+    seen, _, ok_handler = failing_on()                          # a handler that now works
+    assert store.retry_parked("c", ok_handler) == 1
+    assert seen == [1] and store.parked("c") == []
+
+
+def test_a_still_failing_parked_event_stays_parked(store):
+    store.publish(event_n(1))
+    store.consume("c", failing_on(1)[2], types=["a015.*"], min_maturity="implemented", max_attempts=1)
+    assert store.retry_parked("c", failing_on(1)[2]) == 0
+    assert len(store.parked("c")) == 1

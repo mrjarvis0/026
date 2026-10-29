@@ -38,13 +38,20 @@ from .predict import CandlePredictor
 # Risk wiring (pure helpers — testable without market data)
 # ---------------------------------------------------------------------------
 
-def risk_gate(limits: RiskLimits, state: dict, equity: float) -> tuple[RiskEngine, bool, str]:
+def risk_gate(limits: RiskLimits, state: dict, equity: float,
+              mode: str = "futures_testnet") -> tuple[RiskEngine, bool, str]:
     """RiskEngine whose state is carried across steps in the scalper state dict.
 
     A fresh engine every step (the old code) can never see a drawdown, a daily loss or a trade count,
     so no breaker could trip. The state dict is updated in place; the caller persists it. A drawdown /
     equity-floor halt is sticky: clear ``risk_halted`` in scalper_state.json to resume.
+
+    Only a REAL account read is evaluated. When the broker is unavailable ``_account`` substitutes a fake
+    10,000; breakers on that would persist a sticky halt (or a bogus peak) from numbers that never existed,
+    so in that case nothing is evaluated and the state dict is left untouched.
     """
+    if mode != "futures_testnet":
+        return RiskEngine(limits), True, "simulated equity: breakers not evaluated"
     rs = RiskState(
         peak_equity=float(state.get("equity_peak") or 0.0),
         day=state.get("daily_date") or "",
@@ -296,8 +303,9 @@ class FuturesScalper:
         equity, current_units, mode = self._account()
 
         # 8. RiskEngine check — state persists across steps (breakers can actually trip)
-        risk, can_trade, block_reason = risk_gate(self.risk_limits, state, equity)
-        self._save_state(state)
+        risk, can_trade, block_reason = risk_gate(self.risk_limits, state, equity, mode)
+        if mode == "futures_testnet":
+            self._save_state(state)
         if not can_trade:
             notes.append(f"RiskEngine BLOCKED: {block_reason}")
             fused = FusedSignal(0, 0.0, True, f"risk: {block_reason}",

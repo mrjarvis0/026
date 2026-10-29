@@ -65,7 +65,7 @@ def test_golden_envelope_for_each_type(event_type):
     assert env["type"] == EVENT_TYPES[event_type] and env["source"] == "A015"
     assert env["subject"] == f"market:binance:{SYMBOL}"
     assert env["detector"] == {"id": event_type, "maturity": "implemented", "ceiling": None}
-    assert env["confidence"] is None and env["untrusted"] is False
+    assert env["confidence"] is None and env["untrusted"] is True
     assert env["event_window"] == {"from": "2026-10-28T09:00:00+00:00", "to": OBSERVED}
     assert env["evidence"][0]["locator"] == "snapshot:3f9a21c0e4b1"
     validate_event(env, load_schemas(), MANIFESTS)
@@ -107,7 +107,7 @@ def test_torn_event_file_is_skipped_not_fatal(store, log_dir, tmp_path):
     (log_dir / FILE_1).write_text("[{torn", encoding="utf-8")
     write_events(log_dir, FILE_2, [report(n=1)])
     res = relay_once(store, event_log_dir=log_dir, poll_status_path=tmp_path / "none.json", detector_maturity={})
-    assert res.published == 1 and any("unreadable" in r for r in res.rejected)
+    assert res.published == 1 and any("corrupt" in r for r in res.rejected)
     assert store.get_state("a015", "last_file") == FILE_2           # a bad file never stalls the relay
 
 
@@ -232,3 +232,50 @@ def test_main_prints_only_a_few_rejections(tmp_path, monkeypatch, capsys):
     assert relay.main(["--once", "--db", str(tmp_path / "bus.db")]) == 1
     out = capsys.readouterr().out
     assert out.count("rejected: file[") == 5 and "45 more" in out and "rejected 50" in out
+
+
+# ---- independent review (2026-10-29): relay robustness ----------------------------------------------------
+
+def test_a_report_that_crashes_the_mapper_is_rejected_not_fatal(store, log_dir, tmp_path):
+    # review #1: only EnvelopeError was caught, so a malformed report wedged the relay on that file forever
+    write_events(log_dir, FILE_1, ["not a dict", report(n=1)])
+    write_events(log_dir, FILE_2, [report(n=2)])
+    res = relay_once(store, event_log_dir=log_dir, poll_status_path=tmp_path / "none.json", detector_maturity={})
+    assert res.published == 2 and len(res.rejected) == 1
+    assert store.get_state("a015", "last_file") == FILE_2
+
+
+def test_an_unreadable_file_is_retried_not_skipped(store, log_dir, tmp_path, monkeypatch):
+    # review #2: a transient OSError (AV lock) marked the file consumed, losing it from the bus for good
+    from pathlib import Path
+    write_events(log_dir, FILE_1, [report(n=1)])
+    write_events(log_dir, FILE_2, [report(n=2)])
+    real = Path.read_text
+
+    def flaky(self, *a, **k):
+        if self.name == FILE_1:
+            raise PermissionError("locked by antivirus")
+        return real(self, *a, **k)
+
+    kw = dict(event_log_dir=log_dir, poll_status_path=tmp_path / "none.json", detector_maturity={})
+    monkeypatch.setattr(Path, "read_text", flaky)
+    res = relay_once(store, **kw)
+    assert res.published == 0 and store.get_state("a015", "last_file", "") == ""     # order preserved, nothing skipped
+    monkeypatch.setattr(Path, "read_text", real)
+    assert relay_once(store, **kw).published == 2
+
+
+def test_a_systemic_contract_failure_does_not_consume_the_file(log_dir, tmp_path, clock):
+    # review #2: a broken manifest/schema made EVERY report "invalid" and the file was marked done
+    broken = EventStore(tmp_path / "broken.db", manifests={}, clock=clock)           # A015 declares no produces
+    write_events(log_dir, FILE_1, [report(n=1)])
+    kw = dict(event_log_dir=log_dir, poll_status_path=tmp_path / "none.json", detector_maturity={})
+    res = relay_once(broken, **kw)
+    assert res.published == 0 and res.rejected and broken.get_state("a015", "last_file", "") == ""
+    fixed = EventStore(tmp_path / "broken.db", manifests=MANIFESTS, clock=clock)
+    assert relay_once(fixed, **kw).published == 1                                     # picked up once the contract is fixed
+
+
+def test_a015_text_is_marked_untrusted():
+    # review #15: symbol / status strings come from an exchange, i.e. third-party text
+    assert to_envelope(report(), {})["untrusted"] is True

@@ -27,6 +27,7 @@ def librarian_handler(brain: Brain) -> Callable[[dict], None]:
 
 
 BATCH = 200
+MAX_ATTEMPTS = 20        # one attempt per 5-minute bus cycle: ~100 minutes of outage before an event is parked
 MAX_BATCHES = 100        # up to 20,000 events per run; the rest is picked up next cycle
 
 
@@ -36,7 +37,8 @@ def run_once(store: EventStore, brain: Brain) -> ConsumeStats:
     handler = librarian_handler(brain)
     total = ConsumeStats()
     for _ in range(MAX_BATCHES):
-        s = store.consume(NAME, handler, types=TYPES, min_maturity="implemented", batch=BATCH)
+        s = store.consume(NAME, handler, types=TYPES, min_maturity="implemented", batch=BATCH,
+                          max_attempts=MAX_ATTEMPTS)
         total.delivered += s.delivered
         total.skipped_other_type += s.skipped_other_type
         total.skipped_low_maturity += s.skipped_low_maturity
@@ -46,3 +48,8 @@ def run_once(store: EventStore, brain: Brain) -> ConsumeStats:
         if s.delivered + s.skipped_other_type + s.skipped_low_maturity + s.parked == 0:
             break
     return total
+
+
+def retry_parked(store: EventStore, brain: Brain) -> int:
+    """Re-deliver the librarian's dead-lettered events (e.g. after a brain outage). Returns how many recovered."""
+    return store.retry_parked(NAME, librarian_handler(brain))

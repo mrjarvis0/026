@@ -106,3 +106,4 @@ live/state.json
 live/state.json.tmp
 live/state.json.corrupt-*
 live/supervisor.lock
+live/state.json.*.tmp

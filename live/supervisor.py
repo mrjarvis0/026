@@ -188,7 +188,7 @@ def load_state() -> dict:
 
 def save_state(state: dict) -> None:
     """Write to a temp file then os.replace, so a crash mid-write cannot truncate state."""
-    tmp = STATE_FILE.with_name(STATE_FILE.name + ".tmp")
+    tmp = STATE_FILE.with_name(f"{STATE_FILE.name}.{threading.get_ident()}.tmp")   # one per thread: both lanes save
     try:
         STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
         for _ in range(5):   # ponytail: the other lane may add an event key mid-dump; retry instead of locking
@@ -228,11 +228,14 @@ def acquire_lock(path: Path | None = None):
 
 
 def is_stale(state: dict, now: datetime) -> bool:
-    """True when the supervisor has not ticked recently (or never has)."""
-    beat = state.get("heartbeat")
-    if not beat:
-        return True
-    return (now - datetime.fromisoformat(beat)).total_seconds() > HEARTBEAT_STALE_SEC
+    """True when the supervisor has not ticked recently (or never has). With per-lane heartbeats, ANY
+    stale lane makes it stale: a live fast lane must not hide a dead A001/A002 lane."""
+    beats = [state.get(f"heartbeat_{lane}") for lane in LANES if state.get(f"heartbeat_{lane}")]
+    beats = beats or [state.get("heartbeat")]
+    for beat in beats:
+        if not beat or (now - datetime.fromisoformat(beat)).total_seconds() > HEARTBEAT_STALE_SEC:
+            return True
+    return False
 
 
 def backoff_sec(fails: int, rnd=random.random) -> float:
@@ -310,6 +313,8 @@ def tick(state: dict, now: datetime, clock=lambda: datetime.now(UTC), lane: str 
             ("a015", A015_EVERY_MIN, lambda: a015_poll()),
             ("bus", BUS_EVERY_MIN, lambda: bus_cycle()),
             ("prune", PRUNE_EVERY_MIN, lambda: bus_prune()))
+    if lane:
+        state[f"heartbeat_{lane}"] = clock().isoformat()   # alive before the (possibly long) jobs run
     for name, every_min, job in jobs:
         if lane is not None and name not in LANES[lane]:
             continue

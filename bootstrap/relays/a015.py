@@ -15,7 +15,7 @@ from pathlib import Path
 
 from agents.A015_Exchange_Listing_Delisting_Intelligence.core import event_log, poll_status
 from agents.A015_Exchange_Listing_Delisting_Intelligence.core.symbols import base_of
-from orchestrator.event_bus.envelope import EnvelopeError
+from orchestrator.event_bus.envelope import ContractError, EnvelopeError
 from orchestrator.event_bus.store import EventStore
 
 EVENT_TYPES = {
@@ -83,7 +83,7 @@ def to_envelope(report: dict, detector_maturity: dict[str, str]) -> dict:
         "evidence": [{"source": f"ccxt.fetch_markets:{exchange}",
                       "locator": f"snapshot:{report.get('snapshot_digest') or 'unknown'}",
                       "retrieved_at": observed_at}],
-        "untrusted": False,
+        "untrusted": True,                                    # exchange-supplied strings (symbol, status, pairs)
         "data": data,
     }
 
@@ -122,24 +122,35 @@ def relay_once(store: EventStore, *, event_log_dir=None, poll_status_path=None,
     for path in files:
         result.files += 1
         try:
-            reports = json.loads(path.read_text(encoding="utf-8"))
+            text = path.read_text(encoding="utf-8")
+        except OSError as exc:      # transient (e.g. an antivirus lock): retry next run, keep the order
+            result.rejected.append(f"{path.name}: unreadable, will retry ({exc})")
+            break
+        try:
+            reports = json.loads(text)
             if not isinstance(reports, list):
                 raise ValueError("not a list of reports")
-        except (OSError, ValueError) as exc:
-            result.rejected.append(f"{path.name}: unreadable ({exc})")
+        except ValueError as exc:   # corrupt content never gets better: record it and move on
+            result.rejected.append(f"{path.name}: corrupt ({exc})")
             store.set_state("a015", "last_file", path.name)
             continue
-        envelopes = []
+        envelopes, systemic = [], False
         for index, rep in enumerate(reports):
             try:
                 envelope = to_envelope(rep, maturity)
                 store.validate(envelope)
-            except EnvelopeError as exc:
+            except ContractError as exc:    # the contract, not this report: every report would fail
                 result.rejected.append(f"{path.name}[{index}]: {exc}")
+                systemic = True
+                continue
+            except Exception as exc:        # one malformed report must never wedge the relay
+                result.rejected.append(f"{path.name}[{index}]: {type(exc).__name__}: {exc}")
                 continue
             envelopes.append(envelope)
         for _, duplicate in store.publish_many(envelopes):      # one transaction per file
             result.duplicates += duplicate
             result.published += not duplicate
+        if systemic:    # leave the mark where it is so the file is re-read once the contract is fixed
+            break
         store.set_state("a015", "last_file", path.name)   # StoreBusy above leaves the mark; re-read is safe
     return result

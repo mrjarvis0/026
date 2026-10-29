@@ -285,3 +285,32 @@ def test_bus_prune_command(monkeypatch):
 def test_old_state_gains_the_prune_keys():
     sup.STATE_FILE.write_text(json.dumps({"a001_last": "x"}), encoding="utf-8")
     assert sup.load_state()["prune_last"] is None
+
+
+# ---- independent review (2026-10-29) ---------------------------------------------------------------------
+
+def test_a_stopped_slow_lane_makes_the_supervisor_stale():
+    # review #12: the fast lane refreshed the shared heartbeat, hiding a dead A001/A002 lane
+    fresh = (NOW - timedelta(seconds=60)).isoformat()
+    old = (NOW - timedelta(seconds=sup.HEARTBEAT_STALE_SEC + 1)).isoformat()
+    assert sup.is_stale({"heartbeat": fresh, "heartbeat_slow": old, "heartbeat_fast": fresh}, NOW) is True
+    assert sup.is_stale({"heartbeat": fresh, "heartbeat_slow": fresh, "heartbeat_fast": fresh}, NOW) is False
+
+
+def test_concurrent_state_saves_do_not_collide(tmp_path):
+    # review #11: both lanes wrote the same state.json.tmp
+    import threading
+    errors = []
+
+    def worker(n):
+        try:
+            for i in range(20):
+                sup.save_state({"n": n, "i": i, "events": {}})
+        except Exception as exc:     # pragma: no cover
+            errors.append(exc)
+
+    threads = [threading.Thread(target=worker, args=(n,)) for n in range(4)]
+    [t.start() for t in threads]
+    [t.join() for t in threads]
+    assert not errors and "n" in json.loads(sup.STATE_FILE.read_text(encoding="utf-8"))
+    assert not list(sup.STATE_FILE.parent.glob("state.json*.tmp"))

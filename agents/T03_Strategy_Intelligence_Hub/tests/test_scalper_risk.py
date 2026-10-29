@@ -68,3 +68,19 @@ def test_size_is_capped_by_leverage_and_safe_on_bad_input():
     assert size_units(RiskEngine(LIMITS), 10_000.0, 60_000.0, 1.0) == pytest.approx(10_000.0 * 3 / 60_000.0)
     assert size_units(RiskEngine(LIMITS), 10_000.0, 0.0, 600.0) == 0.0
     assert size_units(RiskEngine(LIMITS), 10_000.0, 60_000.0, 0.0) > 0.0   # no ATR -> falls back to a 1% stop
+
+
+# ---- independent review (2026-10-29) ---------------------------------------------------------------------
+
+def test_simulated_equity_never_trips_or_persists_breakers():
+    # review #3: _account() falls back to a fake 10,000 when the broker read fails; persisting that as the
+    # peak (or as a drawdown from a real 50,000) wrote a sticky halt from numbers that were never real
+    state: dict = {}
+    _, ok, why = risk_gate(LIMITS, state, 10_000.0, mode="simulated(no keys)")
+    assert ok is True and state == {} and "simulated" in why
+
+
+def test_a_failed_broker_read_cannot_halt_a_real_account():
+    state = {"equity_peak": 50_000.0, "daily_date": TODAY, "day_start_equity": 50_000.0}
+    risk_gate(LIMITS, state, 10_000.0, mode="simulated(no keys)")      # the 10k fallback after an API error
+    assert state["equity_peak"] == 50_000.0 and not state.get("risk_halted")

@@ -115,3 +115,9 @@ def test_make_event_id_stable_and_prefixed():
 
 def test_canonical_json_is_order_independent():
     assert canonical_json({"b": 1, "a": 2}) == canonical_json({"a": 2, "b": 1}) == '{"a":2,"b":1}'
+
+
+def test_confidence_without_a_detector_is_rejected():
+    # review #6: with no detector the ceiling and maturity gate were both skipped, so a "plain fact" could
+    # carry confidence 0.95 straight to validated-only consumers
+    rejects(sample_event(detector=None, confidence=0.95), "detector")

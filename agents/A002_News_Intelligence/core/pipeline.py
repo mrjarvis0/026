@@ -108,6 +108,14 @@ async def ingest(settings: Settings | None = None, db_path: str | None = None) -
         except Exception as exc:  # items are already stored; the next cycle re-clusters them
             report.failed += 1
             report.errors.append(f"cluster: {type(exc).__name__}: {exc}")
+            # Isolate: retry the still-unlinked items one by one so a single poison item cannot block the
+            # rest (it stays an orphan and is reported each cycle).
+            unlinked = {i.id for i in await storage.load_unclustered_items(since)}
+            for item in (i for i in to_cluster if i.id in unlinked):
+                try:
+                    await engine.update(storage, [item])
+                except Exception as item_exc:
+                    report.errors.append(f"cluster item {item.id}: {type(item_exc).__name__}: {item_exc}")
 
     return report
 

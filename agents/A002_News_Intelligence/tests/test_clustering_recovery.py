@@ -70,3 +70,25 @@ def test_clustered_items_are_not_reclustered(tmp_path, monkeypatch):
     assert report.recovered == 0
     storage = Storage(db)
     assert len(asyncio.run(storage.load_active_narratives("1970-01-01T00:00:00"))) == 1   # no duplicate narrative
+
+
+def test_one_poison_item_does_not_block_the_rest(tmp_path, monkeypatch):
+    # review #8: one item that deterministically raised in update() blocked every later item in the window
+    db = tmp_path / "a002.db"
+    real = pipeline.NarrativeEngine.update
+
+    async def selective(self, storage, items, now=None):
+        if any("POISON" in i.title for i in items):
+            raise RuntimeError("poison item")
+        return await real(self, storage, items, now)
+
+    monkeypatch.setattr(pipeline.NarrativeEngine, "update", selective)
+    poison = RawItem(source="rss_test", source_key="rss_test:p", url="http://x/p",
+                     title="POISON headline about gold", content="x")
+    report = run(db, [poison, raw(2)], monkeypatch)
+    assert len(stored_item_ids(db)) == 2 and len(clustered_item_ids(db)) == 1      # the good one still clustered
+    assert report.failed >= 1 and any("poison" in e for e in report.errors)
+    other = RawItem(source="rss_test", source_key="rss_test:o", url="http://x/o",
+                    title="Oil prices jump after surprise OPEC output cut", content="Brent rallies.")
+    run(db, [other], monkeypatch)                                                   # later cycles are not blocked either
+    assert len(clustered_item_ids(db)) == 2

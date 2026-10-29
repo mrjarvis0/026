@@ -101,3 +101,22 @@ def test_a_failing_handler_does_not_spin_the_drain(store, brain, monkeypatch):
     stats = run_once(store, brain)                       # must return, not loop on the same event
     assert stats.delivered == 0 and stats.failed == 1
     assert store.stats()["consumers"][NAME]["lag"] == 5
+
+
+def test_librarian_tolerates_a_long_outage_before_parking(store, brain, monkeypatch):
+    # review #7: 5 attempts at one per 5-minute cycle parked facts after ~25 minutes
+    seen = {}
+    real = store.consume
+    monkeypatch.setattr(store, "consume", lambda *a, **k: seen.update(k) or real(*a, **k))
+    run_once(store, brain)
+    assert seen["max_attempts"] >= 20
+
+
+def test_consume_cli_can_retry_parked_events(store, brain, tmp_path, capsys):
+    store.publish(event_n(1))
+    store.consume(NAME, lambda e: (_ for _ in ()).throw(RuntimeError("down")), types=["a015.*"],
+                  min_maturity="implemented", max_attempts=1)
+    assert len(store.parked(NAME)) == 1
+    assert consume.main(["--once", "--retry-parked", "--db", str(tmp_path / "bus.db"),
+                         "--brain", str(tmp_path / "b2.db")]) == 0
+    assert "retried 1" in capsys.readouterr().out and store.parked(NAME) == []

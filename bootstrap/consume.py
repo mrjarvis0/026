@@ -14,11 +14,15 @@ from orchestrator.event_bus.store import StoreBusy
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="bootstrap.consume")
     parser.add_argument("--once", action="store_true", help="deliver what is pending and exit")
+    parser.add_argument("--retry-parked", action="store_true", help="first re-deliver dead-lettered events")
     parser.add_argument("--db", default=None, help="bus database path (default data/bus/bus.db)")
     parser.add_argument("--brain", default=None, help="brain database path (default data/brain/brain.db)")
     args = parser.parse_args(argv)
     try:
-        stats = librarian.run_once(build_store(args.db), build_brain(args.brain))
+        store, brain = build_store(args.db), build_brain(args.brain)
+        if args.retry_parked:
+            print(f"[consume] librarian: retried {librarian.retry_parked(store, brain)} parked event(s)")
+        stats = librarian.run_once(store, brain)
     except StoreBusy as exc:
         print(f"[consume] bus database busy: {exc}")
         return 1

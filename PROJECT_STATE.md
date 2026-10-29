@@ -6,6 +6,19 @@
 
 - **Last updated:** 2026-10-28
 - **Repo root:** `F:\026`
+- **Follow-ups (2026-10-29)** - committed in small chunks after Phase 1: bybit removed from `config/bus.json`
+  (unreachable here); T03 `HUMAN_CONFIRM_TOKEN` -> `HUMAN_CONFIRM_PHRASE` (sentinel secrets false-positive gone,
+  fleet verdict no longer FAIL); supervisor runs two parallel lanes (slow: A002/A001, fast: A015/bus/prune) and a
+  weekly `bootstrap.prune` (90-day retention, JSONL archive); dashboard sentinel matrix shows `contracts`; T03
+  scalper breakers now persist across steps (and never run on simulated equity); A002 re-clusters stored-but-
+  unclustered items and isolates a poison item; A001 drains each block before polling the next; relay/envelope/
+  store hardened after an independent review (poison reports, transient vs systemic failures, confidence needs a
+  detector, parked-event retry `bootstrap.consume --retry-parked`). Tests: platform 229 pass / 0 fail; A002 68,
+  A007 11, A015 49, T01 53, T03 27, A001 ingestion/cli/db/pipeline 249. **Slice 2 (T01 pause flags) is design only**
+  (`docs/superpowers/specs/2026-10-29-slice2-t01-pause-flags-design.md`), awaiting operator approval.
+  Open for the operator: T03 scalper after a risk halt keeps its open position (no flatten) and now sizes up to the
+  leverage cap without placing a stop; A001 stored history has 46 missing heights (`contiguous: false`) - a backfill
+  would repair them.
 - **Fleet teams (2026-10-28, ADR-0006, docs only)** - the fleet is divided into four teams:
   **A** Intelligence Team (collectors), **R** Analysis Bureau (analysts; reserved R01-R05 = today's
   A009/A010/A012/A013/A014 README scaffolds), **T** Trading Desk (T01-T03), **X** Control Tower
