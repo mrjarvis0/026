@@ -39,13 +39,17 @@ Stop everything (dashboard, T01, supervisor) with `stop-026.bat`.
 
 ## Event-bus jobs (Phase 1, 2026-10-28)
 
-Two more jobs run on the same tick, reusing the retry/backoff/lock below. Config: `config/bus.json`.
+Three more jobs, reusing the retry/backoff/lock below. Config: `config/bus.json`. The supervisor runs two
+lanes in parallel threads: **slow** (A002, A001) and **fast** (A015 poll, bus cycle, prune), so a long
+A001 ingest can no longer delay the A015 poll.
 
 - **A015 poll** every `a015_every_min` (15) minutes for the configured exchanges
   (`binance, coinbase, okx`) — one `fetch_markets` call each, network only, no API keys.
   Writes `memory/event_log/` and `memory/poll_status.json`.
 - **Bus cycle** every 5 minutes: `python -m bootstrap.relay --once` (A015 facts -> `data/bus/bus.db`,
   source health, stale-source events) then `python -m bootstrap.consume --once` (-> persistent brain).
+- **Prune** weekly: `python -m bootstrap.prune --once` archives (JSONL, `data/bus/archive/`) then deletes events
+  older than `retention_days` (90), never past a consumer's cursor.
 - Check it: `python -m bootstrap.bus_stats` (exit 1 on a parked event or a stale source).
 - The **first** A015 poll compares against the old snapshots on disk, so it can publish a burst of
   events covering the whole gap since they were taken (each event states that window).

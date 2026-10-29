@@ -20,6 +20,7 @@ def isolated(tmp_path, monkeypatch):
     monkeypatch.setattr(sup, "STATE_FILE", tmp_path / "state.json")
     monkeypatch.setattr(sup, "LOG_FILE", tmp_path / "supervisor.log")
     monkeypatch.setattr(sup, "refresh_events", lambda state, now: None)  # no agent calls
+    monkeypatch.setattr(sup, "bus_prune", lambda: True)                  # never prune the real bus.db from a test
 
 
 @pytest.fixture
@@ -218,3 +219,69 @@ def test_old_state_gains_a015_and_bus_keys():
 def test_missing_bus_config_falls_back_to_defaults(tmp_path):
     cfg = sup.load_bus_config(tmp_path / "nope.json")
     assert cfg["a015_exchanges"] == ["binance", "coinbase", "okx"] and cfg["a015_every_min"] == 15
+
+
+# ---- lanes (A001's long ingest must not delay the A015 poll) and the weekly prune ---------------------------
+
+REAL_BUS_PRUNE = sup.bus_prune   # captured before the autouse stub replaces it
+
+
+@pytest.fixture
+def spies(monkeypatch):
+    ran: list[str] = []
+    for name, fn in (("a001", "a001_ingest"), ("a002", "a002_scan"), ("a015", "a015_poll"),
+                     ("bus", "bus_cycle"), ("prune", "bus_prune")):
+        monkeypatch.setattr(sup, fn, lambda n=name: ran.append(n) or True)
+    return ran
+
+
+def test_lanes_split_the_jobs(spies):
+    state = _fresh()
+    sup.tick(state, NOW, clock=lambda: NOW, lane="fast")
+    assert sorted(spies) == ["a015", "bus", "prune"]
+    spies.clear()
+    sup.tick(state, NOW, clock=lambda: NOW, lane="slow")
+    assert sorted(spies) == ["a001", "a002"]
+
+
+def test_fast_lane_runs_while_the_slow_lane_is_busy(monkeypatch):
+    # regression: one serial tick meant a 15-minute A001 ingest delayed the A015 poll past its stale window
+    import threading
+
+    release, started, fast_ran = threading.Event(), threading.Event(), []
+    monkeypatch.setattr(sup, "a002_scan", lambda: True)
+    monkeypatch.setattr(sup, "a001_ingest", lambda: started.set() or release.wait(10) or True)
+    monkeypatch.setattr(sup, "a015_poll", lambda: fast_ran.append("a015") or True)
+    monkeypatch.setattr(sup, "bus_cycle", lambda: fast_ran.append("bus") or True)
+    monkeypatch.setattr(sup, "bus_prune", lambda: True)
+    state = _fresh()
+    slow = threading.Thread(target=sup.tick, args=(state, NOW), kwargs={"clock": lambda: NOW, "lane": "slow"})
+    slow.start()
+    assert started.wait(5)                                   # A001 is now "ingesting"
+    sup.tick(state, NOW, clock=lambda: NOW, lane="fast")
+    assert fast_ran == ["a015", "bus"]                       # the fast lane did not wait for it
+    release.set()
+    slow.join(10)
+    assert state["a001_last"] == NOW.isoformat()
+
+
+def test_prune_runs_weekly(spies):
+    state = _fresh()
+    sup.tick(state, NOW, clock=lambda: NOW, lane="fast")
+    day = NOW + timedelta(days=1)
+    sup.tick(state, day, clock=lambda: day, lane="fast")
+    week = NOW + timedelta(days=8)
+    sup.tick(state, week, clock=lambda: week, lane="fast")
+    assert spies.count("prune") == 2
+
+
+def test_bus_prune_command(monkeypatch):
+    calls = []
+    monkeypatch.setattr(sup, "run", lambda args, label, **k: calls.append(args) or True)
+    assert REAL_BUS_PRUNE() is True
+    assert calls == [["bootstrap.prune", "--once"]]
+
+
+def test_old_state_gains_the_prune_keys():
+    sup.STATE_FILE.write_text(json.dumps({"a001_last": "x"}), encoding="utf-8")
+    assert sup.load_state()["prune_last"] is None

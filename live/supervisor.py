@@ -21,6 +21,7 @@ import os
 import random
 import subprocess
 import sys
+import threading
 import time
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -65,7 +66,11 @@ _BUS_DEFAULTS = {"a015_exchanges": ["binance", "coinbase", "okx"], "a015_every_m
                  "stale_factor": 2, "retention_days": 90}
 A015_CLI = "agents.A015_Exchange_Listing_Delisting_Intelligence.cli"
 BUS_EVERY_MIN = 5             # relay + consume are two short subprocesses; A015 only produces every 15 min
-JOB_NAMES = ("a001", "a002", "a015", "bus")
+PRUNE_EVERY_MIN = 7 * 24 * 60  # retention: weekly
+JOB_NAMES = ("a001", "a002", "a015", "bus", "prune")
+# Two lanes run in parallel threads: a long A001 ingest (up to RUN_TIMEOUT_SEC) must not delay the
+# 15-minute A015 poll past its stale window. Each lane owns disjoint state keys.
+LANES = {"slow": ("a002", "a001"), "fast": ("a015", "bus", "prune")}
 
 
 def load_bus_config(path: Path | None = None) -> dict:
@@ -125,6 +130,11 @@ def a015_poll() -> bool:
     return run(args, "A015 poll")
 
 
+def bus_prune() -> bool:
+    """Weekly retention: archive then delete old events (never past a consumer's cursor)."""
+    return run(["bootstrap.prune", "--once"], "bus prune")
+
+
 def bus_cycle() -> bool:
     """A015 facts -> bus (relay) -> brain (consume). Both always run; True only if both succeeded."""
     relayed = run(["bootstrap.relay", "--once"], "bus relay")
@@ -181,7 +191,15 @@ def save_state(state: dict) -> None:
     tmp = STATE_FILE.with_name(STATE_FILE.name + ".tmp")
     try:
         STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
-        tmp.write_text(json.dumps(state, indent=2), encoding="utf-8")
+        for _ in range(5):   # ponytail: the other lane may add an event key mid-dump; retry instead of locking
+            try:
+                payload = json.dumps(state, indent=2)
+                break
+            except RuntimeError:
+                continue
+        else:
+            raise OSError("state changed under every dump attempt")
+        tmp.write_text(payload, encoding="utf-8")
         os.replace(tmp, STATE_FILE)
     except OSError as exc:
         log(f"  state save ERROR {exc}")
@@ -283,20 +301,28 @@ def process_events(state: dict, now: datetime) -> None:
             ev["next_run"] = (now + timedelta(minutes=EVENT_GAP_MIN)).isoformat()
 
 
-def tick(state: dict, now: datetime, clock=lambda: datetime.now(UTC)) -> None:
-    """One pass of the loop: run what is due (A002 first — events depend on it), watch events,
-    stamp the heartbeat. ``clock`` reads the time after a job finishes; ``now`` decides what is due."""
-    for name, every_min, job in (("a002", A002_EVERY_MIN, lambda: a002_scan()),
-                                 ("a001", A001_EVERY_MIN, lambda: a001_ingest()),
-                                 ("a015", A015_EVERY_MIN, lambda: a015_poll()),
-                                 ("bus", BUS_EVERY_MIN, lambda: bus_cycle())):
+def tick(state: dict, now: datetime, clock=lambda: datetime.now(UTC), lane: str | None = None) -> None:
+    """One pass of a lane (all jobs if ``lane`` is None): run what is due, stamp the heartbeat. The slow
+    lane also watches events (A002 first — events depend on it). ``clock`` reads the time after a job
+    finishes; ``now`` decides what is due."""
+    jobs = (("a002", A002_EVERY_MIN, lambda: a002_scan()),
+            ("a001", A001_EVERY_MIN, lambda: a001_ingest()),
+            ("a015", A015_EVERY_MIN, lambda: a015_poll()),
+            ("bus", BUS_EVERY_MIN, lambda: bus_cycle()),
+            ("prune", PRUNE_EVERY_MIN, lambda: bus_prune()))
+    for name, every_min, job in jobs:
+        if lane is not None and name not in LANES[lane]:
+            continue
         if _due(state[f"{name}_last"], every_min, now) and _retry_ok(state, name, now):
             ok = job()
             _record(state, name, ok, clock)
             if ok and name == "a002":
                 refresh_events(state, clock())
-    process_events(state, clock())
+    if lane in (None, "slow"):
+        process_events(state, clock())
     state["heartbeat"] = clock().isoformat()
+    if lane:
+        state[f"heartbeat_{lane}"] = state["heartbeat"]
 
 
 def status() -> int:
@@ -328,12 +354,18 @@ def main() -> None:
         state[f"{name}_last"] = None
         state[f"{name}_retry_at"] = None
 
+    slow = threading.Thread(target=_lane_loop, args=(state, "slow"), daemon=True, name="lane-slow")
+    slow.start()
+    _lane_loop(state, "fast")   # the main thread runs the fast lane; Ctrl+C lands here
+
+
+def _lane_loop(state: dict, lane: str) -> None:
     while True:
         try:
-            tick(state, datetime.now(UTC))
+            tick(state, datetime.now(UTC), lane=lane)
             save_state(state)
-        except Exception as exc:  # noqa: BLE001 - never let the loop die
-            log(f"LOOP ERROR {type(exc).__name__}: {exc}")
+        except Exception as exc:  # noqa: BLE001 - never let a lane die
+            log(f"LOOP ERROR ({lane}) {type(exc).__name__}: {exc}")
         time.sleep(TICK_SEC)
 
 
